@@ -34,6 +34,9 @@ class Filters extends BaseFilters
         'forcehttps'    => ForceHTTPS::class,
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
+        'session'       => \CodeIgniter\Shield\Filters\SessionAuth::class, // <-- TAMBAHKAN BARIS INI
+        'tokens'        => \CodeIgniter\Shield\Filters\TokenAuth::class,   // <-- TAMBAHKAN BARIS INI
+        'chain'         => \CodeIgniter\Shield\Filters\AuthenticationChainFilter::class, // <-- TAMBAHKAN BARIS INI
     ];
 
     /**
