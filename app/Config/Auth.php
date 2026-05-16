@@ -7,13 +7,12 @@ use CodeIgniter\Shield\Config\Auth as ShieldAuth;
 class Auth extends ShieldAuth
 {
     public bool $allowRegistration = true; 
-    
-    // TAMBAHKAN BARIS INI untuk menyerahkan kendali rute ke file Routes.php Anda
-    public bool $setupRoutes = false; 
+    public bool $setupRoutes       = false; 
 
     public array $views = [
-        'login'           => '\CodeIgniter\Shield\Views\login',
-        'register'        => '\CodeIgniter\Shield\Views\register',
-        'layout'          => '\CodeIgniter\Shield\Views\layout',
+        // UBAH MENJADI SEPERTI DI BAWAH INI (Menggunakan format slash Unix/Linux)
+        'login'           => 'CodeIgniter\Shield\Views\login',
+        'register'        => 'CodeIgniter\Shield\Views\register',
+        'layout'          => 'CodeIgniter\Shield\Views\layout',
     ];
 }
