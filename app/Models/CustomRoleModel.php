@@ -6,7 +6,8 @@ class CustomRoleModel extends Model
 {
     protected $table            = 'custom_roles';
     protected $primaryKey       = 'id';
-    protected $allowedFields    = ['role_name', 'role_title'];
+    // Tambahkan created_at dan updated_at ke baris allowedFields ini:
+    protected $allowedFields    = ['role_name', 'role_title', 'created_at', 'updated_at'];
 
     // Fungsi untuk mengubah format database menjadi format array yang diminta Shield
     public function getRolesForShield(): array
