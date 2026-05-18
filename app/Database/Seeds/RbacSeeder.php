@@ -179,6 +179,17 @@ class RbacSeeder extends Seeder
     'permission_description' => 'Matriks Hak Akses',
     'is_active'              => 1, // Kita buat 1 karena fiturnya sudah selesai dibuat
 ],
+// Tambahkan ini di bagian akhir array $permissions di dalam RbacSeeder.php
+[
+    'id'                     => 14,
+    'parent_id'              => 11, // Menginduk ke Menu Admin (ID: 11)
+    'permission_name'        => 'admin.academic',
+    'menu_link'              => 'admin/academic',
+    'icon'                   => 'bi bi-calendar-check-fill',
+    'permission_description' => 'Setelan Akademik',
+    'is_active'              => 1, // Berstatus 1 karena fiturnya sudah siap pakai
+],
+
 
         ];
         $db->table('custom_permissions')->insertBatch($permissions);
@@ -210,6 +221,9 @@ $adminLinks = [
     ['role_id' => 4, 'permission_id' => 11], // Induk Menu Admin
     ['role_id' => 4, 'permission_id' => 12], // Sub Manajemen Pengguna
     ['role_id' => 4, 'permission_id' => 13], // Sub Matriks Hak Akses
+    // Tambahkan ini di baris akhir array $adminLinks sebelum eksekusi insertBatch
+    ['role_id' => 4, 'permission_id' => 14], // Izin akses sub-menu Setelan Akademik
+
 ];
 $db->table('custom_roles_permissions')->insertBatch($adminLinks);
 

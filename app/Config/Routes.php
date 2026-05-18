@@ -22,6 +22,9 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes) {
 
     $routes->get('permission-matrix', 'AdminController::permissionMatrix');
     $routes->post('permission-matrix/save', 'AdminController::saveMatrix');
+
+    $routes->get('academic', 'AdminController::academicSetting');
+    $routes->post('academic/activate/(:num)', 'AdminController::activateAcademic/$1');
 });
 
 

@@ -149,6 +149,34 @@ public function saveMatrix()
     return redirect()->to('admin/permission-matrix')->with('sukses', 'Matriks hak akses menu sekolah berhasil diperbarui secara dinamis!');
 }
 
+// Fungsi untuk menampilkan daftar Tahun Pelajaran & Semester
+public function academicSetting()
+{
+    $db = \Config\Database::connect();
+    
+    // Ambil seluruh daftar tahun akademik
+    $daftarAkademik = $db->table('academic_years')->orderBy('academic_year', 'ASC')->get()->getResultArray();
+
+    $data = [
+        'academic' => $daftarAkademik
+    ];
+
+    return view('admin/academic_setting', $data);
+}
+
+// Fungsi untuk mengubah status semester aktif secara massal
+public function activateAcademic($id)
+{
+    $db = \Config\Database::connect();
+
+    // 1. Matikan seluruh status aktif tahun pelajaran lama (set is_active = 0)
+    $db->table('academic_years')->update(['is_active' => 0]);
+
+    // 2. Aktifkan ID tahun pelajaran yang dipilih oleh pengguna (set is_active = 1)
+    $db->table('academic_years')->where('id', $id)->update(['is_active' => 1]);
+
+    return redirect()->to('admin/academic')->with('sukses', 'Tahun Pelajaran & Semester aktif berhasil diperbarui!');
+}
 
 
 }
