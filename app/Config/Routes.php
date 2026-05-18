@@ -7,9 +7,9 @@ use CodeIgniter\Router\RouteCollection;
  */
 
 // Halaman Utama Aplikasi
-$routes->get('/', function() {
-    return view('dashboard_test');
-});
+// UBAH BARIS RUTE HALAMAN UTAMA ANDA MENJADI SEPERTI INI:
+$routes->get('/', 'Home::index', ['as' => 'dashboard']);
+
 
 // Panggil rute otomatis bawaan CodeIgniter Shield secara resmi
 service('auth')->routes($routes);

@@ -33,6 +33,14 @@ class RbacSeeder extends Seeder
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s'),
             ],
+            [
+    'id'         => 4,
+    'role_name'  => 'admin',
+    'role_title' => 'Super Admin',
+    'created_at' => date('Y-m-d H:i:s'),
+    'updated_at' => date('Y-m-d H:i:s'),
+],
+
         ];
         $db->table('custom_roles')->insertBatch($roles);
 
@@ -143,6 +151,35 @@ class RbacSeeder extends Seeder
                 'permission_description' => 'Ujian Online CBT',
                 'is_active'              => 0,
             ],
+            // Tambahkan ini di baris paling akhir array $permissions di dalam RbacSeeder.php
+[
+    'id'                     => 11,
+    'parent_id'              => null,
+    'permission_name'        => 'menu.admin',
+    'menu_link'              => '#',
+    'icon'                   => 'bi bi-gear-fill',
+    'permission_description' => 'Menu Admin',
+    'is_active'              => 1,
+],
+[
+    'id'                     => 12,
+    'parent_id'              => 11,
+    'permission_name'        => 'admin.users',
+    'menu_link'              => 'admin/users',
+    'icon'                   => 'bi bi-people-fill',
+    'permission_description' => 'Manajemen Pengguna',
+    'is_active'              => 1, // Kita buat 1 karena fiturnya sudah selesai dibuat
+],
+[
+    'id'                     => 13,
+    'parent_id'              => 11,
+    'permission_name'        => 'admin.matrix',
+    'menu_link'              => 'admin/permission-matrix',
+    'icon'                   => 'bi bi-grid-3x3-gap-fill',
+    'permission_description' => 'Matriks Hak Akses',
+    'is_active'              => 1, // Kita buat 1 karena fiturnya sudah selesai dibuat
+],
+
         ];
         $db->table('custom_permissions')->insertBatch($permissions);
 
@@ -167,5 +204,14 @@ class RbacSeeder extends Seeder
             ['role_id' => 2, 'permission_id' => 8], // Modul Ajar
         ];
         $db->table('custom_roles_permissions')->insertBatch($guruLinks);
+
+        // Tambahkan ini di baris paling bawah fungsi run() sebelum penutup
+$adminLinks = [
+    ['role_id' => 4, 'permission_id' => 11], // Induk Menu Admin
+    ['role_id' => 4, 'permission_id' => 12], // Sub Manajemen Pengguna
+    ['role_id' => 4, 'permission_id' => 13], // Sub Matriks Hak Akses
+];
+$db->table('custom_roles_permissions')->insertBatch($adminLinks);
+
     }
 }
