@@ -86,5 +86,69 @@ public function updateUserRoles()
     return redirect()->to('admin/users')->with('sukses', 'Daftar jabatan aktif guru berhasil diperbarui secara dinamis!');
 }
 
+// Fungsi untuk menampilkan halaman matriks centang menu
+public function permissionMatrix()
+{
+    $db = \Config\Database::connect();
+    
+    // Ambil semua role kustom
+    $roles = $db->table('custom_roles')->get()->getResultArray();
+    
+    // Ambil semua menu utama (parent_id adalah null) beserta sub-menunya
+    $menusRaw = $db->table('custom_permissions')->get()->getResultArray();
+    
+    // Kelompokkan menu berdasarkan induknya (parent_id)
+    $menus = [];
+    foreach ($menusRaw as $m) {
+        if ($m['parent_id'] === null) {
+            $menus[$m['id']]['induk'] = $m;
+        } else {
+            $menus[$m['parent_id']]['anak'][] = $m;
+        }
+    }
+
+    // Ambil semua data centangan yang sudah ada saat ini di tabel jembatan
+    $matrixRaw = $db->table('custom_roles_permissions')->get()->getResultArray();
+    $matrixActive = [];
+    foreach ($matrixRaw as $row) {
+        $matrixActive[$row['role_id']][] = $row['permission_id'];
+    }
+
+    $data = [
+        'roles'        => $roles,
+        'menus'        => $menus,
+        'matrixActive' => $matrixActive
+    ];
+
+    return view('admin/permission_matrix', $data);
+}
+
+// Fungsi untuk mengeksekusi penyimpanan hasil centangan baru
+public function saveMatrix()
+{
+    $db = \Config\Database::connect();
+    $matrixInput = $this->request->getPost('matrix'); // Mengambil data array [role_id][permission_id]
+
+    // 1. Kosongkan dulu semua hak akses lama demi menghindari data ganda
+    $db->table('custom_roles_permissions')->truncate();
+
+    // 2. Jika ada yang dicentang, masukkan secara massal
+    if (!empty($matrixInput)) {
+        $dataInsert = [];
+        foreach ($matrixInput as $roleId => $permissionIds) {
+            foreach ($permissionIds as $permId) {
+                $dataInsert[] = [
+                    'role_id'       => $roleId,
+                    'permission_id' => $permId
+                ];
+            }
+        }
+        $db->table('custom_roles_permissions')->insertBatch($dataInsert);
+    }
+
+    return redirect()->to('admin/permission-matrix')->with('sukses', 'Matriks hak akses menu sekolah berhasil diperbarui secara dinamis!');
+}
+
+
 
 }

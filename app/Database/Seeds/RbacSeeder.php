@@ -10,57 +10,161 @@ class RbacSeeder extends Seeder
     {
         $db = \Config\Database::connect();
 
-        // 1. Mengisi Data Peran/Role Awal Sekolah
+        // 1. Mengisi Kembali Data Peran/Role Sekolah (Sama seperti kemarin)
         $roles = [
             [
+                'id'         => 1,
                 'role_name'  => 'waka_kurikulum',
                 'role_title' => 'Waka Kurikulum',
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s'),
             ],
             [
+                'id'         => 2,
                 'role_name'  => 'guru_pengajar',
                 'role_title' => 'Guru Pengajar',
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s'),
+            ],
+            [
+                'id'         => 3,
+                'role_name'  => 'wali_kelas',
+                'role_title' => 'Wali Kelas',
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s'),
             ],
         ];
         $db->table('custom_roles')->insertBatch($roles);
 
-        // 2. Mengisi Data Hak Akses Menu/Permission Awal
+        // 2. Mengisi Data Menu Berjenjang (Urutan ID Harus Presisi)
         $permissions = [
+            // ==========================================
+            // MENU INDUK / UTAMA (parent_id = null)
+            // ==========================================
             [
+                'id'                     => 1,
+                'parent_id'              => null,
+                'permission_name'        => 'menu.kaldik',
+                'menu_link'              => '#',
+                'icon'                   => 'bi bi-calendar3',
+                'permission_description' => 'Kalender Akademik',
+                'is_active'              => 1,
+            ],
+            [
+                'id'                     => 2,
+                'parent_id'              => null,
+                'permission_name'        => 'menu.perangkat',
+                'menu_link'              => '#',
+                'icon'                   => 'bi bi-journal-text',
+                'permission_description' => 'Perangkat Ajar',
+                'is_active'              => 1,
+            ],
+            [
+                'id'                     => 3,
+                'parent_id'              => null,
+                'permission_name'        => 'menu.asesmen',
+                'menu_link'              => '#',
+                'icon'                   => 'bi bi-pencil-square',
+                'permission_description' => 'Asesmen & Ujian',
+                'is_active'              => 1,
+            ],
+
+            // ==========================================
+            // SUB-MENU KALDIK (parent_id = 1)
+            // ==========================================
+            [
+                'id'                     => 4,
+                'parent_id'              => 1,
+                'permission_name'        => 'kaldik.view',
+                'menu_link'              => 'kaldik/view',
+                'icon'                   => 'bi bi-eye',
+                'permission_description' => 'Lihat Kaldik Resmi',
+                'is_active'              => 0, // 0 = Masih dikembangkan (akan muncul alert)
+            ],
+            [
+                'id'                     => 5,
+                'parent_id'              => 1,
                 'permission_name'        => 'kaldik.manage',
-                'permission_description' => 'Mengatur Kalender Akademik Sekolah',
-                'created_at'             => date('Y-m-d H:i:s'),
-                'updated_at'             => date('Y-m-d H:i:s'),
+                'menu_link'              => 'kaldik/manage',
+                'icon'                   => 'bi bi-gear',
+                'permission_description' => 'Kelola Kaldik Sekolah',
+                'is_active'              => 0,
+            ],
+
+            // ==========================================
+            // SUB-MENU PERANGKAT AJAR (parent_id = 2)
+            // ==========================================
+            [
+                'id'                     => 6,
+                'parent_id'              => 2,
+                'permission_name'        => 'perangkat.cp',
+                'menu_link'              => 'perangkat/cp',
+                'icon'                   => 'bi bi-file-earmark-text',
+                'permission_description' => 'Capaian Pembelajaran (CP)',
+                'is_active'              => 0,
             ],
             [
-                'permission_name'        => 'perangkat.create',
-                'permission_description' => 'Membuat Modul dan Perangkat Ajar Guru',
-                'created_at'             => date('Y-m-d H:i:s'),
-                'updated_at'             => date('Y-m-d H:i:s'),
+                'id'                     => 7,
+                'parent_id'              => 2,
+                'permission_name'        => 'perangkat.atp',
+                'menu_link'              => 'perangkat/atp',
+                'icon'                   => 'bi bi-bezier2',
+                'permission_description' => 'Alur Tujuan Pembelajaran (ATP)',
+                'is_active'              => 0,
             ],
             [
+                'id'                     => 8,
+                'parent_id'              => 2,
+                'permission_name'        => 'perangkat.modul',
+                'menu_link'              => 'perangkat/modul',
+                'icon'                   => 'bi bi-robot', // Ikon bernuansa AI
+                'permission_description' => 'Modul Ajar (Asisten AI)',
+                'is_active'              => 0,
+            ],
+
+            // ==========================================
+            // SUB-MENU ASESMEN & CBT (parent_id = 3)
+            // ==========================================
+            [
+                'id'                     => 9,
+                'parent_id'              => 3,
                 'permission_name'        => 'kisi.validate',
-                'permission_description' => 'Memvalidasi Kisi-Kisi Soal Asesmen (Waka)',
-                'created_at'             => date('Y-m-d H:i:s'),
-                'updated_at'             => date('Y-m-d H:i:s'),
+                'menu_link'              => 'kisi/validate',
+                'icon'                   => 'bi bi-shield-check',
+                'permission_description' => 'Validasi Kisi-Kisi AI',
+                'is_active'              => 0,
+            ],
+            [
+                'id'                     => 10,
+                'parent_id'              => 3,
+                'permission_name'        => 'cbt.test',
+                'menu_link'              => 'cbt/test',
+                'icon'                   => 'bi bi-laptop',
+                'permission_description' => 'Ujian Online CBT',
+                'is_active'              => 0,
             ],
         ];
         $db->table('custom_permissions')->insertBatch($permissions);
 
-        // 3. Menghubungkan Peran dengan Hak Akses (Tabel Jembatan)
-        // Waka Kurikulum (ID 1) berhak mengatur Kaldik dan Validasi Kisi-Kisi
+        // 3. Menghubungkan Peran dengan Banyak Menu Utama & Sub-Menunya
+        // Waka Kurikulum (ID 1) punya akses ke Kaldik & Validasi Kisi-Kisi
         $wakaLinks = [
-            ['role_id' => 1, 'permission_id' => 1], // kaldik.manage
-            ['role_id' => 1, 'permission_id' => 3], // kisi.validate
+            ['role_id' => 1, 'permission_id' => 1], // Induk Kaldik
+            ['role_id' => 1, 'permission_id' => 4], // Lihat Kaldik
+            ['role_id' => 1, 'permission_id' => 5], // Kelola Kaldik
+            ['role_id' => 1, 'permission_id' => 3], // Induk Asesmen
+            ['role_id' => 1, 'permission_id' => 9], // Validasi Kisi-Kisi
         ];
         $db->table('custom_roles_permissions')->insertBatch($wakaLinks);
 
-        // Guru Pengajar (ID 2) berhak membuat Perangkat Ajar
+        // Guru Pengajar (ID 2) punya akses ke Perangkat Ajar & Lihat Kaldik
         $guruLinks = [
-            ['role_id' => 2, 'permission_id' => 2], // perangkat.create
+            ['role_id' => 2, 'permission_id' => 1], // Induk Kaldik
+            ['role_id' => 2, 'permission_id' => 4], // Lihat Kaldik
+            ['role_id' => 2, 'permission_id' => 2], // Induk Perangkat
+            ['role_id' => 2, 'permission_id' => 6], // CP
+            ['role_id' => 2, 'permission_id' => 7], // ATP
+            ['role_id' => 2, 'permission_id' => 8], // Modul Ajar
         ];
         $db->table('custom_roles_permissions')->insertBatch($guruLinks);
     }
