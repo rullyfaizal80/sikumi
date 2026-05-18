@@ -26,6 +26,15 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes) {
 
     $routes->get('academic', 'AdminController::academicSetting');
     $routes->post('academic/activate/(:num)', 'AdminController::activateAcademic/$1');
+
+    $routes->post('users/reset-password/(:num)', 'AdminController::resetPassword/$1');
 });
+
+// ========================================================
+// JALUR RUTE LOGIN GOOGLE SSO (SINGLE SIGN-ON) SIKUMI
+// ========================================================
+$routes->get('auth/google', 'GoogleAuthController::redirectToGoogle');
+$routes->get('auth/google/callback', 'GoogleAuthController::handleCallback');
+
 
 

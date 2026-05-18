@@ -210,4 +210,22 @@ public function storeUser()
     return redirect()->to('admin/users')->with('sukses', 'Akun Guru baru bernama "' . $username . '" berhasil didaftarkan oleh sistem!');
 }
 
+public function resetPassword($id)
+{
+    // 1. Panggil model User bawaan Shield Auth
+    $userModel = model(\CodeIgniter\Shield\Models\UserModel::class);
+    $user      = $userModel->find($id);
+
+    if (!$user) {
+        return redirect()->to('admin/users')->with('error', 'Akun pengguna tidak ditemukan!');
+    }
+
+    // 2. Setel ulang sandi ke format default lembaga: Mimha@2026
+    $user->password = 'Mimha@2026';
+    $userModel->save($user);
+
+    return redirect()->to('admin/users')->with('sukses', 'Kata sandi untuk akun "' . $user->username . '" berhasil di-reset ke default: Mimha@2026');
+}
+
+
 }

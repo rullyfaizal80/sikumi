@@ -157,6 +157,25 @@
                 <h5 class="modal-title" id="modalUbahJabatanLabel">✏️ Atur Jabatan Guru</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            <!-- Tambahkan tombol 🔄 Reset Sandi di samping tombol ✏️ Ubah Jabatan -->
+<div class="d-inline-block">
+    <button type="button" 
+            class="btn btn-primary btn-sm px-2 shadow-sm btn-ubah-jabatan me-1" 
+            data-bs-toggle="modal" 
+            data-bs-target="#modalUbahJabatan"
+            data-id="<?= $user->id ?>"
+            data-username="<?= $user->username ?>"
+            data-roles='<?= isset($peranUser[$user->id]) ? json_encode($peranUser[$user->id]) : json_encode([]) ?>'>
+        ✏️ Jabatan
+    </button>
+
+    <form action="<?= base_url('admin/users/reset-password/' . $user->id) ?>" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin mereset sandi akun ini ke default (Mimha@2026)?');">
+        <?= csrf_field() ?>
+        <button type="submit" class="btn btn-danger btn-sm px-2 shadow-sm">
+            <i class="bi bi-arrow-counterclockwise"></i> Reset Sandi
+        </button>
+    </form>
+</div>
             <!-- Form diarahkan ke fungsi update di Controller -->
             <form action="<?= base_url('admin/users/update-roles') ?>" method="POST">
                 <?= csrf_field() ?>
