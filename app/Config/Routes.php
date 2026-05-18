@@ -17,6 +17,7 @@ service('auth')->routes($routes);
 // Jalur Khusus Halaman Admin Ruang Kontrol Utama
 $routes->group('admin', ['filter' => 'session'], static function ($routes) {
     $routes->get('users', 'AdminController::index');
+    $routes->post('users/store', 'AdminController::storeUser');
     $routes->post('roles/store', 'AdminController::storeRole');
     $routes->post('users/update-roles', 'AdminController::updateUserRoles');
 

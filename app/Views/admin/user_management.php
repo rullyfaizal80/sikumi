@@ -46,9 +46,14 @@
                         <!-- KIRI: Tabel Daftar Guru -->
                         <div class="col-lg-8">
                             <div class="card shadow-sm h-100 border-top border-warning border-3">
-                                <div class="card-header bg-white py-3">
-                                    <h5 class="card-title mb-0" style="font-weight: 600;">👤 Manajemen Akun Guru & Staf</h5>
-                                </div>
+                                <!-- KODE BARU: HEADER TABEL DILENGKAPI TOMBOL TAMBAH GURU -->
+<div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+    <h5 class="card-title mb-0" style="font-weight: 600;">👤 Daftar Akun Guru & Staf</h5>
+    <!-- Tombol Pemicu Modal Pop-up Tambah User -->
+    <button type="button" class="btn btn-warning btn-sm text-white font-weight-bold shadow-sm" style="background-color: #FF9F00; border: none;" data-bs-toggle="modal" data-bs-target="#modalTambahUser">
+        <i class="bi bi-person-plus-fill me-1"></i> ➕ Tambah Akun Guru
+    </button>
+</div>
                                 <div class="card-body p-0">
                                     <div class="table-responsive">
                                         <table class="table table-hover table-striped mb-0 align-middle">
@@ -191,6 +196,48 @@
         </div>
     </div>
 </div>
+
+<!-- JENDELA POP-UP (MODAL) FORM TAMBAH GURU BARU OLEH ADMIN -->
+<div class="modal fade" id="modalTambahUser" tabindex="-1" aria-labelledby="modalTambahUserLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalTambahUserLabel"><i class="bi bi-person-plus-fill me-2"></i> Daftarkan Akun Guru Baru</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <!-- Form diarahkan ke fungsi storeUser di AdminController -->
+            <form action="<?= base_url('admin/users/store') ?>" method="POST">
+                <?= csrf_field() ?>
+                <div class="modal-body">
+                    <p class="text-muted small mb-3">Silakan masukkan data identitas akun guru resmi. Secara default, akun baru akan langsung mendapatkan jabatan sebagai <strong>Guru Pengajar</strong>.</p>
+                    
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold small text-muted">Nama Pengguna (Username - Tanpa Spasi)</label>
+                        <input type="text" name="username" class="form-control form-control-sm" placeholder="contoh: budimerdeka" required autocomplete="off">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold small text-muted">Alamat Email Resmi Sekolah</label>
+                        <input type="email" name="email" class="form-control form-control-sm" placeholder="contoh: budi@mimha.sch.id" required autocomplete="off">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label font-weight-bold small text-muted">Kata Sandi Awal (Password)</label>
+                        <input type="password" name="password" class="form-control form-control-sm" placeholder="Masukkan password kuat awal" required>
+                        <div class="form-text text-muted" style="font-size: 11px;">Minimal 8 karakter (Kombinasi huruf besar, kecil, angka, dan simbol).</div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-warning btn-sm text-white font-weight-bold" style="background-color: #FF9F00; border: none;">
+                        💾 Simpan Akun Baru
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 
  <!-- ============================================================= -->
     <!-- URUTAN PEMANGGILAN SCRIPT WAJIB SEPERTI INI AGAR POP-UP AKTIF -->

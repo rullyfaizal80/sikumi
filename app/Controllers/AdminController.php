@@ -178,5 +178,36 @@ public function activateAcademic($id)
     return redirect()->to('admin/academic')->with('sukses', 'Tahun Pelajaran & Semester aktif berhasil diperbarui!');
 }
 
+public function storeUser()
+{
+    // 1. Tangkap data input dari form admin
+    $username = $this->request->getPost('username');
+    $email    = $this->request->getPost('email');
+    $password = $this->request->getPost('password'); // Password acak awal dari admin
+
+    // 2. Gunakan entitas User bawaan CodeIgniter Shield
+    $userModel = model(\CodeIgniter\Shield\Models\UserModel::class);
+    $user      = new \CodeIgniter\Shield\Entities\User([
+        'username' => $username,
+        'email'    => $email,
+        'password' => $password,
+    ]);
+
+    // 3. Simpan ke database tabel users & auth_identities
+    $userModel->save($user);
+
+    // 4. Tarik ID user yang baru saja lahir
+    $newUserId = $userModel->getInsertID();
+
+    // 5. Otomatis berikan peran sebagai 'guru_pengajar' secara default
+    $db = \Config\Database::connect();
+    $db->table('auth_groups_users')->insert([
+        'user_id'    => $newUserId,
+        'group'      => 'guru_pengajar',
+        'created_at' => date('Y-m-d H:i:s')
+    ]);
+
+    return redirect()->to('admin/users')->with('sukses', 'Akun Guru baru bernama "' . $username . '" berhasil didaftarkan oleh sistem!');
+}
 
 }

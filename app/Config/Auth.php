@@ -6,7 +6,7 @@ use CodeIgniter\Shield\Config\Auth as ShieldAuth;
 
 class Auth extends ShieldAuth
 {
-    public bool $allowRegistration = true; 
+    public bool $allowRegistration = false; 
     public bool $setupRoutes       = false; 
 
     public array $views = [
