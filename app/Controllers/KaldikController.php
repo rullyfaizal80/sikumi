@@ -106,4 +106,36 @@ class KaldikController extends BaseController
 
         return redirect()->to('admin/kaldik?class_id=' . $keKelas)->with('sukses', 'Berhasil menduplikasi! Seluruh agenda kalender akademik sukses disalin.');
     }
+
+        // Fungsi untuk Mengubah (Edit) Agenda Kaldik
+    public function updateAgenda()
+    {
+        $db = \Config\Database::connect();
+        $id = $this->request->getPost('agenda_id');
+        $classId = $this->request->getPost('class_id');
+
+        $dataUpdate = [
+            'category_id' => $this->request->getPost('category_id'),
+            'start_date'  => $this->request->getPost('start_date'),
+            'end_date'    => $this->request->getPost('end_date'),
+            'event_name'  => $this->request->getPost('event_name'),
+            'updated_at'  => date('Y-m-d H:i:s')
+        ];
+
+        $db->table('academic_calendars')->where('id', $id)->update($dataUpdate);
+
+        return redirect()->to('admin/kaldik?class_id=' . $classId)->with('sukses', 'Agenda kegiatan berhasil diperbarui!');
+    }
+
+    // Fungsi untuk Menghapus Agenda Kaldik
+    public function deleteAgenda($id)
+    {
+        $db = \Config\Database::connect();
+        $classId = $this->request->getGet('class_id') ?? 1;
+
+        $db->table('academic_calendars')->where('id', $id)->delete();
+
+        return redirect()->to('admin/kaldik?class_id=' . $classId)->with('sukses', 'Agenda kegiatan berhasil dihapus dari kalender!');
+    }
+
 }

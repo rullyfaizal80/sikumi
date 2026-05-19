@@ -50,6 +50,11 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes) {
     $routes->get('kaldik', 'KaldikController::index');
     $routes->post('kaldik/store', 'KaldikController::storeAgenda');
     $routes->post('kaldik/copy', 'KaldikController::copyKaldik');
+
+    // Tambahkan dua rute ini di dalam grup rute admin Anda
+$routes->post('kaldik/update', 'KaldikController::updateAgenda');
+$routes->post('kaldik/delete/(:num)', 'KaldikController::deleteAgenda/$1');
+
 });
 
 

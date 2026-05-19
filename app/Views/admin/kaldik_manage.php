@@ -92,6 +92,7 @@
                         for ($current = $start; $current <= $end; $current += 86400) {
                             $dateKey = date('Y-m-d', $current);
                             $mappedEvents[$dateKey] = [
+                                'id'          => $ag['id'],
                                 'name'  => $ag['event_name'],
                                 'color' => $ag['color_hex'],
                                 'category_id' => $ag['category_id']
@@ -170,12 +171,17 @@
                                                             $classCell .= ' date-weekend';
                                                         }
 
+                                                        // JIKA ADA KEGIATAN KHUSUS DI DATABASE
                                                         if (isset($mappedEvents[$fullDate])) {
-                                                            $styleCustom = 'background-color: ' . $mappedEvents[$fullDate]['color'] . '; color: #000000 !important; border: 1px solid #bbb;';
+                                                            $styleCustom = 'background-color: ' . $mappedEvents[$fullDate]['color'] . '; color: #000000 !important; border: 1px solid #bbb; cursor: pointer;';
                                                             $titleTooltip = 'title="' . esc($mappedEvents[$fullDate]['name']) . '"';
+                                                            
+                                                            // Klik memicu MODAL EDIT/HAPUS
+                                                            echo "<div class='$classCell btn-tanggal-aktif' style='$styleCustom' $titleTooltip data-id='".$mappedEvents[$fullDate]['id']."' data-name='".esc($mappedEvents[$fullDate]['name'])."' data-start='$fullDate' data-end='$fullDate' data-cat='".$mappedEvents[$fullDate]['category_id']."'>$tgl</div>";
+                                                        } else {
+                                                            // Tanggal Polos memicu MODAL TAMBAH LANGSUNG
+                                                            echo "<div class='$classCell btn-tanggal-polos' style='cursor: pointer;' data-date='$fullDate'>$tgl</div>";
                                                         }
-
-                                                        echo "<div class='$classCell' style='$styleCustom' $titleTooltip>$tgl</div>";
                                                     }
                                                     ?>
                                                 </div>
@@ -553,11 +559,133 @@
         </div>
     </div>
 
+    <!-- JENDELA POP-UP MODAL EDIT & HAPUS AGENDA (AKSI KLIK TANGGAL) -->
+<div class="modal fade" id="modalAksiAgenda" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content shadow border-0" style="border-radius: 8px;">
+            <div class="modal-header bg-dark text-white font-weight-bold">
+                <h5 class="modal-title" id="judulModalAksi">⚙️ Kelola Agenda Tanggal</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            
+            <!-- FORM EDIT DATA -->
+            <form action="<?= base_url('admin/kaldik/update') ?>" method="POST" id="formAksiKaldik">
+                <?= csrf_field() ?>
+                <input type="hidden" name="agenda_id" id="edit_agenda_id">
+                <input type="hidden" name="class_id" value="<?= $kelasTerpilih ?>">
+
+                <div class="modal-body py-3">
+                    <div class="mb-2">
+                        <label class="small font-weight-bold text-muted mb-1">Nama Agenda / Kegiatan:</label>
+                        <input type="text" name="event_name" id="edit_event_name" class="form-control form-control-sm" required autocomplete="off">
+                    </div>
+                    <div class="row g-2 mb-2">
+                        <div class="col-6">
+                            <label class="small font-weight-bold text-muted mb-1">Tanggal Mulai:</label>
+                            <input type="date" name="start_date" id="edit_start_date" class="form-control form-control-sm" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="small font-weight-bold text-muted mb-1">Tanggal Selesai:</label>
+                            <input type="date" name="end_date" id="edit_end_date" class="form-control form-control-sm" required>
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        <label class="small font-weight-bold text-muted mb-1">Kategori Warna:</label>
+                        <select name="category_id" id="edit_category_id" class="form-select form-select-sm" required>
+                            <?php foreach ($daftarWarna as $dw): ?>
+                                <option value="<?= $dw['id'] ?>"><?= $dw['category_name'] ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="modal-footer bg-light p-2 d-flex justify-content-between">
+                    <!-- TOMBOL HAPUS (KIRI) -->
+                    <button type="button" id="btnHapusAgenda" class="btn btn-sm btn-danger px-3 font-weight-bold"><i class="bi bi-trash3-fill"></i> Hapus Agenda</button>
+                    <div>
+                        <button type="button" class="btn btn-sm btn-secondary px-3 font-weight-bold me-1" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" id="btnSimpanAksi" class="btn btn-sm btn-warning-custom px-3 font-weight-bold">💾 Simpan</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+       <!-- ======================================================== -->
+    <!-- SUSUNAN UTUH SCRIPT PENUTUP BERKAS KALDIK_MANAGE.PHP -->
+    <!-- ======================================================== -->
+
+    <!-- 1. Pemanggilan Seluruh Aset JavaScript Secara Lokal -->
     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
     <script src="<?= base_url('assets/js/adminlte.min.js') ?>"></script>
+
+    <!-- 2. KODE LAMA ANDA: Otomatisasi Input Tanggal Form Samping Sisi Kanan (Tetap Dipertahankan) -->
     <script>
         document.getElementById('start_date').addEventListener('change', function() {
             document.getElementById('end_date').value = this.value;
+        });
+    </script>
+
+    <!-- 3. KODE BARU: Logika Pemicu Jendela Modal Pop-Up Saat Angka Tanggal Kalender Diklik -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            const modalAksi = new bootstrap.Modal(document.getElementById('modalAksiAgenda'));
+            
+            // A. LOGIKA JIKA TANGGAL BERWARNA (ADA AGENDA) DIKLIK OLEH WAKA
+            document.querySelectorAll('.btn-tanggal-aktif').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.getElementById('judulModalAksi').innerHTML = '<i class="bi bi-pencil-square text-warning me-1"></i> Ubah / Hapus Agenda';
+                    document.getElementById('formAksiKaldik').action = "<?= base_url('admin/kaldik/update') ?>";
+                    
+                    const id = this.getAttribute('data-id');
+                    document.getElementById('edit_agenda_id').value = id;
+                    document.getElementById('edit_event_name').value = this.getAttribute('data-name');
+                    document.getElementById('edit_start_date').value = this.getAttribute('data-start');
+                    document.getElementById('edit_end_date').value = this.getAttribute('data-end');
+                    document.getElementById('edit_category_id').value = this.getAttribute('data-cat');
+                    
+                    // Munculkan tombol hapus warna merah di sisi kiri bawah modal
+                    document.getElementById('btnHapusAgenda').style.display = 'block';
+                    document.getElementById('btnHapusAgenda').onclick = function() {
+                        if (confirm('Apakah Anda yakin ingin menghapus agenda kegiatan ini secara permanen dari kalender sekolah?')) {
+                            const formHapus = document.createElement('form');
+                            formHapus.method = 'POST';
+                            formHapus.action = "<?= base_url('admin/kaldik/delete') ?>/" + id + "?class_id=<?= $kelasTerpilih ?>";
+                            
+                            // Amankan dengan CSRF Token bawaan framework
+                            const csrfInput = document.createElement('input');
+                            csrfInput.type = 'hidden';
+                            csrfInput.name = '<?= csrf_token() ?>';
+                            csrfInput.value = '<?= csrf_hash() ?>';
+                            
+                            formHapus.appendChild(csrfInput);
+                            document.body.appendChild(formHapus);
+                            formHapus.submit();
+                        }
+                    };
+                    modalAksi.show();
+                });
+            });
+
+            // B. LOGIKA JIKA TANGGAL POLOS (KOSONG) DIKLIK -> FITUR INSTANT QUICK ADD
+            document.querySelectorAll('.btn-tanggal-polos').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.getElementById('judulModalAksi').innerHTML = '<i class="bi bi-calendar-plus text-success me-1"></i> Ploting Agenda Baru';
+                    document.getElementById('formAksiKaldik').action = "<?= base_url('admin/kaldik/store') ?>";
+                    
+                    const tglDipilih = this.getAttribute('data-date');
+                    document.getElementById('edit_agenda_id').value = '';
+                    document.getElementById('edit_event_name').value = '';
+                    document.getElementById('edit_start_date').value = tglDipilih;
+                    document.getElementById('edit_end_date').value = tglDipilih;
+                    document.getElementById('edit_category_id').value = '';
+                    
+                    // Sembunyikan tombol hapus karena ini murni pembuatan data baru
+                    document.getElementById('btnHapusAgenda').style.display = 'none';
+                    modalAksi.show();
+                });
+            });
         });
     </script>
 </body>
