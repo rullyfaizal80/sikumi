@@ -66,7 +66,7 @@
                 <label class="form-label small font-weight-bold text-muted mb-1">Alamat Email Guru</label>
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-envelope"></i></span>
-                    <input type="email" name="email" class="form-control ps-2" placeholder="contoh: budi@mimha.sch.id" value="<?= old('email') ?>" required autofocus autocomplete="email">
+                    <input type="email" name="email" class="form-control ps-2" placeholder="contoh: rully@mimha.sch.id" value="<?= old('email') ?>" required autofocus autocomplete="email">
                 </div>
             </div>
 
@@ -82,7 +82,7 @@
             <!-- Fitur Ingat Saya (Remember Me) -->
             <div class="form-check mb-3 small">
                 <input class="form-check-input" type="checkbox" name="remember" id="rememberMe" <?= old('remember') ? 'checked' : '' ?>>
-                <label class="form-check-label text-muted" for="rememberMe">Ingat sesi masuk saya di Mac ini</label>
+                <label class="form-check-label text-muted" for="rememberMe">Ingat sesi masuk saya</label>
             </div>
 
             <!-- Tombol Submit Form Konvensional -->
@@ -94,6 +94,7 @@
         <!-- ======================================================== -->
         <!-- POSISI PRESISI TOMBOL SSO GOOGLE REKOMENDASI ANDA -->
         <!-- ======================================================== -->
+<!--        
         <div class="mt-3 text-center">
             <div class="text-muted small mb-2" style="font-size: 11px; font-weight: 600;">- ATAU -</div>
             <a href="<?= base_url('auth/google') ?>" class="btn btn-sm btn-outline-dark w-100 d-flex align-items-center justify-content-center shadow-sm py-2" style="border-radius: 4px; font-size: 13px; font-weight: 600;">
@@ -103,7 +104,7 @@
 
     </div>
 </div>
-
+-->
 <!-- Pemanggilan Seluruh Aset JavaScript Secara Lokal -->
 <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= base_url('assets/js/adminlte.min.js') ?>"></script>

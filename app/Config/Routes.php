@@ -8,7 +8,13 @@ use CodeIgniter\Router\RouteCollection;
 
 // Halaman Utama Aplikasi
 // UBAH BARIS RUTE HALAMAN UTAMA ANDA MENJADI SEPERTI INI:
-$routes->get('/', 'Home::index', ['as' => 'dashboard']);
+$routes->get('/', 'Home::index', ['as' => 'dashboard', 'filter' => 'session']);
+
+
+// Contoh memproteksi halaman login agar dilempar ke dashboard jika sudah login
+$routes->get('login', '\App\Controllers\Auth\LoginController::loginView');
+$routes->post('login', '\App\Controllers\Auth\LoginController::loginAction');
+
 
 
 // Panggil rute otomatis bawaan CodeIgniter Shield secara resmi
