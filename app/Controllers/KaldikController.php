@@ -25,13 +25,13 @@ class KaldikController extends BaseController
         $agendaKaldik = [];
         if ($tahunAktif) {
             $agendaKaldik = $db->table('academic_calendars ac')
-                               ->select('ac.*, mc.category_name, mc.color_hex')
-                               ->join('master_categories mc', 'mc.id = ac.category_id')
-                               ->where('ac.academic_year_id', $tahunAktif['id'])
-                               ->where('ac.class_id', $kelasTerpilih)
-                               ->orderBy('ac.start_date', 'ASC')
-                               ->get()
-                               ->getResultArray();
+                   ->select('ac.*, mc.category_name, mc.color_hex, ac.category_id') // <-- TAMBAHKAN ac.category_id DI SINI
+                   ->join('master_categories mc', 'mc.id = ac.category_id')
+                   ->where('ac.academic_year_id', $tahunAktif['id'])
+                   ->where('ac.class_id', $kelasTerpilih)
+                   ->orderBy('ac.start_date', 'ASC')
+                   ->get()
+                   ->getResultArray();
         }
 
         $data = [

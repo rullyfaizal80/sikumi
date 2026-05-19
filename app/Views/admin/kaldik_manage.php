@@ -93,7 +93,8 @@
                             $dateKey = date('Y-m-d', $current);
                             $mappedEvents[$dateKey] = [
                                 'name'  => $ag['event_name'],
-                                'color' => $ag['color_hex']
+                                'color' => $ag['color_hex'],
+                                'category_id' => $ag['category_id']
                             ];
                         }
                     }
@@ -127,25 +128,28 @@
                                     <button onclick="window.print()" class="btn btn-sm btn-outline-secondary font-weight-bold"><i class="bi bi-printer-fill me-1"></i> Cetak Kalender (PDF)</button>
                                 </div>
 
+                                                                <!-- ======================================================== -->
+                                <!-- GRID LAYOUT 6 KOTAK BULANAN + RINCIAN AGENDA DI BAWAHNYA -->
+                                <!-- ======================================================== -->
                                 <div class="row g-3">
                                     <?php foreach ($bulanKaldik as $numBulan => $namaBulan): ?>
                                         <div class="col-md-4">
-                                            <div class="month-box">
+                                            <!-- month-box dibuat d-flex flex-column agar tinggi kotak seragam dan rapi -->
+                                            <div class="month-box d-flex flex-column h-100">
+                                                
+                                                <!-- Kepala Judul Bulan -->
                                                 <div class="month-title"><?= $namaBulan ?> <?= $targetYear ?></div>
                                                 
-                                                <!-- HEADER HARI: SENIN DI AWAL, SABTU DAN MINGGU DI AKHIR SESUAI INSTRUKSI -->
+                                                <!-- Header Nama Hari (Senin di Awal) -->
                                                 <div class="grid-days">
                                                     <div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div><div class="text-danger">Sab</div><div class="text-danger">Min</div>
                                                 </div>
                                                 
-                                                <div class="grid-dates">
+                                                <!-- Grid Angka Penanggalan -->
+                                                <div class="grid-dates mb-3">
                                                     <?php
-                                                    // Ambil hari dalam seminggu untuk tanggal 1 (0 = Minggu, 1 = Senin, ..., 6 = Sabtu)
                                                     $wFirstDay = date('w', strtotime("$targetYear-$numBulan-01"));
-                                                    
-                                                    // Sesuaikan indeks agar Senin menjadi hari pertama (0 = Senin, 1 = Selasa, ..., 5 = Sabtu, 6 = Minggu)
                                                     $firstDayIndex = ($wFirstDay == 0) ? 6 : $wFirstDay - 1;
-                                                    
                                                     $totalDaysInMonth = cal_days_in_month(CAL_GREGORIAN, $numBulan, $targetYear);
 
                                                     // 1. Cetak Kotak Kosong sebelum Tanggal 1
@@ -156,18 +160,16 @@
                                                     // 2. Cetak Angka Tanggal Utama
                                                     for ($tgl = 1; $tgl <= $totalDaysInMonth; $tgl++) {
                                                         $fullDate = sprintf('%s-%02d-%02d', $targetYear, $numBulan, $tgl);
-                                                        $dayOfWeek = date('w', strtotime($fullDate)); // 0 = Minggu, 6 = Sabtu
+                                                        $dayOfWeek = date('w', strtotime($fullDate));
                                                         
                                                         $styleCustom = '';
                                                         $titleTooltip = '';
                                                         $classCell = 'date-cell';
 
-                                                        // Deteksi apakah hari ini Sabtu (6) atau Minggu (0) untuk pewarnaan tulisan merah dasar
                                                         if ($dayOfWeek == 0 || $dayOfWeek == 6) {
                                                             $classCell .= ' date-weekend';
                                                         }
 
-                                                        // JIKA ADA KEGIATAN KHUSUS DI DATABASE: TIMPA WARNA DASAR WEEKEND SESUAI WARNA AGENDA
                                                         if (isset($mappedEvents[$fullDate])) {
                                                             $styleCustom = 'background-color: ' . $mappedEvents[$fullDate]['color'] . '; color: #000000 !important; border: 1px solid #bbb;';
                                                             $titleTooltip = 'title="' . esc($mappedEvents[$fullDate]['name']) . '"';
@@ -177,10 +179,157 @@
                                                     }
                                                     ?>
                                                 </div>
-                                            </div>
+                                                                                                <!-- ======================================================== -->
+                                                <!-- REVISI SENSOR LOGIKA MATRIKS BULANAN (AKURAT & PRESISI) -->
+                                                <!-- ======================================================== -->
+                                                <div class="mt-3 border-top pt-2">
+                                                    <?php
+                                                    // Inisialisasi ulang matriks sebaran hari bulanan (Sn=1, Sl=2, Rb=3, Km=4, Jm=5, Sb=6, Mg=0)
+                                                    $matriksHari = [
+                                                        'HEB'  => [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0, 6 => 0, 0 => 0],
+                                                        'HEF'  => [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0, 6 => 0, 0 => 0],
+                                                        'HLCB' => [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0, 6 => 0, 0 => 0],
+                                                    ];
+
+                                                                                                        // Hitung klasifikasi hari dari tanggal 1 sampai akhir bulan berjalan
+                                                    for ($tgl = 1; $tgl <= $totalDaysInMonth; $tgl++) {
+                                                        $fullDate = sprintf('%s-%02d-%02d', $targetYear, $numBulan, $tgl);
+                                                        $dayOfWeek = (int)date('w', strtotime($fullDate)); // 0=Mg, 1=Sn, ..., 6=Sb
+
+                                                        // A. JIKA TANGGAL TERSEBUT MEMILIKI AGENDA DI DATABASE
+                                                        if (isset($mappedEvents[$fullDate])) {
+                                                            // Tarik ID Kategori asli dari data tanggal terkait
+                                                            $idKategori = (int)$mappedEvents[$fullDate]['category_id'];
+                                                            
+                                                            // ATURAN 1: MASUK HEF -> Kategori Asesmen/Ujian (4) & Kegiatan Sekolah (5)
+                                                            if ($idKategori === 4 || $idKategori === 5) {
+                                                                $matriksHari['HEF'][$dayOfWeek]++;
+                                                            } 
+                                                            // ATURAN 2: MASUK HLCB -> Kategori Libur Nasional (2) & Libur Khusus MIMHa (3)
+                                                            elseif ($idKategori === 2 || $idKategori === 3) {
+                                                                $matriksHari['HLCB'][$dayOfWeek]++;
+                                                            } 
+                                                            // ATURAN 3: MASUK HEB -> Hanya Kategori Hari Efektif Belajar (1)
+                                                            else {
+                                                                $matriksHari['HEB'][$dayOfWeek]++;
+                                                            }
+                                                        } 
+                                                        // B. JIKA TANGGAL POLOS TANPA AGENDA KEGIATAN KUSTOM
+                                                        else {
+                                                            // Hari Sabtu (6) dan Minggu (0) otomatis masuk HLCB jika tidak ada kegiatan
+                                                            if ($dayOfWeek == 0 || $dayOfWeek == 6) {
+                                                                $matriksHari['HLCB'][$dayOfWeek]++;
+                                                            } else {
+                                                                $matriksHari['HEB'][$dayOfWeek]++;
+                                                            }
+                                                        }
+                                                    }
+
+                                                    ?>
+
+                                                    <!-- CETAK STRUKTUR TABEL DESAIN PREMIUM MINIMALIS -->
+                                                    <table class="table table-bordered text-center my-2 py-0 align-middle shadow-sm bg-white" style="font-size: 10px; line-height: 1.1; font-weight: 700; border: 1px solid #dee2e6;">
+                                                        <thead>
+                                                            <tr style="background-color: #9cc2e5; color: #000;">
+                                                                <th style="padding: 4px; font-size: 11px; text-align: center;">Hari</th>
+                                                                <th style="padding: 4px; width: 11%;">Sn</th>
+                                                                <th style="padding: 4px; width: 11%;">Sl</th>
+                                                                <th style="padding: 4px; width: 11%;">Rb</th>
+                                                                <th style="padding: 4px; width: 11%;">Km</th>
+                                                                <th style="padding: 4px; width: 11%;">Jm</th>
+                                                                <th style="padding: 4px; width: 11%; color: #cc0000;">Sb</th>
+                                                                <th style="padding: 4px; width: 11%; color: #cc0000;">Mg</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            <tr>
+                                                                <td style="padding: 4px; background-color: #f2f2f2; text-align: left; padding-left: 6px;">HEB</td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HEB'][1] ?></td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HEB'][2] ?></td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HEB'][3] ?></td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HEB'][4] ?></td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HEB'][5] ?></td>
+                                                                <td style="padding: 4px;" class="text-muted"><?= $matriksHari['HEB'][6] ?></td>
+                                                                <td style="padding: 4px;" class="text-muted"><?= $matriksHari['HEB'][0] ?></td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td style="padding: 4px; background-color: #f2f2f2; text-align: left; padding-left: 6px;">HEF</td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HEF'][1] ?></td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HEF'][2] ?></td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HEF'][3] ?></td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HEF'][4] ?></td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HEF'][5] ?></td>
+                                                                <td style="padding: 4px;" class="text-muted"><?= $matriksHari['HEF'][6] ?></td>
+                                                                <td style="padding: 4px;" class="text-muted"><?= $matriksHari['HEF'][0] ?></td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td style="padding: 4px; background-color: #f2f2f2; text-align: left; padding-left: 6px;">HLCB</td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HLCB'][1] ?></td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HLCB'][2] ?></td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HLCB'][3] ?></td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HLCB'][4] ?></td>
+                                                                <td style="padding: 4px;"><?= $matriksHari['HLCB'][5] ?></td>
+                                                                <td style="padding: 4px;" class="text-danger"><?= $matriksHari['HLCB'][6] ?></td>
+                                                                <td style="padding: 4px;" class="text-danger"><?= $matriksHari['HLCB'][0] ?></td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+
+
+                                                <!-- ======================================================== -->
+                                                <!-- ORIGINAL: LIST DAFTAR AGENDA RINCIAN BULANAN (SISI BAWAH)-->
+                                                <!-- ======================================================== -->
+                                                <div class="mt-2 border-top pt-2" style="min-height: 60px; max-height: 120px; overflow-y: auto;">
+                                                    <span class="d-block text-muted font-weight-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase;">📝 Agenda Kegiatan:</span>
+                                                    <!-- Sisa perulangan foreach ($agendaKaldik as $ag) kemarin biarkan tetap utuh dibawah sini... -->
+
+                                                <!-- ======================================================== -->
+                                                <!-- BAGIAN BARU: LIST DAFTAR AGENDA RINCIAN BULANAN -->
+                                                <!-- ======================================================== 
+                                                <div class="mt-auto border-top pt-2" style="min-height: 80px; max-height: 150px; overflow-y: auto;">
+                                                    <span class="d-block text-muted font-weight-bold mb-1" style="font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase;">📝 Agenda Kegiatan:</span>
+                                                    -->
+                                                    <?php 
+                                                    $hasEvent = false;
+                                                    foreach ($agendaKaldik as $ag): 
+                                                        // Deteksi apakah rentang agenda ini bersinggungan dengan bulan yang sedang aktif di-loop
+                                                        $startMonth = (int)date('m', strtotime($ag['start_date']));
+                                                        $endMonth = (int)date('m', strtotime($ag['end_date']));
+                                                        
+                                                        if ($numBulan >= $startMonth && $numBulan <= $endMonth):
+                                                            $hasEvent = true;
+                                                    ?>
+                                                        <div class="d-flex align-items-start mb-1" style="font-size: 11px; line-height: 1.3;">
+                                                            <!-- Dot Penanda Warna Kategori Sesuai Database -->
+                                                            <span class="me-2 mt-1 shadow-sm border" style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: <?= $ag['color_hex'] ?>; flex-shrink: 0;"></span>
+                                                            <div class="text-dark">
+                                                                <!-- Format Rentang Tanggal Pendek -->
+                                                                <span class="text-muted font-weight-bold" style="font-size: 10px;">
+                                                                    <?php if ($ag['start_date'] === $ag['end_date']): ?>
+                                                                        <?= date('d', strtotime($ag['start_date'])) ?>:
+                                                                    <?php else: ?>
+                                                                        <?= date('d', strtotime($ag['start_date'])) ?>-<?= date('d', strtotime($ag['end_date'])) ?>:
+                                                                    <?php endif; ?>
+                                                                </span>
+                                                                <?= esc($ag['event_name']) ?>
+                                                            </div>
+                                                        </div>
+                                                    <?php 
+                                                        endif;
+                                                    endforeach; 
+                                                    
+                                                    if (!$hasEvent): 
+                                                    ?>
+                                                        <span class="text-muted italic small d-block pt-1" style="font-size: 11px; font-style: italic;">Tidak ada agenda kegiatan.</span>
+                                                    <?php endif; ?>
+                                                </div>
+
+                                            </div> <!-- End Month Box -->
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
+
 
                                 <!-- LEGEND WARNA KATEGORI -->
                                 <div class="border-top mt-4 pt-3 no-print">
@@ -197,6 +346,8 @@
 
                             </div>
                         </div>
+
+                        
 
                         <!-- FORM INPUT PLOTING AGENDA (SISI KANAN) -->
                         <div class="col-lg-3 no-print">
@@ -240,6 +391,126 @@
             </div>
         </main>
     </div>
+                                                                  <!-- ======================================================== -->
+                                <!-- REVISI FINAL: TABEL MATRIKS ANALISIS HARI EFEKTIF BELAJAR RESMI MIMHA -->
+                                <!-- ======================================================== -->
+                                <div class="border-top mt-4 pt-4">
+                                    <h5 class="text-dark mb-3" style="font-weight: 700; font-size: 16px;">📊 REKAPITULASI DAN ANALISIS HARI EFEKTIF BELAJAR PER SEMESTER</h5>
+                                    <div class="table-responsive shadow-sm rounded">
+                                        <table class="table table-bordered table-striped text-center mb-0 align-middle small" style="font-size: 11px;">
+                                            <thead class="table-dark">
+                                                <tr>
+                                                    <th rowspan="2" class="align-middle text-start ps-3" style="width: 15%;">BULAN</th>
+                                                    <th colspan="7" class="bg-secondary text-white py-1">JUMLAH HARI PER MINGGU</th>
+                                                    <th rowspan="2" class="align-middle bg-success text-white" style="width: 10%;">HEB<br>(EFEKTIF)</th>
+                                                    <th rowspan="2" class="align-middle bg-warning text-dark" style="width: 10%;">HEF<br>(EVENT)</th>
+                                                    <th rowspan="2" class="align-middle bg-danger text-white" style="width: 10%;">HLCB<br>(LIBUR)</th>
+                                                    <th rowspan="2" class="align-middle bg-info text-white" style="width: 10%;">PROSENTASE<br>(%) HEB</th>
+                                                </tr>
+                                                <tr class="bg-dark text-white-50" style="font-size: 10px;">
+                                                    <th style="width: 5%;">Sn</th>
+                                                    <th style="width: 5%;">Sl</th>
+                                                    <th style="width: 5%;">Rb</th>
+                                                    <th style="width: 5%;">Km</th>
+                                                    <th style="width: 5%;">Jm</th>
+                                                    <th style="width: 5%; color: #ff8787;">Sb</th>
+                                                    <th style="width: 5%; color: #ff8787;">Mn</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php
+                                                // Variabel akumulasi akhir semester
+                                                $totalSemesterHEB  = 0;
+                                                $totalSemesterHEF  = 0;
+                                                $totalSemesterHLCB = 0;
+                                                $totalSemesterHari = 0;
+
+                                                // Array pembantu mapping hari PHP (1=Senin, 2=Selasa, ..., 6=Sabtu, 0=Minggu)
+                                                $mapDayIndex = [1 => 'sn', 2 => 'sl', 3 => 'rb', 4 => 'km', 5 => 'jm', 6 => 'sb', 0 => 'mn'];
+
+                                                foreach ($bulanKaldik as $numBulan => $namaBulan):
+                                                    // Reset hitungan per bulan
+                                                    $countDays = ['sn' => 0, 'sl' => 0, 'rb' => 0, 'km' => 0, 'jm' => 0, 'sb' => 0, 'mn' => 0];
+                                                    $hebBulan  = 0;
+                                                    $hefBulan  = 0;
+                                                    $hlcbBulan = 0;
+
+                                                    $totalDaysInMonth = cal_days_in_month(CAL_GREGORIAN, $numBulan, $targetYear);
+                                                    $totalSemesterHari += $totalDaysInMonth;
+
+                                                    // Pemindaian otomatis 1 s/d 31 tanggal bulan berjalan
+                                                    for ($tgl = 1; $tgl <= $totalDaysInMonth; $tgl++) {
+                                                        $fullDate  = sprintf('%s-%02d-%02d', $targetYear, $numBulan, $tgl);
+                                                        $dayOfWeek = date('w', strtotime($fullDate)); // 0=Minggu, 6=Sabtu, 1=Senin...
+                                                        
+                                                        // Tambah hitungan sebaran hari mingguan
+                                                        $dayLabel = $mapDayIndex[$dayOfWeek];
+                                                        $countDays[$dayLabel]++;
+
+                                                        // FILTER LOGIKA PILIHAN KATEGORI AGENDA DATABASE
+                                                        if (isset($mappedEvents[$fullDate])) {
+                                                            $namaAgenda = strtolower($mappedEvents[$fullDate]['name']);
+                                                            
+                                                            if (str_contains($namaAgenda, 'ujian') || str_contains($namaAgenda, 'asesmen') || str_contains($namaAgenda, 'tka') || str_contains($namaAgenda, 'pas') || str_contains($namaAgenda, 'pts') || str_contains($namaAgenda, 'um')) {
+                                                                $hefBulan++;
+                                                            } elseif (str_contains($namaAgenda, 'libur') || str_contains($namaAgenda, 'cuti') || str_contains($namaAgenda, 'ramadhan')) {
+                                                                $hlcbBulan++;
+                                                            } else {
+                                                                $hebBulan++;
+                                                            }
+                                                        } else {
+                                                            // Aturan dasar weekend sekolah otomatis memotong libur
+                                                            if ($dayOfWeek == 0 || $dayOfWeek == 6) {
+                                                                $hlcbBulan++;
+                                                            } else {
+                                                                $hebBulan++;
+                                                            }
+                                                        }
+                                                    }
+
+                                                    // Hitung persentase HEB Bulanan (HEB / Total Hari Kalender * 100)
+                                                    $persenHEB = ($totalDaysInMonth > 0) ? round(($hebBulan / $totalDaysInMonth) * 100, 1) : 0;
+
+                                                    // Akumulasi total
+                                                    $totalSemesterHEB  += $hebBulan;
+                                                    $totalSemesterHEF  += $hefBulan;
+                                                    $totalSemesterHLCB += $hlcbBulan;
+                                                ?>
+                                                <tr>
+                                                    <td class="text-start ps-3 font-weight-bold text-dark"><?= $namaBulan ?> <?= $targetYear ?></td>
+                                                    <td><?= $countDays['sn'] ?></td>
+                                                    <td><?= $countDays['sl'] ?></td>
+                                                    <td><?= $countDays['rb'] ?></td>
+                                                    <td><?= $countDays['km'] ?></td>
+                                                    <td><?= $countDays['jm'] ?></td>
+                                                    <td class="text-danger bg-light-subtle"><?= $countDays['sb'] ?></td>
+                                                    <td class="text-danger bg-light-subtle"><?= $countDays['mn'] ?></td>
+                                                    <td class="font-weight-bold text-success" style="font-size: 12px;"><?= $hebBulan ?></td>
+                                                    <td class="font-weight-bold text-warning" style="font-size: 12px;"><?= $hefBulan ?></td>
+                                                    <td class="font-weight-bold text-danger" style="font-size: 12px;"><?= $hlcbBulan ?></td>
+                                                    <td class="font-weight-bold text-info" style="font-size: 12px; background-color: #f0fafd;"><?= $persenHEB ?>%</td>
+                                                </tr>
+                                                <?php endforeach; ?>
+                                                
+                                                <!-- BARIS REKAPITULASI TOTAL SEMESTER AKHIR -->
+                                                <?php 
+                                                // Rata-rata persentase semester total
+                                                $totalPersenSemester = ($totalSemesterHari > 0) ? round(($totalSemesterHEB / $totalSemesterHari) * 100, 1) : 0;
+                                                ?>
+                                                <tr class="table-secondary font-weight-bold text-dark" style="font-size: 12px;">
+                                                    <td class="text-start ps-3">JUMLAH TOTAL</td>
+                                                    <td colspan="7" class="text-muted small italic font-weight-normal text-center">Rekapitulasi Kumulatif Semester</td>
+                                                    <td class="text-success" style="font-weight: 800;"><?= $totalSemesterHEB ?></td>
+                                                    <td class="text-warning" style="font-weight: 800;"><?= $totalSemesterHEF ?></td>
+                                                    <td class="text-danger" style="font-weight: 800;"><?= $totalSemesterHLCB ?></td>
+                                                    <td class="text-info" style="font-weight: 800; background-color: #e3f7fc;"><?= $totalPersenSemester ?>%</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+
 
     <!-- JENDELA MODAL COPY -->
     <div class="modal fade" id="modalCopyKaldik" tabindex="-1" aria-hidden="true">
