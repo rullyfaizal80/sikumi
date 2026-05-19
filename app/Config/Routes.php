@@ -42,5 +42,14 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes) {
 $routes->get('auth/google', 'GoogleAuthController::redirectToGoogle');
 $routes->get('auth/google/callback', 'GoogleAuthController::handleCallback');
 
+// Tambahkan ini di dalam kelompok rute yang memiliki filter akses login Anda
+$routes->group('admin', ['filter' => 'session'], static function ($routes) {
+    // ... rute Fase 1 yang sudah ada ...
+
+    // JALUR RUTE FASE 2: MODUL KALENDER AKADEMIK (KALDIK) PER KELAS
+    $routes->get('kaldik', 'KaldikController::index');
+    $routes->post('kaldik/store', 'KaldikController::storeAgenda');
+    $routes->post('kaldik/copy', 'KaldikController::copyKaldik');
+});
 
 

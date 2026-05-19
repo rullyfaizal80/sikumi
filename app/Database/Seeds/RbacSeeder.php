@@ -90,14 +90,15 @@ class RbacSeeder extends Seeder
                 'is_active'              => 0, // 0 = Masih dikembangkan (akan muncul alert)
             ],
             [
-                'id'                     => 5,
-                'parent_id'              => 1,
-                'permission_name'        => 'kaldik.manage',
-                'menu_link'              => 'kaldik/manage',
-                'icon'                   => 'bi bi-gear',
-                'permission_description' => 'Kelola Kaldik Sekolah',
-                'is_active'              => 0,
-            ],
+    'id'                     => 5,
+    'parent_id'              => 1,
+    'permission_name'        => 'kaldik.manage',
+    'menu_link'              => 'admin/kaldik', // <-- UBAH KE JALUR AKTIF INI
+    'icon'                   => 'bi bi-gear',
+    'permission_description' => 'Kelola Kaldik Sekolah',
+    'is_active'              => 1, // <-- NYALAKAN SAKLAR MENJADI 1
+],
+
 
             // ==========================================
             // SUB-MENU PERANGKAT AJAR (parent_id = 2)
