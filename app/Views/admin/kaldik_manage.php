@@ -124,8 +124,11 @@
                                         <h4 class="text-dark my-0" style="font-weight: 800; font-size: 22px; letter-spacing: -0.5px;">KALENDER PENDIDIKAN SEMESTER <?= strtoupper($currentSemester) ?></h4>
                                         <span class="text-muted small">Target Monitor: <strong>Kelas <?= $kelasTerpilih == 1 ? '7' : ($kelasTerpilih == 2 ? '8' : '9') ?> (MTs)</strong> | Tahun Pelajaran <?= $rawYear ?></span>
                                     </div>
-                                    <button onclick="window.print()" class="btn btn-sm btn-outline-secondary font-weight-bold"><i class="bi bi-printer-fill me-1"></i> Cetak Kalender (PDF)</button>
-                                </div>
+                                        <!-- REVISI TOMBOL CETAK DI KALDIK_MANAGE.PHP AGAR MELUNCUR KE HALAMAN PREVIEW -->
+                                        <a href="<?= base_url('admin/kaldik/print?class_id=' . $kelasTerpilih) ?>" target="_blank" class="btn btn-sm btn-outline-secondary font-weight-bold shadow-sm">
+                                            <i class="bi bi-printer-fill me-1"></i> Cetak Kalender (PDF)
+                                        </a>
+                                    </div>
 
                                 <!-- GRID 6 KOTAK BULANAN HORIZONTAL -->
                                 <div class="row g-3">

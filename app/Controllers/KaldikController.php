@@ -138,4 +138,54 @@ class KaldikController extends BaseController
         return redirect()->to('admin/kaldik?class_id=' . $classId)->with('sukses', 'Agenda kegiatan berhasil dihapus dari kalender!');
     }
 
+        // Fungsi khusus untuk merender Lembar Cetak Kalender 6 Bulan
+        public function printKaldik()
+    {
+        $db = \Config\Database::connect();
+
+        $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+        $kelasTerpilih = $this->request->getGet('class_id') ?? 1;
+
+        $daftarKelas = $db->table('master_classes')->get()->getResultArray();
+        $daftarWarna = $db->table('master_categories')->get()->getResultArray();
+
+        // MENCARI DATA KEPALA MADRASAH & TITI MANGSA DARI TABEL SETTING (JIKA ADA)
+        $titiMangsa = null;
+        $kepalaSekolah = null;
+        $npkKepala = null;
+
+        if ($db->tableExists('settings')) {
+            $titiMangsa    = $db->table('settings')->where('key', 'kaldik_titi_mangsa')->get()->getRowArray();
+            $kepalaSekolah = $db->table('settings')->where('key', 'kaldik_kepala_nama')->get()->getRowArray();
+            $npkKepala     = $db->table('settings')->where('key', 'kaldik_kepala_npk')->get()->getRowArray();
+        }
+
+        $agendaKaldik = [];
+        if ($tahunAktif) {
+            $agendaKaldik = $db->table('academic_calendars ac')
+                               ->select('ac.*, mc.category_name, mc.color_hex, ac.category_id')
+                               ->join('master_categories mc', 'mc.id = ac.category_id')
+                               ->where('ac.academic_year_id', $tahunAktif['id'])
+                               ->where('ac.class_id', $kelasTerpilih)
+                               ->orderBy('ac.start_date', 'ASC')
+                               ->get()
+                               ->getResultArray();
+        }
+
+        $data = [
+            'tahunAktif'    => $tahunAktif,
+            'kelasTerpilih' => $kelasTerpilih,
+            'daftarKelas'   => $daftarKelas,
+            'daftarWarna'   => $daftarWarna,
+            'agendaKaldik'  => $agendaKaldik,
+            // SUNTIKKAN NILAI DATABASE (Mendukung Fallback Default jika bernilai null)
+            'titiMangsa'    => $titiMangsa ? $titiMangsa['value'] : 'Bandung, 02 Januari 2026',
+            'kepalaNama'    => $kepalaSekolah ? $kepalaSekolah['value'] : 'Yana Purnama, S.Pd',
+            'kepalaNpk'     => $npkKepala ? $npkKepala['value'] : '3912390046098'
+        ];
+
+        return view('admin/kaldik_print_view', $data);
+    }
+
+
 }

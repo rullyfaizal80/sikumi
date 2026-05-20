@@ -7,15 +7,11 @@ use CodeIgniter\Router\RouteCollection;
  */
 
 // Halaman Utama Aplikasi
-// UBAH BARIS RUTE HALAMAN UTAMA ANDA MENJADI SEPERTI INI:
 $routes->get('/', 'Home::index', ['as' => 'dashboard', 'filter' => 'session']);
-
 
 // Contoh memproteksi halaman login agar dilempar ke dashboard jika sudah login
 $routes->get('login', '\App\Controllers\Auth\LoginController::loginView');
 $routes->post('login', '\App\Controllers\Auth\LoginController::loginAction');
-
-
 
 // Panggil rute otomatis bawaan CodeIgniter Shield secara resmi
 service('auth')->routes($routes);
@@ -34,27 +30,15 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes) {
     $routes->post('academic/activate/(:num)', 'AdminController::activateAcademic/$1');
 
     $routes->post('users/reset-password/(:num)', 'AdminController::resetPassword/$1');
-});
 
-// ========================================================
-// JALUR RUTE LOGIN GOOGLE SSO (SINGLE SIGN-ON) SIKUMI
-// ========================================================
-// $routes->get('auth/google', 'GoogleAuthController::redirectToGoogle');
-// $routes->get('auth/google/callback', 'GoogleAuthController::handleCallback');
-
-// Tambahkan ini di dalam kelompok rute yang memiliki filter akses login Anda
-$routes->group('admin', ['filter' => 'session'], static function ($routes) {
-    // ... rute Fase 1 yang sudah ada ...
-
-    // JALUR RUTE FASE 2: MODUL KALENDER AKADEMIK (KALDIK) PER KELAS
     $routes->get('kaldik', 'KaldikController::index');
     $routes->post('kaldik/store', 'KaldikController::storeAgenda');
     $routes->post('kaldik/copy', 'KaldikController::copyKaldik');
 
-    // Tambahkan dua rute ini di dalam grup rute admin Anda
-$routes->post('kaldik/update', 'KaldikController::updateAgenda');
-$routes->post('kaldik/delete/(:num)', 'KaldikController::deleteAgenda/$1');
+    $routes->post('kaldik/update', 'KaldikController::updateAgenda');
+    $routes->post('kaldik/delete/(:num)', 'KaldikController::deleteAgenda/$1');
 
+    $routes->get('kaldik/print', 'KaldikController::printKaldik');
 });
 
 
