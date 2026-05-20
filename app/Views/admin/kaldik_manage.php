@@ -234,68 +234,6 @@
                                         </div>
                                     <?php endforeach; ?>
                                 </div>
-
-                                <!-- MATRIKS BESAR REKAPITULASI AKHIR SEMESTER EXCEL (SISI BAWAH) -->
-                                <div class="border-top mt-4 pt-4">
-                                    <h5 class="text-dark mb-3" style="font-weight: 700; font-size: 16px;">📊 REKAPITULASI DAN ANALISIS HARI EFEKTIF BELAJAR PER SEMESTER</h5>
-                                    <div class="table-responsive shadow-sm rounded">
-                                        <table class="table table-bordered table-striped text-center mb-0 align-middle small" style="font-size: 11px;">
-                                            <thead class="table-dark">
-                                                <tr>
-                                                    <th rowspan="2" class="align-middle text-start ps-3" style="width: 15%;">BULAN</th>
-                                                    <th colspan="7" class="bg-secondary text-white py-1">JUMLAH HARI PER MINGGU</th>
-                                                    <th rowspan="2" class="align-middle bg-success text-white" style="width: 10%;">HEB</th>
-                                                    <th rowspan="2" class="align-middle bg-warning text-dark" style="width: 10%;">HEF</th>
-                                                    <th rowspan="2" class="align-middle bg-danger text-white" style="width: 10%;">HLCB</th>
-                                                    <th rowspan="2" class="align-middle bg-info text-white" style="width: 10%;">PROSENTASE (%)</th>
-                                                </tr>
-                                                <tr class="bg-dark text-white-50" style="font-size: 10px;">
-                                                    <th>Sn</th><th>Sl</th><th>Rb</th><th>Km</th><th>Jm</th><th style="color: #ff8787;">Sb</th><th style="color: #ff8787;">Mn</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php
-                                                $totalSemesterHEB = $totalSemesterHEF = $totalSemesterHLCB = $totalSemesterHari = 0;
-                                                $mapDayIndex = [1 => 'sn', 2 => 'sl', 3 => 'rb', 4 => 'km', 5 => 'jm', 6 => 'sb', 0 => 'mn'];
-                                                foreach ($bulanKaldik as $numBulan => $namaBulan):
-                                                    $countDays = ['sn'=>0,'sl'=>0,'rb'=>0,'km'=>0,'jm'=>0,'sb'=>0,'mn'=>0];
-                                                    $hebBulan = $hefBulan = $hlcbBulan = 0;
-                                                    $totalDaysInMonth = cal_days_in_month(CAL_GREGORIAN, $numBulan, $targetYear);
-                                                    $totalSemesterHari += $totalDaysInMonth;
-                                                    for ($tgl = 1; $tgl <= $totalDaysInMonth; $tgl++) {
-                                                        $fullDate = sprintf('%s-%02d-%02d', $targetYear, $numBulan, $tgl);
-                                                        $dayOfWeek = date('w', strtotime($fullDate));
-                                                        $countDays[$mapDayIndex[$dayOfWeek]]++;
-                                                        if (isset($mappedEvents[$fullDate])) {
-                                                            $idCat = (int)$mappedEvents[$fullDate]['category_id'];
-                                                            if ($idCat === 4 || $idCat === 5) { $hefBulan++; }
-                                                            elseif ($idCat === 2 || $idCat === 3) { $hlcbBulan++; }
-                                                            else { $hebBulan++; }
-                                                        } else {
-                                                            if ($dayOfWeek == 0 || $dayOfWeek == 6) { $hlcbBulan++; }
-                                                            else { $hebBulan++; }
-                                                        }
-                                                    }
-                                                    $persenHEB = ($totalDaysInMonth > 0) ? round(($hebBulan / $totalDaysInMonth) * 100, 1) : 0;
-                                                    $totalSemesterHEB += $hebBulan; $totalSemesterHEF += $hefBulan; $totalSemesterHLCB += $hlcbBulan;
-                                                ?>
-                                                <tr>
-                                                    <td class="text-start ps-3 font-weight-bold text-dark"><?= $namaBulan ?> <?= $targetYear ?></td>
-                                                    <td><?= $countDays['sn'] ?></td><td><?= $countDays['sl'] ?></td><td><?= $countDays['rb'] ?></td><td><?= $countDays['km'] ?></td><td><?= $countDays['jm'] ?></td><td class="text-danger"><?= $countDays['sb'] ?></td><td class="text-danger"><?= $countDays['mn'] ?></td>
-                                                    <td class="font-weight-bold text-success"><?= $hebBulan ?></td><td class="font-weight-bold text-warning"><?= $hefBulan ?></td><td class="font-weight-bold text-danger"><?= $hlcbBulan ?></td>
-                                                    <td class="font-weight-bold text-info" style="background-color: #f0fafd;"><?= $persenHEB ?>%</td>
-                                                </tr>
-                                                <?php endforeach; $totalPersenSemester = ($totalSemesterHari > 0) ? round(($totalSemesterHEB / $totalSemesterHari) * 100, 1) : 0; ?>
-                                                <tr class="table-secondary font-weight-bold text-dark">
-                                                    <td class="text-start ps-3">JUMLAH TOTAL</td><td colspan="7" class="text-muted font-weight-normal small">Rekapitulasi Kumulatif Semester</td>
-                                                    <td class="text-success"><?= $totalSemesterHEB ?></td><td class="text-warning"><?= $totalSemesterHEF ?></td><td class="text-danger"><?= $totalSemesterHLCB ?></td>
-                                                    <td class="text-info" style="background-color: #e3f7fc;"><?= $totalPersenSemester ?>%</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
                                 <!-- LEGEND WARNA NOTIFIKASI KATEGORI -->
                                 <div class="border-top mt-4 pt-3 no-print">
                                     <div class="d-flex flex-wrap gap-4">
@@ -304,11 +242,210 @@
                                         <?php endforeach; ?>
                                     </div>
                                 </div>
+                                <!-- ======================================================== -->
+                                <!-- REVISI FINAL SIKUMI: 3 BLOK TABEL MATRIKS REKAP DENGAN HARI MINGGU -->
+                                <!-- ======================================================== -->
+                                <div class="border-top mt-5 pt-4">
+                                    <h5 class="text-dark mb-4 text-center" style="font-weight: 800; font-size: 16px; letter-spacing: 0.5px;">
+                                        ANALISIS HARI EFEKTIF BELAJAR MIMHa TSANAWIYAH INFORMATIKA SEMESTER <?= strtoupper($currentSemester) ?> TP. <?= $rawYear ?>
+                                    </h5>
+                                    
+                                    <?php
+                                    // 1. PROSES KALKULASI UTAMA DATA ALGORITMA MATRIKS (KONSISTEN DENGAN HARI MINGGU)
+                                    $rekapBulanan = [];
+                                    $grandTotalHari = 0;
+                                    $totalSemesterHEB = 0;
+                                    $totalSemesterHEF = 0;
+                                    $totalSemesterHLCB = 0;
 
+                                    $mapDayIndex = [1 => 'sn', 2 => 'sl', 3 => 'rb', 4 => 'km', 5 => 'jm', 6 => 'sb', 0 => 'mn'];
+                                    $listHariInisial = ['sn', 'sl', 'rb', 'km', 'jm', 'sb', 'mn']; // REVISI: Memasukkan 'mn' (Minggu) ke dalam sebaran kolom mingguan
+
+                                    foreach ($bulanKaldik as $numBulan => $namaBulan) {
+                                        // Inisialisasi counter per bulan
+                                        foreach (['HEB', 'HEF', 'HLCB'] as $kat) {
+                                            foreach ($listHariInisial as $h) {
+                                                $rekapBulanan[$numBulan][$kat][$h] = 0;
+                                            }
+                                            $rekapBulanan[$numBulan][$kat]['jml'] = 0;
+                                        }
+
+                                        $totalDaysInMonth = cal_days_in_month(CAL_GREGORIAN, $numBulan, $targetYear);
+                                        $grandTotalHari += $totalDaysInMonth;
+
+                                        // Scan Tanggal 1 s/d Akhir Bulan
+                                        for ($tgl = 1; $tgl <= $totalDaysInMonth; $tgl++) {
+                                            $fullDate = sprintf('%s-%02d-%02d', $targetYear, $numBulan, $tgl);
+                                            $dayOfWeek = (int)date('w', strtotime($fullDate));
+                                            
+                                            $dayLabel = $mapDayIndex[$dayOfWeek];
+                                            $kategoriHari = 'HEB'; // Default awal
+
+                                            // Filter Sensor Utama Kategori Database
+                                            if (isset($mappedEvents[$fullDate])) {
+                                                $idKategori = (int)$mappedEvents[$fullDate]['category_id'];
+                                                if ($idKategori === 4 || $idKategori === 5) {
+                                                    $kategoriHari = 'HEF';
+                                                } elseif ($idKategori === 2 || $idKategori === 3) {
+                                                    $kategoriHari = 'HLCB';
+                                                }
+                                            } else {
+                                                // Jika polos, Sabtu dan Minggu otomatis HLCB
+                                                if ($dayOfWeek == 0 || $dayOfWeek == 6) {
+                                                    $kategoriHari = 'HLCB';
+                                                }
+                                            }
+
+                                            // Akumulasikan ke dalam matriks hari bulanan secara presisi
+                                            $rekapBulanan[$numBulan][$kategoriHari][$dayLabel]++;
+                                            $rekapBulanan[$numBulan][$kategoriHari]['jml']++;
+                                        }
+
+                                        // Kumpulkan total kumulatif semester
+                                        $totalSemesterHEB  += $rekapBulanan[$numBulan]['HEB']['jml'];
+                                        $totalSemesterHEF  += $rekapBulanan[$numBulan]['HEF']['jml'];
+                                        $totalSemesterHLCB += $rekapBulanan[$numBulan]['HLCB']['jml'];
+                                    }
+                                    ?>
+
+                                    <!-- ROW UTAMA 3 GRIDS TABEL (DIREVISI SUPAYA SINKRON DAN LUAS) -->
+                                    <div class="row g-3">
+                                        
+                                        <!-- ========================================== -->
+                                        <!-- TABEL 1: HARI EFEKTIF BELAJAR (HEB) -->
+                                        <!-- ========================================== -->
+                                        <div class="col-xl-4 col-lg-12">
+                                            <div class="table-responsive shadow-sm rounded border">
+                                                <table class="table table-bordered table-striped text-center mb-0 align-middle shadow-sm bg-white" style="font-size: 11px; font-weight: 700; border: 1px solid #dee2e6;">
+                                                    <thead class="text-white" style="background-color: #4f81bd !important;">
+                                                        <tr>
+                                                            <th rowspan="2" class="align-middle text-start ps-2" style="width: 25%;">Bulan</th>
+                                                            <th colspan="7" class="py-1" style="font-size: 10px;">Hari Efektif Belajar (HEB)</th>
+                                                            <th rowspan="2" class="align-middle" style="width: 10%;">Jml</th>
+                                                            <th rowspan="2" class="align-middle" style="width: 13%;">% HEB</th>
+                                                        </tr>
+                                                        <tr style="font-size: 10px; background-color: #d9e1f2; color: #000;">
+                                                            <th>Sn</th><th>Sl</th><th>Rb</th><th>Km</th><th>Jm</th><th style="color: #cc0000;">Sb</th><th style="color: #cc0000;">Mg</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php 
+                                                        $totalSn = 0; $totalSl = 0; $totalRb = 0; $totalKm = 0; $totalJm = 0; $totalSb = 0; $totalMg = 0;
+                                                        foreach ($bulanKaldik as $numBulan => $namaBulan): 
+                                                            $hData = $rekapBulanan[$numBulan]['HEB'];
+                                                            $totalSn += $hData['sn']; $totalSl += $hData['sl']; $totalRb += $hData['rb'];
+                                                            $totalKm += $hData['km']; $totalJm += $hData['jm']; $totalSb += $hData['sb']; $totalMg += $hData['mn'];
+                                                            
+                                                            $persenBulanHEB = ($totalSemesterHEB > 0) ? round(($hData['jml'] / $totalSemesterHEB) * 100, 2) : 0;
+                                                        ?>
+                                                        <tr>
+                                                            <td class="text-start ps-2 text-dark" style="font-size: 10px;"><?= strtoupper($namaBulan) ?></td>
+                                                            <td><?= $hData['sn'] ?></td><td><?= $hData['sl'] ?></td><td><?= $hData['rb'] ?></td>
+                                                            <td><?= $hData['km'] ?></td><td><?= $hData['jm'] ?></td><td class="text-muted"><?= $hData['sb'] ?></td><td class="text-muted"><?= $hData['mn'] ?></td>
+                                                            <td class="bg-light-subtle font-weight-bold"><?= $hData['jml'] ?></td>
+                                                            <td class="text-secondary"><?= $persenBulanHEB ?>%</td>
+                                                        </tr>
+                                                        <?php endforeach; ?>
+                                                        <tr style="background-color: #f2f2f2; font-weight: 800; border-top: 2px solid #000;">
+                                                            <td class="text-start ps-2">JUMLAH</td>
+                                                            <td><?= $totalSn ?></td><td><?= $totalSl ?></td><td><?= $totalRb ?></td>
+                                                            <td><?= $totalKm ?></td><td><?= $totalJm ?></td><td><?= $totalSb ?></td><td><?= $totalMg ?></td>
+                                                            <td style="color: #198754;"><?= $totalSemesterHEB ?></td>
+                                                            <td class="text-success">100.00%</td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <!-- ========================================== -->
+                                        <!-- TABEL 2: HARI EFEKTIF FAKULTATIF (HEF) -->
+                                        <!-- ========================================== -->
+                                        <div class="col-xl-4 col-lg-12">
+                                            <div class="table-responsive shadow-sm rounded border">
+                                                <table class="table table-bordered table-striped text-center mb-0 align-middle shadow-sm bg-white" style="font-size: 11px; font-weight: 700; border: 1px solid #dee2e6;">
+                                                    <thead class="text-dark" style="background-color: #ffc000 !important; color: #000 !important;">
+                                                        <tr>
+                                                            <th rowspan="2" class="align-middle text-start ps-2" style="width: 30%;">Hari Efektif Fakultatif (HEF)</th>
+                                                            <th colspan="7" class="py-1" style="font-size: 10px; color: #000;">Sebaran Hari Event / Ujian</th>
+                                                            <th rowspan="2" class="align-middle" style="width: 12%;">Jml</th>
+                                                        </tr>
+                                                        <tr style="font-size: 10px; background-color: #fff2cc; color: #000;">
+                                                            <th>Sn</th><th>Sl</th><th>Rb</th><th>Km</th><th>Jm</th><th style="color: #cc0000;">Sb</th><th style="color: #cc0000;">Mg</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php 
+                                                        $totalSn = 0; $totalSl = 0; $totalRb = 0; $totalKm = 0; $totalJm = 0; $totalSb = 0; $totalMg = 0;
+                                                        foreach ($bulanKaldik as $numBulan => $namaBulan): 
+                                                            $hData = $rekapBulanan[$numBulan]['HEF'];
+                                                            $totalSn += $hData['sn']; $totalSl += $hData['sl']; $totalRb += $hData['rb'];
+                                                            $totalKm += $hData['km']; $totalJm += $hData['jm']; $totalSb += $hData['sb']; $totalMg += $hData['mn'];
+                                                        ?>
+                                                        <tr>
+                                                            <td class="text-start ps-2 text-muted" style="font-size: 10px;"><?= strtoupper($namaBulan) ?></td>
+                                                            <td><?= $hData['sn'] ?></td><td><?= $hData['sl'] ?></td><td><?= $hData['rb'] ?></td>
+                                                            <td><?= $hData['km'] ?></td><td><?= $hData['jm'] ?></td><td><?= $hData['sb'] ?></td><td><?= $hData['mn'] ?></td>
+                                                            <td class="bg-light-subtle font-weight-bold"><?= $hData['jml'] ?></td>
+                                                        </tr>
+                                                        <?php endforeach; ?>
+                                                        <tr style="background-color: #f2f2f2; font-weight: 800; border-top: 2px solid #000;">
+                                                            <td class="text-start ps-2">JUMLAH</td>
+                                                            <td><?= $totalSn ?></td><td><?= $totalSl ?></td><td><?= $totalRb ?></td>
+                                                            <td><?= $totalKm ?></td><td><?= $totalJm ?></td><td><?= $totalSb ?></td><td><?= $totalMg ?></td>
+                                                            <td style="color: #ffc107;"><?= $totalSemesterHEF ?></td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <!-- ========================================== -->
+                                        <!-- TABEL 3: HARI LIBUR & CUTI BERSAMA (HLCB) -->
+                                        <!-- ========================================== -->
+                                        <div class="col-xl-4 col-lg-12">
+                                            <div class="table-responsive shadow-sm rounded border">
+                                                <table class="table table-bordered table-striped text-center mb-0 align-middle shadow-sm bg-white" style="font-size: 11px; font-weight: 700; border: 1px solid #dee2e6;">
+                                                    <thead class="text-white" style="background-color: #c00000 !important;">
+                                                        <tr>
+                                                            <th rowspan="2" class="align-middle text-start ps-2" style="width: 30%;">Hari Libur & Cuti Bersama (HLCB)</th>
+                                                            <th colspan="7" class="py-1" style="font-size: 10px;">Sebaran Hari Libur Sekolah</th>
+                                                            <th rowspan="2" class="align-middle" style="width: 12%;">Jml</th>
+                                                        </tr>
+                                                        <tr style="font-size: 10px; background-color: #fce4d6; color: #000;">
+                                                            <th>Sn</th><th>Sl</th><th>Rb</th><th>Km</th><th>Jm</th><th style="color: #cc0000;">Sb</th><th style="color: #cc0000;">Mg</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        <?php 
+                                                        $totalSn = 0; $totalSl = 0; $totalRb = 0; $totalKm = 0; $totalJm = 0; $totalSb = 0; $totalMg = 0;
+                                                        foreach ($bulanKaldik as $numBulan => $namaBulan): 
+                                                            $hData = $rekapBulanan[$numBulan]['HLCB'];
+                                                            $totalSn += $hData['sn']; $totalSl += $hData['sl']; $totalRb += $hData['rb'];
+                                                            $totalKm += $hData['km']; $totalJm += $hData['jm']; $totalSb += $hData['sb']; $totalMg += $hData['mn'];
+                                                        ?>
+                                                        <tr>
+                                                            <td class="text-start ps-2 text-muted" style="font-size: 10px;"><?= strtoupper($namaBulan) ?></td>
+                                                            <td><?= $hData['sn'] ?></td><td><?= $hData['sl'] ?></td><td><?= $hData['rb'] ?></td>
+                                                            <td><?= $hData['km'] ?></td><td><?= $hData['jm'] ?></td><td class="text-danger"><?= $hData['sb'] ?></td><td class="text-danger"><?= $hData['mn'] ?></td>
+                                                            <td class="bg-light-subtle font-weight-bold"><?= $hData['jml'] ?></td>
+                                                        </tr>
+                                                        <?php endforeach; ?>
+                                                        <tr style="background-color: #f2f2f2; font-weight: 800; border-top: 2px solid #000;">
+                                                            <td class="text-start ps-2">JUMLAH</td>
+                                                            <td><?= $totalSn ?></td><td><?= $totalSl ?></td><td><?= $totalRb ?></td>
+                                                            <td><?= $totalKm ?></td><td><?= $totalJm ?></td><td><?= $totalSb ?></td><td><?= $totalMg ?></td>
+                                                            <td style="color: #dc3545;"><?= $totalSemesterHLCB ?></td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div> <!-- END ROW GRIDS -->
+                                </div>                              
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </main>

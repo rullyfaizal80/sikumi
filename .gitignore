@@ -2,11 +2,6 @@
 # # Operating Specific Junk Files
 # #-------------------------
 
-# Mengabaikan semua isi folder writable termasuk debugbar, session, dan cache
-writable/*
-!writable/index.html
-!writable/.gitkeep
-
 # OS X
 .DS_Store
 .AppleDouble
@@ -50,23 +45,31 @@ $RECYCLE.BIN/
 # .vagrant
 # Vagrantfile
 
-# #-------------------------
-# # Temporary Files
-# #-------------------------
-# /writable/cache/*
-# !/writable/cache/index.html
+# Mengabaikan semua isi folder writable termasuk debugbar, session, dan cache
+writable/*
+!writable/index.html
+!writable/.gitkeep
 
-# /writable/logs/*
-# !/writable/logs/index.html
+#-------------------------
+# Temporary Files
+#-------------------------
+/writable/cache/*
+!/writable/cache/index.html
 
-# /writable/session/*
-# !/writable/session/index.html
+/writable/logs/*
+!/writable/logs/index.html
 
-# /writable/uploads/*
-# !/writable/uploads/index.html
+/writable/session/*
+!/writable/session/index.html
 
-# /writable/debugbar/*
-# !/writable/debugbar/index.html
+/writable/uploads/*
+!/writable/uploads/index.html
+
+/writable/debugbar/*
+!/writable/debugbar/index.html
+
+storage/debugbar/
+*.json
 
 # php_errors.log
 
@@ -124,9 +127,9 @@ $RECYCLE.BIN/
 # .phpintel
 # /api/
 
-# # Visual Studio Code
-# .vscode/
+# Visual Studio Code
+.vscode/
 
-# /results/
-# /phpunit*.xml
+/results/
+/phpunit*.xml
 
