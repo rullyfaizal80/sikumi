@@ -2,6 +2,9 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home/mimz9857/public_html/sikumi/
-    - /bin/rsync -avz --exclude '.git' --exclude '.cpanel.yml' --exclude 'writable/' $cpanelroot/ $DEPLOYPATH
+    - cp -r $cpanelroot/* $DEPLOYPATH/
+    - cp $cpanelroot/public/.htaccess $DEPLOYPATH/public/
     - /bin/mkdir -p $DEPLOYPATH/writable/cache/
+    - /bin/mkdir -p $DEPLOYPATH/writable/logs/
+    - /bin/mkdir -p $DEPLOYPATH/writable/session/
     - chmod -R 777 $DEPLOYPATH/writable/
