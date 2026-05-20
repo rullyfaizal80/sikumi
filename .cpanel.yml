@@ -1,10 +1,7 @@
 ---
 deployment:
   tasks:
-    # GANTI 'mimz9857' dengan username cPanel Anda.
-    # GANTI 'public_html' jika lokasi website Anda berbeda.
-    - export DEPLOYPATH=/home/mimz9857/public_html/sikumi
-
-    # Salin file dari repo ke folder live
-    - /bin/cp -R * $DEPLOYPATH
-    - /bin/cp .htaccess $DEPLOYPATH
+    - export DEPLOYPATH=/home/mimz9857/public_html/sikumi/
+    - /bin/rsync -avz --exclude '.git' --exclude '.cpanel.yml' --exclude 'writable/' $cpanelroot/ $DEPLOYPATH
+    - /bin/mkdir -p $DEPLOYPATH/writable/cache/
+    - chmod -R 777 $DEPLOYPATH/writable/
