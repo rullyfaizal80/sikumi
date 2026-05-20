@@ -148,7 +148,7 @@ public function saveMatrix()
 
     return redirect()->to('admin/permission-matrix')->with('sukses', 'Matriks hak akses menu sekolah berhasil diperbarui secara dinamis!');
 }
-
+/*
 // Fungsi untuk menampilkan daftar Tahun Pelajaran & Semester
 public function academicSetting()
 {
@@ -177,7 +177,7 @@ public function activateAcademic($id)
 
     return redirect()->to('admin/academic')->with('sukses', 'Tahun Pelajaran & Semester aktif berhasil diperbarui!');
 }
-
+*/
 public function storeUser()
 {
     // 1. Tangkap data input dari form admin
@@ -227,5 +227,226 @@ public function resetPassword($id)
     return redirect()->to('admin/users')->with('sukses', 'Kata sandi untuk akun "' . $user->username . '" berhasil di-reset ke default: Mimha@2026');
 }
 
+/**
+ * 3. PENYESUAIAN: Mengubah Status Semester Aktif (Fungsi bawaan Anda yang disinkronkan)
+ */
+public function activateAcademic($id)
+{
+    $db = \Config\Database::connect();
 
+    // 1. Matikan seluruh status aktif tahun pelajaran lama
+    $db->table('academic_years')->update(['is_active' => 0]);
+
+    // 2. Aktifkan ID tahun pelajaran yang diklik oleh Waka Kurikulum
+    $db->table('academic_years')->where('id', $id)->update(['is_active' => 1]);
+
+    // MODIFIKASI: Alihkan lurus kembali ke halaman pengaturan satu pintu (Tab Akademik)
+    return redirect()->to('admin/settings?tab=akademik')->with('sukses', 'Tahun Pelajaran & Semester aktif berhasil diperbarui!');
+}
+
+    public function appSettings()
+    {
+        $db = \Config\Database::connect();
+
+        // 1. Ambil data teks pengaturan dari tabel settings dan konversi menjadi key-value array
+        $settingsRaw = $db->table('settings')->get()->getResultArray();
+        $settings = [];
+        foreach ($settingsRaw as $row) {
+            $settings[$row['key']] = $row['value'];
+        }
+
+        // 2. Ambil seluruh data tahun akademik untuk TAB 3 dan TAB 4
+        $academic = $db->table('academic_years')
+                       ->orderBy('academic_year', 'ASC')
+                       ->orderBy('semester', 'ASC')
+                       ->get()
+                       ->getResultArray();
+
+        // 3. Lempar data ke view
+        $data = [
+            'title'    => 'Pusat Pengaturan Terpadu SiKuMi',
+            'settings' => $settings,
+            'academic' => $academic
+        ];
+
+        return view('admin/app_settings', $data);
+    }
+
+    /**
+     * PROSES UTAMA: Menyimpan Data Tab 1, Tab 2, dan Tab 5 (Metode Overwrite Logo)
+     */
+    public function saveSettings()
+    {
+        $db = \Config\Database::connect();
+        
+        // Kumpulkan input data teks biasa
+        $textSettings = [
+            'kaldik_lembaga_nama' => $this->request->getPost('kaldik_lembaga_nama'),
+            'kaldik_kepala_nama'  => $this->request->getPost('kaldik_kepala_nama'),
+            'kaldik_kepala_npk'   => $this->request->getPost('kaldik_kepala_npk'),
+            'kaldik_titi_mangsa'  => $this->request->getPost('kaldik_titi_mangsa'),
+            'kaldik_hari_kerja'   => $this->request->getPost('kaldik_hari_kerja'),
+            'durasi_menit_jp'     => $this->request->getPost('durasi_menit_jp'),
+            'ai_provider'         => $this->request->getPost('ai_provider'),
+            'ai_api_key'          => $this->request->getPost('ai_api_key'),
+        ];
+
+        // Simpan atau Update data teks ke database
+        foreach ($textSettings as $key => $value) {
+            if ($value !== null) {
+                $exist = $db->table('settings')->where('key', $key)->get()->getRow();
+                if ($exist) {
+                    $db->table('settings')->where('key', $key)->update(['value' => $value]);
+                } else {
+                    $db->table('settings')->insert(['key' => $key, 'value' => $value]);
+                }
+            }
+        }
+
+        // PROSES UPLOAD LOGO KIRI
+        $logoKiri = $this->request->getFile('logo_kaldik1');
+        if ($logoKiri && $logoKiri->isValid() && !$logoKiri->hasMoved()) {
+            $targetPathKiri = FCPATH . 'assets/img/logo_kaldik1.png';
+            if (file_exists($targetPathKiri)) {
+                @unlink($targetPathKiri);
+            }
+            $logoKiri->move(FCPATH . 'assets/img', 'logo_kaldik1.png');
+            $db->table('settings')->where('key', 'logo_kaldik1')->update(['value' => 'logo_kaldik1.png']);
+        }
+
+        // PROSES UPLOAD LOGO KANAN
+        $logoKanan = $this->request->getFile('logo_kaldik2');
+        if ($logoKanan && $logoKanan->isValid() && !$logoKanan->hasMoved()) {
+            $targetPathXanan = FCPATH . 'assets/img/logo_kaldik2.png';
+            if (file_exists($targetPathXanan)) {
+                @unlink($targetPathXanan);
+            }
+            $logoKanan->move(FCPATH . 'assets/img', 'logo_kaldik2.png');
+            $db->table('settings')->where('key', 'logo_kaldik2')->update(['value' => 'logo_kaldik2.png']);
+        }
+
+        return redirect()->to(base_url('admin/settings?tab=profil'))->with('sukses', 'Konfigurasi pusat berhasil disimpan!');
+    }
+
+    /**
+     * PROSES PENDAMPING: Menambahkan Tahun Angkatan Baru (Otomatis Ganjil & Genap)
+     */
+    public function addAngkatan() 
+    {
+        $db = \Config\Database::connect();
+        
+        $rawInput = $this->request->getPost('academic_year');
+        $tahunBaru = substr(trim($rawInput), 0, 9);
+
+        if (empty($tahunBaru)) {
+            return redirect()->to(base_url('admin/settings?tab=angkatan'))
+                             ->with('error', 'Tahun angkatan tidak boleh kosong!');
+        }
+
+        if (strlen($tahunBaru) < 9) {
+            return redirect()->to(base_url('admin/settings?tab=angkatan'))
+                             ->with('error', 'Format salah! Wajib menggunakan format 9 karakter. Contoh: 2026/2027');
+        }
+
+        $cekTahun = $db->table('academic_years')
+                       ->where('academic_year', $tahunBaru)
+                       ->get()
+                       ->getRow();
+
+        if ($cekTahun) {
+            return redirect()->to(base_url('admin/settings?tab=angkatan'))
+                             ->with('error', "Peringatan! Tahun Angkatan/Pelajaran {$tahunBaru} sudah terdaftar di sistem.");
+        }
+
+        $currentDateTime = date('Y-m-d H:i:s');
+
+        try {
+            $db->table('academic_years')->insert([
+                'academic_year' => $tahunBaru,
+                'semester'      => 'Ganjil',
+                'is_active'     => 0,
+                'created_at'    => $currentDateTime,
+                'updated_at'    => $currentDateTime
+            ]);
+
+            $db->table('academic_years')->insert([
+                'academic_year' => $tahunBaru,
+                'semester'      => 'Genap',
+                'is_active'     => 0,
+                'created_at'    => $currentDateTime,
+                'updated_at'    => $currentDateTime
+            ]);
+
+            return redirect()->to(base_url('admin/settings?tab=angkatan'))
+                             ->with('sukses', "Tahun Angkatan {$tahunBaru} untuk Semester Ganjil & Genap berhasil ditambahkan!");
+
+        } catch (\Exception $e) {
+            return redirect()->to(base_url('admin/settings?tab=angkatan'))
+                             ->with('error', 'Kesalahan Sistem Database: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * FITUR AMAN: Menghapus Tahun Angkatan dengan Proteksi Relasi Tabel academic_calendars
+     */
+    public function deleteAngkatan()
+    {
+        $db = \Config\Database::connect();
+        
+        // 1. Ambil string tahun yang dilempar dari form (Contoh: 2026/2027)
+        $tahunHapus = $this->request->getPost('academic_year');
+
+        if (empty($tahunHapus)) {
+            return redirect()->to(base_url('admin/settings?tab=angkatan'))
+                             ->with('error', 'Parameter tahun tidak valid!');
+        }
+
+        // 2. Proteksi Kunci 1: Jangan izinkan hapus jika statusnya sedang AKTIF digunakan salah satu semesternya
+        $cekAktif = $db->table('academic_years')
+                       ->where('academic_year', $tahunHapus)
+                       ->where('is_active', 1)
+                       ->get()
+                       ->getRow();
+
+        if ($cekAktif) {
+            return redirect()->to(base_url('admin/settings?tab=angkatan'))
+                             ->with('error', "⚠️ Gagal! Tahun {$tahunHapus} tidak boleh dihapus karena salah satu semesternya sedang disetel sebagai Semester Aktif.");
+        }
+
+        // 3. Ambil semua ID yang berkaitan dengan tahun tersebut (ID Semester Ganjil dan ID Semester Genap)
+        $listAcademic = $db->table('academic_years')
+                           ->where('academic_year', $tahunHapus)
+                           ->get()
+                           ->getResultArray();
+
+        $allIds = [];
+        foreach ($listAcademic as $row) {
+            $allIds[] = $row['id'];
+        }
+
+        // 4. Proteksi Kunci 2: Cek apakah salah satu ID semester tersebut sudah memiliki data di tabel kalender akademik
+        if (!empty($allIds)) {
+            $cekKaldik = $db->table('academic_calendars') // Sesuai dengan struktur .sql asli Anda
+                            ->whereIn('academic_year_id', $allIds) 
+                            ->get()
+                            ->getRow();
+
+            // Jika di semester ganjil atau genap saja sudah ada data terisi, maka gagalkan penghapusan tahun pelajaran tersebut
+            if ($cekKaldik) {
+                return redirect()->to(base_url('admin/settings?tab=angkatan'))
+                                 ->with('error', "❌ Tidak bisa dihapus! Tahun Angkatan {$tahunHapus} sudah terikat dengan data agenda di Kalender Akademik.");
+            }
+        }
+
+        // 5. Eksekusi Hapus jika lolos semua sensor proteksi di atas
+        try {
+            $db->table('academic_years')->where('academic_year', $tahunHapus)->delete();
+
+            return redirect()->to(base_url('admin/settings?tab=angkatan'))
+                             ->with('sukses', "🗑️ Berhasil! Data Tahun Angkatan {$tahunHapus} yang masih kosong telah dibersihkan dari sistem.");
+        } catch (\Exception $e) {
+            return redirect()->to(base_url('admin/settings?tab=angkatan'))
+                             ->with('error', 'Gagal menghapus data: ' . $e->getMessage());
+        }
+    }
 }

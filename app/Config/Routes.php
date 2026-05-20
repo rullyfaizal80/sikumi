@@ -26,8 +26,19 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes) {
     $routes->get('permission-matrix', 'AdminController::permissionMatrix');
     $routes->post('permission-matrix/save', 'AdminController::saveMatrix');
 
-    $routes->get('academic', 'AdminController::academicSetting');
-    $routes->post('academic/activate/(:num)', 'AdminController::activateAcademic/$1');
+    // =========================================================================
+    // KODE BARU: PUSAT PENGATURAN TERPADU SIKUMI (SATU JENDELA)
+    // =========================================================================
+    // Menggantikan rute 'academic' lama agar langsung masuk ke jendela 5 Tab
+    $routes->get('settings', 'AdminController::appSettings');
+    $routes->post('settings/save', 'AdminController::saveSettings');
+    $routes->post('settings/add-angkatan', 'AdminController::addAngkatan');
+    $routes->post('settings/delete-angkatan', 'AdminController::deleteAngkatan'); // <- TAMBAHKAN BARIS INI
+    
+    // SINKRONISASI TAB 4: Mengaktifkan Semester Berjalan
+    // Diubah menjadi GET agar sinkron dengan tag <a> pada elemen tombol di View
+    $routes->get('academic/activate/(:num)', 'AdminController::activateAcademic/$1');
+    // =========================================================================
 
     $routes->post('users/reset-password/(:num)', 'AdminController::resetPassword/$1');
 
