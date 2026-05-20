@@ -24,14 +24,14 @@
             border: 1px solid #000000 !important; 
         }
         .table-kaldik td, .month-box table tr td { 
-            padding: 2px 1px !important; /* Disamakan tipis rata agar proporsional */
+            padding: 2px 1px !important; 
             font-size: 9px; 
             font-weight: 700; 
             border: 1px solid #000000 !important; 
             line-height: 1.1 !important;
         }
         
-        .month-box { border: 1px solid #000000; padding: 6px; background: #fff; height: 100%; display: flex; flex-column; justify-content: space-between; }
+        .month-box { border: 1px solid #000000; padding: 6px; background: #fff; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
         .month-title { background-color: #002060; color: #ffffff; text-align: center; font-weight: 800; padding: 3px; font-size: 11px; text-transform: uppercase; margin-bottom: 5px; }
         .grid-days { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 9.5px; font-weight: 800; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px; }
         .grid-dates { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 3px; column-gap: 3px; text-align: center; }
@@ -50,7 +50,6 @@
 </head>
 <body>
 
-    <!-- CONTROL PANEL PREVIEW (OTOMATIS HILANG SAAT PRINT) -->
     <div class="no-print d-flex justify-content-between align-items-center alert alert-dark p-2 mb-3" style="border-radius: 6px;">
         <span class="small font-weight-bold text-white ps-2"><i class="bi bi-eye-fill me-1 text-warning"></i> Pratinjau Cetak Kalender Pendidikan Resmi Madrasah MIMHa</span>
         <div>
@@ -59,27 +58,31 @@
         </div>
     </div>
 
-    <!-- ======================================================== -->
-    <!-- KOP ATAS: LOGO KEMBAR DIKETATKAN MENDEKATI JUDUL -->
-    <!-- ======================================================== -->
     <div class="d-flex justify-content-center align-items-center border-bottom border-dark pb-2 mb-3 w-100">
         <div class="d-flex align-items-center justify-content-between" style="width: 85%;">
-            <!-- Logo 1 (Kiri) mendekat ke judul -->
             <img src="<?= base_url('assets/img/logo_kaldik1.png') ?>" alt="Logo Yayasan" style="height: 50px; width: auto; object-fit: contain;">
             
-            <!-- Judul Inti Dokumen (Tengah) -->
             <div class="text-center flex-grow-1 mx-4">
                 <h5 class="my-0 font-weight-bold" style="font-weight: 800; color: #002060; font-size: 15px; letter-spacing: 0.5px;">KALENDER PENDIDIKAN MIMHa TSANAWIYAH INFORMATIKA</h5>
                 <h6 class="my-1 font-weight-bold" style="font-weight: 700; font-size: 12px;">TAHUN PELAJARAN <?= $tahunAktif ? $tahunAktif['academic_year'] : '-' ?></h6>
                 <span class="badge font-weight-bold text-uppercase text-white px-3" style="font-size: 10px; background-color: #002060 !important; border-radius: 3px; padding: 2px 8px;">SEMESTER <?= $tahunAktif ? $tahunAktif['semester'] : '-' ?></span>
             </div>
             
-            <!-- Logo 2 (Kanan) mendekat ke judul -->
             <img src="<?= base_url('assets/img/logo_kaldik2.png') ?>" alt="Logo MTs" style="height: 50px; width: auto; object-fit: contain;">
         </div>
     </div>
 
     <?php
+    // AMBIL KONEKSI DAN CONFIG HARI KERJA LANGSUNG DI VIEW
+    $db = \Config\Database::connect();
+    $hariKerjaSetting = 5; // fallback default
+    if ($db->tableExists('settings')) {
+        $getSetting = $db->table('settings')->where('key', 'kaldik_hari_kerja')->get()->getRowArray();
+        if ($getSetting) {
+            $hariKerjaSetting = (int)$getSetting['value'];
+        }
+    }
+
     // LOGIKA GENERATOR MATRIKS SIKUMI
     $mappedEvents = [];
     foreach ($agendaKaldik as $ag) {
@@ -109,14 +112,15 @@
     $listHariInisial = ['sn', 'sl', 'rb', 'km', 'jm', 'sb', 'mn'];
     ?>
 
-    <!-- ROW 6 BULAN (GRID HORIZONTAL SATU LEMBAR) -->
     <div class="row g-2 mb-3">
         <?php foreach ($bulanKaldik as $numBulan => $namaBulan): ?>
             <div class="col-4" style="width: 33.333%;">
                 <div class="month-box d-flex flex-column h-100">
                     <div class="month-title"><?= $namaBulan ?> <?= $targetYear ?></div>
                     <div class="grid-days">
-                        <div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div><div class="text-danger">Sab</div><div class="text-danger">Min</div>
+                        <div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div>
+                        <div class="<?= ($hariKerjaSetting == 5) ? 'text-danger' : '' ?>">Sab</div>
+                        <div class="text-danger">Min</div>
                     </div>
                     <div class="grid-dates mb-2">
                         <?php
@@ -143,7 +147,9 @@
                                 if ($idKategori === 4 || $idKategori === 5) { $kategoriHari = 'HEF'; }
                                 elseif ($idKategori === 2 || $idKategori === 3) { $kategoriHari = 'HLCB'; }
                             } else {
-                                if ($dayOfWeek == 0 || $dayOfWeek == 6) { $kategoriHari = 'HLCB'; }
+                                if ($dayOfWeek == 0 || ($dayOfWeek == 6 && $hariKerjaSetting == 5)) { 
+                                    $kategoriHari = 'HLCB'; 
+                                }
                             }
 
                             $rekapBulanan[$numBulan][$kategoriHari][$dayLabel]++;
@@ -151,7 +157,9 @@
 
                             $styleCustom = '';
                             $classCell = 'date-cell';
-                            if ($dayOfWeek == 0 || $dayOfWeek == 6) { $classCell .= ' date-weekend'; }
+                            if ($dayOfWeek == 0 || ($dayOfWeek == 6 && $hariKerjaSetting == 5)) { 
+                                $classCell .= ' date-weekend'; 
+                            }
                             if (isset($mappedEvents[$fullDate])) {
                                 $styleCustom = 'background-color: ' . $mappedEvents[$fullDate]['color'] . '; border: 1px solid #777;';
                             }
@@ -165,23 +173,29 @@
                         ?>
                     </div>
 
-                    <!-- REVISI PADDING BARIS RINGKASAN HARI BULANAN (SINKRON SUPER TIPIS) -->
                     <table class="table table-bordered text-center my-1 align-middle" style="font-size: 8px; line-height: 1; font-weight: 700; border: 1px solid #000 !important; margin-bottom: 4px !important;">
                         <tr style="background-color: #d9e1f2;">
-                            <td style="padding: 2px !important;">Hari</td><td style="padding: 2px !important;">Sn</td><td style="padding: 2px !important;">Sl</td><td style="padding: 2px !important;">Rb</td><td style="padding: 2px !important;">Km</td><td style="padding: 2px !important;">Jm</td><td style="padding: 2px !important; color:#c00000;">Sb</td><td style="padding: 2px !important; color:#c00000;">Mg</td>
+                            <td style="padding: 2px !important;">Hari</td><td style="padding: 2px !important;">Sn</td><td style="padding: 2px !important;">Sl</td><td style="padding: 2px !important;">Rb</td><td style="padding: 2px !important;">Km</td><td style="padding: 2px !important;">Jm</td>
+                            <td style="padding: 2px !important; color: <?= ($hariKerjaSetting == 5) ? '#c00000' : 'inherit' ?>;">Sb</td>
+                            <td style="padding: 2px !important; color:#c00000;">Mg</td>
                         </tr>
                         <tr>
-                            <td style="padding: 2px !important; background-color: #f2f2f2; text-align:left; padding-left:4px !important;">HEB</td><td><?= $rekapBulanan[$numBulan]['HEB']['sn'] ?></td><td><?= $rekapBulanan[$numBulan]['HEB']['sl'] ?></td><td><?= $rekapBulanan[$numBulan]['HEB']['rb'] ?></td><td><?= $rekapBulanan[$numBulan]['HEB']['km'] ?></td><td><?= $rekapBulanan[$numBulan]['HEB']['jm'] ?></td><td><?= $rekapBulanan[$numBulan]['HEB']['sb'] ?></td><td><?= $rekapBulanan[$numBulan]['HEB']['mn'] ?></td>
+                            <td style="padding: 2px !important; background-color: #f2f2f2; text-align:left; padding-left:4px !important;">HEB</td><td><?= $rekapBulanan[$numBulan]['HEB']['sn'] ?></td><td><?= $rekapBulanan[$numBulan]['HEB']['sl'] ?></td><td><?= $rekapBulanan[$numBulan]['HEB']['rb'] ?></td><td><?= $rekapBulanan[$numBulan]['HEB']['km'] ?></td><td><?= $rekapBulanan[$numBulan]['HEB']['jm'] ?></td>
+                            <td style="color: <?= ($hariKerjaSetting == 5) ? '#c00000' : 'inherit' ?>;"><?= $rekapBulanan[$numBulan]['HEB']['sb'] ?></td>
+                            <td style="color:#c00000;"><?= $rekapBulanan[$numBulan]['HEB']['mn'] ?></td>
                         </tr>
                         <tr>
-                            <td style="padding: 2px !important; background-color: #f2f2f2; text-align:left; padding-left:4px !important;">HEF</td><td><?= $rekapBulanan[$numBulan]['HEF']['sn'] ?></td><td><?= $rekapBulanan[$numBulan]['HEF']['sl'] ?></td><td><?= $rekapBulanan[$numBulan]['HEF']['rb'] ?></td><td><?= $rekapBulanan[$numBulan]['HEF']['km'] ?></td><td><?= $rekapBulanan[$numBulan]['HEF']['jm'] ?></td><td><?= $rekapBulanan[$numBulan]['HEF']['sb'] ?></td><td><?= $rekapBulanan[$numBulan]['HEF']['mn'] ?></td>
+                            <td style="padding: 2px !important; background-color: #f2f2f2; text-align:left; padding-left:4px !important;">HEF</td><td><?= $rekapBulanan[$numBulan]['HEF']['sn'] ?></td><td><?= $rekapBulanan[$numBulan]['HEF']['sl'] ?></td><td><?= $rekapBulanan[$numBulan]['HEF']['rb'] ?></td><td><?= $rekapBulanan[$numBulan]['HEF']['km'] ?></td><td><?= $rekapBulanan[$numBulan]['HEF']['jm'] ?></td>
+                            <td style="color: <?= ($hariKerjaSetting == 5) ? '#c00000' : 'inherit' ?>;"><?= $rekapBulanan[$numBulan]['HEF']['sb'] ?></td>
+                            <td style="color:#c00000;"><?= $rekapBulanan[$numBulan]['HEF']['mn'] ?></td>
                         </tr>
                         <tr>
-                            <td style="padding: 2px !important; background-color: #f2f2f2; text-align:left; padding-left:4px !important;">HLCB</td><td><?= $rekapBulanan[$numBulan]['HLCB']['sn'] ?></td><td><?= $rekapBulanan[$numBulan]['HLCB']['sl'] ?></td><td><?= $rekapBulanan[$numBulan]['HLCB']['rb'] ?></td><td><?= $rekapBulanan[$numBulan]['HLCB']['km'] ?></td><td><?= $rekapBulanan[$numBulan]['HLCB']['jm'] ?></td><td><?= $rekapBulanan[$numBulan]['HLCB']['sb'] ?></td><td><?= $rekapBulanan[$numBulan]['HLCB']['mn'] ?></td>
+                            <td style="padding: 2px !important; background-color: #f2f2f2; text-align:left; padding-left:4px !important;">HLCB</td><td><?= $rekapBulanan[$numBulan]['HLCB']['sn'] ?></td><td><?= $rekapBulanan[$numBulan]['HLCB']['sl'] ?></td><td><?= $rekapBulanan[$numBulan]['HLCB']['rb'] ?></td><td><?= $rekapBulanan[$numBulan]['HLCB']['km'] ?></td><td><?= $rekapBulanan[$numBulan]['HLCB']['jm'] ?></td>
+                            <td style="color: <?= ($hariKerjaSetting == 5) ? '#c00000' : 'inherit' ?>;"><?= $rekapBulanan[$numBulan]['HLCB']['sb'] ?></td>
+                            <td style="color:#c00000;"><?= $rekapBulanan[$numBulan]['HLCB']['mn'] ?></td>
                         </tr>
                     </table>
 
-                    <!-- LIST TEKS AGENDA -->
                     <div class="mt-1 border-top pt-1 text-dark" style="font-size: 8.5px; line-height: 1.1;">
                         <?php 
                         foreach ($agendaKaldik as $ag): 
@@ -202,7 +216,6 @@
         <?php endforeach; ?>
     </div>
 
-    <!-- 3 BLOK TABEL REKAP HORIZONTAL PROPORSIONAL -->
     <div class="row g-2 mb-3">
         <?php foreach (['HEB' => ['Hari Efektif Belajar (HEB)', '#4f81bd', '#d9e1f2', true], 'HEF' => ['Hari Efektif Fakultatif (HEF)', '#ffc000', '#fff2cc', false], 'HLCB' => ['Hari Libur & Cuti Bersama (HLCB)', '#c00000', '#fce4d6', false]] as $keyKat => $meta): ?>
             <div class="col-4" style="width: 33.333%;">
@@ -215,7 +228,9 @@
                             <?php if ($meta[3]): ?> <th rowspan="2" class="align-middle">%</th> <?php endif; ?>
                         </tr>
                         <tr style="background-color: <?= $meta[2] ?>; color: #000; font-size: 8px;">
-                            <th>Sn</th><th>Sl</th><th>Rb</th><th>Km</th><th>Jm</th><th>Sb</th><th>Mg</th>
+                            <th>Sn</th><th>Sl</th><th>Rb</th><th>Km</th><th>Jm</th>
+                            <th style="color: <?= ($hariKerjaSetting == 5) ? '#c00000' : 'inherit' ?>;">Sb</th>
+                            <th style="color:#c00000;">Mg</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -228,14 +243,18 @@
                         ?>
                         <tr>
                             <td class="text-start ps-2 text-uppercase font-weight-bold text-secondary" style="font-size: 8px;"><?= substr($nM,0,3) ?></td>
-                            <td><?= $hD['sn'] ?></td><td><?= $hD['sl'] ?></td><td><?= $hD['rb'] ?></td><td><?= $hD['km'] ?></td><td><?= $hD['jm'] ?></td><td><?= $hD['sb'] ?></td><td><?= $hD['mn'] ?></td>
+                            <td><?= $hD['sn'] ?></td><td><?= $hD['sl'] ?></td><td><?= $hD['rb'] ?></td><td><?= $hD['km'] ?></td><td><?= $hD['jm'] ?></td>
+                            <td style="color: <?= ($hariKerjaSetting == 5) ? '#c00000' : 'inherit' ?>;"><?= $hD['sb'] ?></td>
+                            <td style="color:#c00000;"><?= $hD['mn'] ?></td>
                             <td class="bg-light-subtle font-weight-bold"><?= $hD['jml'] ?></td>
                             <?php if ($meta[3]): ?> <td class="text-muted"><?= $pB ?>%</td> <?php endif; ?>
                         </tr>
                         <?php endforeach; ?>
                         <tr style="background-color: #e2e2e2; font-weight: 800; border-top: 1.5px solid #000;">
                             <td class="text-start ps-2">JML</td>
-                            <td><?= $tSn ?></td><td><?= $tSl ?></td><td><?= $tRb ?></td><td><?= $tKm ?></td><td><?= $tJm ?></td><td><?= $tSb ?></td><td><?= $tMg ?></td>
+                            <td><?= $tSn ?></td><td><?= $tSl ?></td><td><?= $tRb ?></td><td><?= $tKm ?></td><td><?= $tJm ?></td>
+                            <td style="color: <?= ($hariKerjaSetting == 5) ? '#c00000' : 'inherit' ?>;"><?= $tSb ?></td>
+                            <td style="color:#c00000;"><?= $tMg ?></td>
                             <td class="text-dark" style="font-weight: 900;"><?= ${'totalSemester'.$keyKat} ?></td>
                             <?php if ($meta[3]): ?> <td class="text-success">100%</td> <?php endif; ?>
                         </tr>
@@ -245,7 +264,6 @@
         <?php endforeach; ?>
     </div>
 
-    <!-- PENGESAHAN KEPALA MADRASAH DINAMIS -->
     <div class="d-flex justify-content-end text-end pe-4" style="font-size: 11px; margin-top: 15px;">
         <div class="text-center" style="width: 250px;">
             <p class="mb-0"><?= esc($titiMangsa) ?></p>
