@@ -2,30 +2,33 @@
 # # Operating Specific Junk Files
 # #-------------------------
 
-# # OS X
-# .DS_Store
-# .AppleDouble
-# .LSOverride
+writable/session/*
+!writable/session/index.html
 
-# # OS X Thumbnails
-# ._*
+# OS X
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# OS X Thumbnails
+._*
 
 # # Windows image file caches
 # Thumbs.db
 # ehthumbs.db
 # Desktop.ini
 
-# # Recycle Bin used on file shares
-# $RECYCLE.BIN/
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
 
-# # Windows Installer files
-# *.cab
-# *.msi
-# *.msm
-# *.msp
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
 
-# # Windows shortcuts
-# *.lnk
+# Windows shortcuts
+*.lnk
 
 # # Linux
 # *~
@@ -124,3 +127,4 @@
 
 # /results/
 # /phpunit*.xml
+
