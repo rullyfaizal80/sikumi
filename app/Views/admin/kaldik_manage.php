@@ -137,8 +137,10 @@
                                             <div class="month-box d-flex flex-column h-100">
                                                 <div class="month-title"><?= $namaBulan ?> <?= $targetYear ?></div>
                                                 <div class="grid-days">
-                                                    <div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div><div class="text-danger">Sab</div><div class="text-danger">Min</div>
-                                                </div>
+    <div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div>
+    <div class="<?= ($hariKerjaSetting == 5) ? 'text-danger' : '' ?>">Sab</div>
+    <div class="text-danger">Min</div>
+</div>
                                                 <div class="grid-dates mb-3">
                                                     <?php
                                                     $wFirstDay = date('w', strtotime("$targetYear-$numBulan-01"));
@@ -150,26 +152,31 @@
                                                     }
 
                                                     for ($tgl = 1; $tgl <= $totalDaysInMonth; $tgl++) {
-                                                        $fullDate = sprintf('%s-%02d-%02d', $targetYear, $numBulan, $tgl);
-                                                        $dayOfWeek = date('w', strtotime($fullDate));
-                                                        
-                                                        $styleCustom = '';
-                                                        $titleTooltip = '';
-                                                        $classCell = 'date-cell';
+    $fullDate = sprintf('%s-%02d-%02d', $targetYear, $numBulan, $tgl);
+    $dayOfWeek = date('w', strtotime($fullDate));
+    
+    $styleCustom = '';
+    $titleTooltip = '';
+    $classCell = 'date-cell';
 
-                                                        if ($dayOfWeek == 0 || $dayOfWeek == 6) {
-                                                            $classCell .= ' date-weekend';
-                                                        }
+    // REVISI LOGIKA AKHIR PEKAN DINAMIS
+    if ($dayOfWeek == 0) {
+        // Hari Minggu selalu libur merah
+        $classCell .= ' date-weekend';
+    } elseif ($dayOfWeek == 6 && $hariKerjaSetting == 5) {
+        // Hari Sabtu hanya ikut libur merah jika settingannya adalah 5 hari kerja
+        $classCell .= ' date-weekend';
+    }
 
-                                                        if (isset($mappedEvents[$fullDate])) {
-                                                            $styleCustom = 'background-color: ' . $mappedEvents[$fullDate]['color'] . '; color: #000000 !important; border: 1px solid #bbb; cursor: pointer;';
-                                                            $titleTooltip = 'title="' . esc($mappedEvents[$fullDate]['name']) . '"';
-                                                            
-                                                            echo "<div class='$classCell btn-tanggal-aktif' style='$styleCustom' $titleTooltip data-id='".$mappedEvents[$fullDate]['id']."' data-name='".esc($mappedEvents[$fullDate]['name'])."' data-start='".$mappedEvents[$fullDate]['start_date']."' data-end='".$mappedEvents[$fullDate]['end_date']."' data-cat='".$mappedEvents[$fullDate]['category_id']."'>$tgl</div>";
-                                                        } else {
-                                                            echo "<div class='$classCell btn-tanggal-polos' style='cursor: pointer;' data-date='$fullDate'>$tgl</div>";
-                                                        }
-                                                    }
+    if (isset($mappedEvents[$fullDate])) {
+        $styleCustom = 'background-color: ' . $mappedEvents[$fullDate]['color'] . '; color: #000000 !important; border: 1px solid #bbb; cursor: pointer;';
+        $titleTooltip = 'title="' . esc($mappedEvents[$fullDate]['name']) . '"';
+        
+        echo "<div class='$classCell btn-tanggal-aktif' style='$styleCustom' $titleTooltip data-id='".$mappedEvents[$fullDate]['id']."' data-name='".esc($mappedEvents[$fullDate]['name'])."' data-start='".$mappedEvents[$fullDate]['start_date']."' data-end='".$mappedEvents[$fullDate]['end_date']."' data-cat='".$mappedEvents[$fullDate]['category_id']."'>$tgl</div>";
+    } else {
+        echo "<div class='$classCell btn-tanggal-polos' style='cursor: pointer;' data-date='$fullDate'>$tgl</div>";
+    }
+}
                                                     ?>
                                                 </div>
 
@@ -186,10 +193,14 @@
                                                             elseif ($idCat === 2 || $idCat === 3) { $matriksHari['HLCB'][$cDay]++; }
                                                             else { $matriksHari['HEB'][$cDay]++; }
                                                         } else {
-                                                            if ($cDay == 0 || $cDay == 6) { $matriksHari['HLCB'][$cDay]++; }
-                                                            else { $matriksHari['HEB'][$cDay]++; }
-                                                        }
-                                                    }
+        // REVISI LOGIKA HLCB POLOS BULANAN:
+        if ($cDay == 0 || ($cDay == 6 && $hariKerjaSetting == 5)) { 
+            $matriksHari['HLCB'][$cDay]++; 
+        } else { 
+            $matriksHari['HEB'][$cDay]++; 
+        }
+    }
+}
                                                     ?>
                                                     <table class="table table-bordered text-center my-1 py-0 align-middle shadow-sm bg-white" style="font-size: 10px; line-height: 1.1; font-weight: 700; border: 1px solid #dee2e6;">
                                                         <thead>
@@ -293,11 +304,11 @@
                                                     $kategoriHari = 'HLCB';
                                                 }
                                             } else {
-                                                // Jika polos, Sabtu dan Minggu otomatis HLCB
-                                                if ($dayOfWeek == 0 || $dayOfWeek == 6) {
-                                                    $kategoriHari = 'HLCB';
-                                                }
-                                            }
+    // REVISI LOGIKA PENENTUAN HLCB POLOS ANALISIS SEMESTER:
+    if ($dayOfWeek == 0 || ($dayOfWeek == 6 && $hariKerjaSetting == 5)) {
+        $kategoriHari = 'HLCB';
+    }
+}
 
                                             // Akumulasikan ke dalam matriks hari bulanan secara presisi
                                             $rekapBulanan[$numBulan][$kategoriHari][$dayLabel]++;

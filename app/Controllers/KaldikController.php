@@ -7,6 +7,7 @@ use App\Controllers\BaseController;
 class KaldikController extends BaseController
 {
     // Halaman Utama Pengelolaan & Penampilan Kalender Akademik
+    // Halaman Utama Pengelolaan & Penampilan Kalender Akademik
     public function index()
     {
         $db = \Config\Database::connect();
@@ -21,11 +22,20 @@ class KaldikController extends BaseController
         $daftarKelas = $db->table('master_classes')->get()->getResultArray();
         $daftarWarna = $db->table('master_categories')->get()->getResultArray();
 
+        // [TAMBAHAN BARU]: Ambil opsi hari kerja dari tabel settings (Fallback default ke 5 jika kosong)
+        $hariKerjaSetting = 5;
+        if ($db->tableExists('settings')) {
+            $getSetting = $db->table('settings')->where('key', 'kaldik_hari_kerja')->get()->getRowArray();
+            if ($getSetting) {
+                $hariKerjaSetting = (int)$getSetting['value'];
+            }
+        }
+
         // 4. Tarik data agenda Kaldik yang sudah diploting berdasarkan tahun aktif dan kelas terpilih
         $agendaKaldik = [];
         if ($tahunAktif) {
             $agendaKaldik = $db->table('academic_calendars ac')
-                   ->select('ac.*, mc.category_name, mc.color_hex, ac.category_id') // <-- TAMBAHKAN ac.category_id DI SINI
+                   ->select('ac.*, mc.category_name, mc.color_hex, ac.category_id')
                    ->join('master_categories mc', 'mc.id = ac.category_id')
                    ->where('ac.academic_year_id', $tahunAktif['id'])
                    ->where('ac.class_id', $kelasTerpilih)
@@ -35,11 +45,12 @@ class KaldikController extends BaseController
         }
 
         $data = [
-            'tahunAktif'    => $tahunAktif,
-            'kelasTerpilih' => $kelasTerpilih,
-            'daftarKelas'   => $daftarKelas,
-            'daftarWarna'   => $daftarWarna,
-            'agendaKaldik'  => $agendaKaldik
+            'tahunAktif'       => $tahunAktif,
+            'kelasTerpilih'    => $kelasTerpilih,
+            'daftarKelas'      => $daftarKelas,
+            'daftarWarna'      => $daftarWarna,
+            'agendaKaldik'     => $agendaKaldik,
+            'hariKerjaSetting' => $hariKerjaSetting // <-- SUNTIKKAN VARIABEL BARU INI KE VIEW
         ];
 
         return view('admin/kaldik_manage', $data);
