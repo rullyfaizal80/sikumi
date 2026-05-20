@@ -2,8 +2,10 @@
 # # Operating Specific Junk Files
 # #-------------------------
 
-writable/session/*
-!writable/session/index.html
+# Mengabaikan semua isi folder writable termasuk debugbar, session, dan cache
+writable/*
+!writable/index.html
+!writable/.gitkeep
 
 # OS X
 .DS_Store
