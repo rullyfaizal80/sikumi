@@ -1,0 +1,13 @@
+# Perintah otomatis memotong file dari paket ZIP agar hemat Inode di cPanel
+/.gitattributes  export-ignore
+/.gitignore      export-ignore
+/tests/          export-ignore
+/phpunit.xml     export-ignore
+/README.md       export-ignore
+/spark           export-ignore
+
+# Pastikan folder writable dikirim dalam kondisi kosong tanpa file sampah
+/writable/cache/*    export-ignore
+/writable/debugbar/* export-ignore
+/writable/logs/*     export-ignore
+/writable/session/*  export-ignore

@@ -39,8 +39,8 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes) {
 // ========================================================
 // JALUR RUTE LOGIN GOOGLE SSO (SINGLE SIGN-ON) SIKUMI
 // ========================================================
-$routes->get('auth/google', 'GoogleAuthController::redirectToGoogle');
-$routes->get('auth/google/callback', 'GoogleAuthController::handleCallback');
+// $routes->get('auth/google', 'GoogleAuthController::redirectToGoogle');
+// $routes->get('auth/google/callback', 'GoogleAuthController::handleCallback');
 
 // Tambahkan ini di dalam kelompok rute yang memiliki filter akses login Anda
 $routes->group('admin', ['filter' => 'session'], static function ($routes) {
