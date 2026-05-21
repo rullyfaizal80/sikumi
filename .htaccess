@@ -1,0 +1,17 @@
+# ======================================================================
+# PROTEKSI ROOT UTAMA & ROUTING VIEW KUSTOM - SIKUMI
+# ======================================================================
+
+# LEMPAR ERROR 403 KE ROUTE CODEIGNITER SECARA OTOMATIS
+ErrorDocument 403 /sikumi/public/index.php/blocked
+
+# 1. Matikan fitur Directory Browsing di seluruh level folder
+Options -Indexes
+
+# 2. Blokir akses langsung via URL ke folder sensitif selain 'public'
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Jika user mengetik manual folder app, system, writable, atau file rahasia .env
+    RewriteRule ^(app|system|writable|\.env) - [F,L]
+</IfModule>

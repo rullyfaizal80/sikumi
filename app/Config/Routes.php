@@ -52,4 +52,7 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes) {
     $routes->get('kaldik/print', 'KaldikController::printKaldik');
 });
 
+$routes->get('blocked', function() {
+    return view('403_kustom'); // Mengarah ke app/Views/403_kustom.php
+});
 
