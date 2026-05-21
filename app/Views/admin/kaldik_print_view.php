@@ -63,8 +63,10 @@
             <img src="<?= base_url('assets/img/logo_kaldik1.png') ?>" alt="Logo Yayasan" style="height: 50px; width: auto; object-fit: contain;">
             
             <div class="text-center flex-grow-1 mx-4">
-                <h5 class="my-0 font-weight-bold" style="font-weight: 800; color: #002060; font-size: 15px; letter-spacing: 0.5px;">KALENDER PENDIDIKAN MIMHa TSANAWIYAH INFORMATIKA</h5>
-                <h6 class="my-1 font-weight-bold" style="font-weight: 700; font-size: 12px;">TAHUN PELAJARAN <?= $tahunAktif ? $tahunAktif['academic_year'] : '-' ?></h6>
+                <h5 class="my-0 font-weight-bold" style="font-weight: 800; color: #002060; font-size: 15px; letter-spacing: 0.5px;">
+    KALENDER PENDIDIKAN <?= strtoupper(esc($namaMadrasah)) ?>
+</h5>
+<h6 class="my-1 font-weight-bold" style="font-weight: 700; font-size: 12px;">TAHUN PELAJARAN <?= $tahunAktif ? $tahunAktif['academic_year'] : '-' ?></h6>
                 <span class="badge font-weight-bold text-uppercase text-white px-3" style="font-size: 10px; background-color: #002060 !important; border-radius: 3px; padding: 2px 8px;">SEMESTER <?= $tahunAktif ? $tahunAktif['semester'] : '-' ?></span>
             </div>
             
@@ -267,7 +269,7 @@
     <div class="d-flex justify-content-end text-end pe-4" style="font-size: 11px; margin-top: 15px;">
         <div class="text-center" style="width: 250px;">
             <p class="mb-0"><?= esc($titiMangsa) ?></p>
-            <p class="font-weight-bold mb-4" style="font-weight: 700;">Kepala Madrasah Tsanawiyah,</p>
+            <p class="font-weight-bold mb-4" style="font-weight: 700;">Kepala Madrasah,</p>
             <br>
             <p class="font-weight-bold mb-0 border-bottom border-dark d-inline-block" style="font-weight: 800; text-decoration: underline;"><?= esc($kepalaNama) ?></p>
             <p class="text-muted small mb-0" style="font-size: 9px;">NPK. <?= esc($kepalaNpk) ?></p>
