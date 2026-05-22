@@ -10,20 +10,18 @@ class UserGuruController extends BaseController
     {
         $db = \Config\Database::connect();
 
-        // 1. Ambil Parameter Pencarian & Halaman Aktif dari URL
         $keyword = $this->request->getGet('search') ?? '';
         $page    = (int) ($this->request->getGet('page_guru') ?? 1);
         if ($page < 1) $page = 1;
 
-        // 2. TENTUKAN LIMIT DATA PER HALAMAN (Ubah dari 5 menjadi 10)
         $limit = 10; 
         $offset = ($page - 1) * $limit;
 
-        // 3. Buat Query Builder Utama (Sama seperti kemarin, menggunakan LEFT JOIN)
         $builder = $db->table('users u')
-                      ->select('u.id, u.username, u.active, u.status, u.created_at, ai.secret as email')
+                      ->select('u.id, u.username, u.active, u.status, u.created_at, ai.secret as email, tp.nip, tp.nuptk, tp.gender, tp.phone, tp.address')
                       ->join('auth_identities ai', 'ai.user_id = u.id AND ai.type = "email_password"', 'left')
                       ->join('auth_groups_users agu', 'agu.user_id = u.id', 'left')
+                      ->join('teacher_profiles tp', 'tp.user_id = u.id', 'left')
                       ->where('u.deleted_at', null)
                       ->where('(agu.group != "siswa" OR agu.group IS NULL)');
 
@@ -31,52 +29,133 @@ class UserGuruController extends BaseController
             $builder->groupStart()
                     ->like('u.username', $keyword)
                     ->orLike('ai.secret', $keyword)
+                    ->orLike('tp.nip', $keyword)
                     ->groupEnd();
         }
 
-        // 4. HITUNG TOTAL DATA SEBELUM DIPOTONG (Untuk dasar hitungan tombol halaman)
         $totalBuilder = clone $builder;
         $totalData = $totalBuilder->groupBy('u.id')->countAllResults();
 
-        // 5. AMBIL DATA YANG SUDAH DIPOTONG LIMIT & OFFSET
         $daftarGuru = $builder->groupBy('u.id')
                               ->orderBy('u.username', 'ASC')
                               ->limit($limit, $offset)
                               ->get()
                               ->getResultArray();
 
-        // Hitung total lembar halaman yang tersedia
         $totalHalaman = ceil($totalData / $limit);
         if ($totalHalaman < 1) $totalHalaman = 1;
 
-        // 6. Ambil data lencana jabatan (tetap sama)
         $peranUser = [];
+        $historiGuru = [];
+
         if (!empty($daftarGuru)) {
             $userIds = array_column($daftarGuru, 'id');
+            
             $grupRaw = $db->table('auth_groups_users agu')
                           ->select('agu.user_id, cr.role_title')
-                          ->join('custom_roles cr', 'cr.role_name = agu.group')
+                          ->join('custom_roles cr', 'cr.role_name = agu.group', 'left')
                           ->whereIn('agu.user_id', $userIds)
                           ->get()
                           ->getResultArray();
-            
             foreach ($grupRaw as $row) {
-                $peranUser[$row['user_id']][] = $row['role_title'];
+                if (!empty($row['role_title'])) {
+                    $peranUser[$row['user_id']][] = $row['role_title'];
+                }
+            }
+
+            $rawHistori = $db->table('teacher_academic_history tah')
+                             ->select('tah.teacher_profile_id, tp.user_id, tah.assignment_role, tah.assignment_detail, tah.created_at')
+                             ->join('teacher_profiles tp', 'tp.id = tah.teacher_profile_id', 'inner')
+                             ->whereIn('tp.user_id', $userIds)
+                             ->orderBy('tah.id', 'DESC')
+                             ->get()
+                             ->getResultArray();
+            foreach ($rawHistori as $histori) {
+                $historiGuru[$histori['user_id']][] = $histori;
             }
         }
 
-        // 7. Kirim semua data perhitungan ke View
+        // ========================================================
+        // AMBIL DATA DROP-DOWN DINAMIS DARI DATABASE
+        // ========================================================
+        // 1. Ambil list Jabatan selain 'siswa'
+        $listRoles = $db->table('custom_roles')
+                        ->where('role_name !=', 'siswa')
+                        ->orderBy('id', 'ASC')
+                        ->get()
+                        ->getResultArray();
+
+        // 2. Ambil list Tahun Pelajaran (Urutkan yang aktif 'is_active = 1' di paling atas)
+        $listAcademicYears = $db->table('academic_years')
+                               ->orderBy('is_active', 'DESC')
+                               ->orderBy('academic_year', 'DESC')
+                               ->orderBy('semester', 'ASC')
+                               ->get()
+                               ->getResultArray();
+
         $data = [
-            'daftarGuru'   => $daftarGuru,
-            'peranUser'    => $peranUser,
-            'keyword'      => $keyword,
-            'page'         => $page,
-            'limit'        => $limit,
-            'totalData'    => $totalData,
+            'daftarGuru'        => $daftarGuru,
+            'peranUser'         => $peranUser,
+            'historiGuru'       => $historiGuru,
+            'listRoles'         => $listRoles,         // Kirim ke view
+            'listAcademicYears' => $listAcademicYears, // Kirim ke view
+            'keyword'           => $keyword,
+            'page'              => $page,
+            'limit'             => $limit,
+            'totalData'         => $totalData,
             'totalHalaman' => $totalHalaman
         ];
 
         return view('admin/user_guru_view', $data);
+    }
+
+    /**
+     * FUNGSI PENGHAPUSAN PINTAR (OPTIMIZED: Mengatasi Akun Dummy Tanpa Profil)
+     */
+    public function deleteGuru($id)
+    {
+        $db = \Config\Database::connect();
+
+        // 1. Cek profil guru terlebih dahulu
+        $profile = $db->table('teacher_profiles')->where('user_id', $id)->get()->getRow();
+
+        $db->transStart();
+
+        // JIKA TIDAK PUNYA PROFIL (Akun dummy lama hasil suntik massal SQL)
+        if (!$profile) {
+            $db->table('auth_groups_users')->where('user_id', $id)->delete();
+            $db->table('auth_identities')->where('user_id', $id)->delete();
+            $db->table('users')->where('id', $id)->delete(); // Clean Delete langsung
+
+            $db->transComplete();
+            return redirect()->back()->with('sukses', '🗑️ Akun dummy lama berhasil dibersihkan seutuhnya (Clean Delete).');
+        }
+
+        // JIKA MEMILIKI PROFIL: Hitung jumlah riwayat penugasan akademiknya
+        $jumlahRiwayat = $db->table('teacher_academic_history')
+                            ->where('teacher_profile_id', $profile->id)
+                            ->countAllResults();
+
+        if ($jumlahRiwayat <= 1) {
+            // SKENARIO A: CLEAN DELETE (HAPUS TOTAL GURU BARU)
+            $db->table('teacher_academic_history')->where('teacher_profile_id', $profile->id)->delete();
+            $db->table('teacher_profiles')->where('id', $profile->id)->delete();
+            $db->table('auth_groups_users')->where('user_id', $id)->delete();
+            $db->table('auth_identities')->where('user_id', $id)->delete();
+            $db->table('users')->where('id', $id)->delete();
+
+            $db->transComplete();
+            return redirect()->back()->with('sukses', '🗑️ Akun guru baru berhasil dihapus bersih dari sistem.');
+        } else {
+            // SKENARIO B: SOFT DELETE (GURU BERSEJARAH)
+            $db->table('users')->where('id', $id)->update([
+                'deleted_at' => date('Y-m-d H:i:s'),
+                'status'     => 'banned'
+            ]);
+
+            $db->transComplete();
+            return redirect()->back()->with('sukses', '🔒 Akun diarsipkan (Soft Delete). Data riwayat masa lalu tetap aman.');
+        }
     }
 
     /**
@@ -186,4 +265,5 @@ class UserGuruController extends BaseController
 
         return redirect()->back()->with('sukses', '✅ Sukses! Akun login, profil, dan rekam jejak tugas pertama ' . $username . ' berhasil diterbitkan.');
     }
+    
 }

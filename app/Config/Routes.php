@@ -67,4 +67,6 @@ $routes->group('admin', ['filter' => 'session'], function($routes) {
     // RUTE BARU UNTUK SAKLAR STATUS LOGIN (Menerima ID)
     $routes->get('users/guru-toggle/(:num)', 'UserGuruController::toggleStatus/$1');
     $routes->get('users/siswa-toggle/(:num)', 'UserSiswaController::toggleStatus/$1');
+
+    $routes->get('users/guru-delete/(:num)', 'UserGuruController::deleteGuru/$1');
 });

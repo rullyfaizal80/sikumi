@@ -95,12 +95,23 @@
                                         <span class="badge bg-primary">✅ Diizinkan</span>
                                     <?php endif; ?>
                                 </td>
+                                
                                 <td class="text-center">
-                                    <?php if (strtolower($guru['status'] ?? '') === 'banned'): ?>
-                                        <a href="<?= base_url('admin/users/guru-toggle/' . $guru['id']) ?>" class="btn btn-xs btn-outline-success py-0 px-2" style="font-size: 0.75rem;">✔️ Pulihkan</a>
-                                    <?php else: ?>
-                                        <a href="<?= base_url('admin/users/guru-toggle/' . $guru['id']) ?>" class="btn btn-xs btn-outline-danger py-0 px-2" style="font-size: 0.75rem;" onclick="return confirm('Bekukan akses login akun ini?')">🚫 Blokir</a>
-                                    <?php endif; ?>
+                                    <div class="d-flex justify-content-center gap-1">
+                                        <button type="button" class="btn btn-xs btn-info text-white py-0 px-2" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#modalDetailGuru<?= $guru['id'] ?>">
+                                            👁️ Detail
+                                        </button>
+
+                                        <?php if (strtolower($guru['status'] ?? '') === 'banned'): ?>
+                                            <a href="<?= base_url('admin/users/guru-toggle/' . $guru['id']) ?>" class="btn btn-xs btn-outline-success py-0 px-2" style="font-size: 0.75rem;">✔️ Izinkan</a>
+                                        <?php else: ?>
+                                            <a href="<?= base_url('admin/users/guru-toggle/' . $guru['id']) ?>" class="btn btn-xs btn-outline-dark py-0 px-2" style="font-size: 0.75rem;" onclick="return confirm('Bekukan akses login akun ini?')">🚫 Blokir</a>
+                                        <?php endif; ?>
+
+                                        <a href="<?= base_url('admin/users/guru-delete/' . $guru['id']) ?>" class="btn btn-xs btn-danger py-0 px-2" style="font-size: 0.75rem;" onclick="return confirm('Apakah Anda yakin ingin menghapus akun ini? Sistem akan mendeteksi otomatis antara hapus bersih atau arsip.')">
+                                            🗑️ Hapus
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -197,16 +208,25 @@
                             <div class="col-md-4">
                                 <label class="small font-weight-bold">Tahun Pelajaran <span class="text-danger">*</span></label>
                                 <select name="academic_year_id" class="form-control form-control-sm" required>
-                                    <option value="1">2026/2027 - Ganjil</option> 
+                                    <option value="">-- Pilih Tahun Pelajaran --</option>
+                                    <?php if(!empty($listAcademicYears)): ?>
+                                        <?php foreach($listAcademicYears as $ay): ?>
+                                            <option value="<?= $ay['id'] ?>" <?= $ay['is_active'] == 1 ? 'selected' : '' ?>>
+                                                <?= esc($ay['academic_year']) ?> - <?= esc($ay['semester']) ?> <?= $ay['is_active'] == 1 ? '🔥 (Aktif Saat Ini)' : '' ?>
+                                            </option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </select>
                             </div>
                             <div class="col-md-4">
                                 <label class="small font-weight-bold">Jabatan / Role <span class="text-danger">*</span></label>
                                 <select name="assignment_role" class="form-control form-control-sm" required>
-                                    <option value="guru_pengajar">Guru Pengajar</option>
-                                    <option value="waka_kurikulum">Waka Kurikulum</option>
-                                    <option value="waka_kesiswaan">Waka Kesiswaan</option>
-                                    <option value="superadmin">Super Admin / Kamad</option>
+                                    <option value="">-- Pilih Jabatan --</option>
+                                    <?php if(!empty($listRoles)): ?>
+                                        <?php foreach($listRoles as $role): ?>
+                                            <option value="<?= esc($role['role_name']) ?>"><?= esc($role['role_title']) ?></option>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
                                 </select>
                             </div>
                             <div class="col-md-4">
@@ -224,6 +244,91 @@
             </div>
         </div>
     </div>
+
+    <?php if (!empty($daftarGuru)): ?>
+        <?php foreach ($daftarGuru as $guru): ?>
+            <div class="modal fade" id="modalDetailGuru<?= $guru['id'] ?>" tabindex="-1" aria-labelledby="labelModalDetail<?= $guru['id'] ?>" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header bg-info text-white">
+                            <h5 class="modal-title font-weight-bold" id="labelModalDetail<?= $guru['id'] ?>">👁️ Lembar Data Lengkap & Rekam Jejak Guru</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body bg-light">
+                            
+                            <div class="card card-body border-0 shadow-sm mb-4">
+                                <h6 class="text-info font-weight-bold mb-3">👤 Biodata Profil Guru</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <small class="text-muted d-block">Nama Lengkap & Gelar</small>
+                                        <strong class="text-dark"><?= esc($guru['username']) ?></strong>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted d-block">Email Akun Resmi</small>
+                                        <span class="text-dark"><?= esc($guru['email']) ?></span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted d-block">Nomor Induk Pegawai (NIP)</small>
+                                        <span class="text-dark"><?= esc($guru['nip'] ?? '-') ?></span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted d-block">NUPTK Kedinasan</small>
+                                        <span class="text-dark"><?= esc($guru['nuptk'] ?? '-') ?></span>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted d-block">Jenis Kelamin</small>
+                                        <span class="text-dark"><?= ($guru['gender'] ?? '') === 'L' ? 'Laki-laki' : (($guru['gender'] ?? '') === 'P' ? 'Perempuan' : '-') ?></span>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <small class="text-muted d-block">Tanggal Pembuatan Akun</small>
+                                        <span class="text-dark"><?= date('d F Y (H:i)', strtotime($guru['created_at'])) ?> WIB</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="card card-body border-0 shadow-sm">
+                                <h6 class="text-primary font-weight-bold mb-3">⏳ Sejarah Riwayat Jabatan & Tugas Mengajar</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.85rem;">
+                                        <thead class="table-secondary">
+                                            <tr>
+                                                <th style="width: 50px;" class="text-center">No</th>
+                                                <th>Jabatan / Role Pelayanan</th>
+                                                <th>Detail Tugas / Kelas Ampuan</th>
+                                                <th class="text-center">Tanggal Diplot</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php if (isset($historiGuru[$guru['id']])): ?>
+                                                <?php $nh = 1; foreach ($historiGuru[$guru['id']] as $h): ?>
+                                                    <tr>
+                                                        <td class="text-center font-weight-bold"><?= $nh++ ?></td>
+                                                        <td>
+                                                            <span class="badge bg-primary px-2"><?= esc(str_replace('_', ' ', strtoupper($h['assignment_role']))) ?></span>
+                                                        </td>
+                                                        <td><strong><?= esc($h['assignment_detail'] ?? 'Guru Bidang Studi') ?></strong></td>
+                                                        <td class="text-center text-muted"><?= date('d-m-Y', strtotime($h['created_at'])) ?></td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            <?php else: ?>
+                                                <tr>
+                                                    <td colspan="4" class="text-center text-muted italic py-3">Belum memiliki riwayat penugasan tahunan tercatat.</td>
+                                                </tr>
+                                            <?php endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup Jendela</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
 
      <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
     <script src="<?= base_url('assets/js/adminlte.min.js') ?>"></script>
