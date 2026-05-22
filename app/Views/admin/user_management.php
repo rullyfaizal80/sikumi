@@ -49,10 +49,10 @@
                                 <!-- KODE BARU: HEADER TABEL DILENGKAPI TOMBOL TAMBAH GURU -->
 <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
     <h5 class="card-title mb-0" style="font-weight: 600;">👤 Daftar Akun Guru & Staf</h5>
-    <!-- Tombol Pemicu Modal Pop-up Tambah User -->
+    <!-- Tombol Pemicu Modal Pop-up Tambah User
     <button type="button" class="btn btn-warning btn-sm text-white font-weight-bold shadow-sm" style="background-color: #FF9F00; border: none;" data-bs-toggle="modal" data-bs-target="#modalTambahUser">
         <i class="bi bi-person-plus-fill me-1"></i> ➕ Tambah Akun Guru
-    </button>
+    </button> -->
 </div>
                                 <div class="card-body p-0">
                                     <div class="table-responsive">
@@ -103,7 +103,38 @@
                                             </tbody>
                                         </table>
                                     </div>
-                                </div>
+                                </div> <?php if ($pager && $pager->getPageCount() > 1): ?>
+                                    <?php 
+                                        $currentPage = $pager->getCurrentPage();
+                                        $pageCount   = $pager->getPageCount();
+                                    ?>
+                                    <div class="card-footer bg-white border-top d-flex justify-content-between align-items-center py-2">
+                                        <div class="small text-muted">
+                                            Menampilkan halaman <strong><?= $currentPage ?></strong> dari <strong><?= $pageCount ?></strong> halaman.
+                                        </div>
+                                        <nav aria-label="Navigasi Halaman">
+                                            <ul class="pagination pagination-sm mb-0">
+                                                
+                                                <li class="page-item <?= $currentPage <= 1 ? 'disabled' : '' ?>">
+                                                    <a class="page-link text-dark" href="<?= base_url('admin/users?page=' . ($currentPage - 1)) ?>">⏮️</a>
+                                                </li>
+
+                                                <?php for ($i = 1; $i <= $pageCount; $i++): ?>
+                                                    <li class="page-item <?= $currentPage == $i ? 'active' : '' ?>">
+                                                        <a class="page-link <?= $currentPage == $i ? 'bg-warning border-warning text-dark font-weight-bold' : 'text-dark' ?>" href="<?= base_url('admin/users?page=' . $i) ?>">
+                                                            <?= $i ?>
+                                                        </a>
+                                                    </li>
+                                                <?php endfor; ?>
+
+                                                <li class="page-item <?= $currentPage >= $pageCount ? 'disabled' : '' ?>">
+                                                    <a class="page-link text-dark" href="<?= base_url('admin/users?page=' . ($currentPage + 1)) ?>">⏭️</a>
+                                                </li>
+                                                
+                                            </ul>
+                                        </nav>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         </div>
 

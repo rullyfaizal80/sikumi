@@ -8,15 +8,22 @@ use App\Models\CustomRoleModel;
 
 class AdminController extends BaseController
 {
-    public function index()
+
+public function index()
 {
     $userModel = new UserModel();
-    $daftarUser = $userModel->findAll();
-
     $roleModel = new CustomRoleModel();
+
+    // 1. GANTI findAll() MENJADI paginate() UNTUK MEMBATASI DATA (Misal: 10 data per halaman)
+    // Fitur ini otomatis membaca parameter '?page=' dari URL Anda
+    $daftarUser = $userModel->paginate(10, 'default');
+
+    // 2. Ambil objek pager untuk menggerakkan komponen navigasi tombol di halaman view
+    $pager = $userModel->pager;
+
     $daftarRole = $roleModel->findAll();
 
-    // KODE BARU: Melakukan JOIN agar mendapatkan role_title (Nama Resmi) dari database
+    // KODE BARU Anda tetap dipertahankan dengan sempurna
     $db = \Config\Database::connect();
     $builder = $db->table('auth_groups_users agu');
     $builder->select('agu.user_id, cr.role_title');
@@ -26,13 +33,15 @@ class AdminController extends BaseController
     // Kelompokkan Nama Resmi Peran berdasarkan ID Pengguna
     $peranUser = [];
     foreach ($userGrupRaw as $row) {
-        $peranUser[$row['user_id']][] = $row['role_title']; // Menggunakan role_title, bukan group
+        $peranUser[$row['user_id']][] = $row['role_title'];
     }
 
+    // 3. Masukkan variabel 'pager' ke dalam array data kiriman ke view
     $data = [
         'users'      => $daftarUser,
-        'roles'      => $daftarRole, // Mengirimkan seluruh daftar peran yang ada di sistem
-        'peranUser'  => $peranUser
+        'roles'      => $daftarRole, 
+        'peranUser'  => $peranUser,
+        'pager'      => $pager // <-- Wajib dikirimkan untuk mencetak tombol halaman
     ];
 
     return view('admin/user_management', $data);
