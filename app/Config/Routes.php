@@ -56,3 +56,13 @@ $routes->get('blocked', function() {
     return view('403_kustom'); // Mengarah ke app/Views/403_kustom.php
 });
 
+$routes->group('admin', ['filter' => 'session'], function($routes) {
+    // ... rute lama Anda ...
+    $routes->get('users/guru-tes', 'UserGuruController::index');
+    $routes->get('users/siswa-tes', 'UserSiswaController::index');
+
+    // RUTE BARU UNTUK SAKLAR STATUS LOGIN (Menerima ID)
+    $routes->get('users/guru-toggle/(:num)', 'UserGuruController::toggleStatus/$1');
+    $routes->get('users/siswa-toggle/(:num)', 'UserSiswaController::toggleStatus/$1');
+});
+
