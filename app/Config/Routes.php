@@ -69,4 +69,11 @@ $routes->group('admin', ['filter' => 'session'], function($routes) {
     $routes->get('users/siswa-toggle/(:num)', 'UserSiswaController::toggleStatus/$1');
 
     $routes->get('users/guru-delete/(:num)', 'UserGuruController::deleteGuru/$1');
+    $routes->post('users/guru-update/(:num)', 'UserGuruController::updateGuru/$1');
+
+    $routes->post('users/guru-update-history/(:num)', 'UserGuruController::updateHistory/$1');
+    $routes->get('users/guru-delete-history/(:num)', 'UserGuruController::deleteHistory/$1');
+
+    $routes->get('users/guru-trash', 'UserGuruController::trashGuru');
+    $routes->get('users/guru-restore/(:num)', 'UserGuruController::restoreGuru/$1');
 });

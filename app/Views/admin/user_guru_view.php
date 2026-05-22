@@ -30,9 +30,15 @@
                     <div class="card-header bg-white py-3">
                 <div class="row align-items-center">
                     <div class="col-md-4">
-                        <button type="button" class="btn btn-warning text-white btn-sm font-weight-bold" data-bs-toggle="modal" data-bs-target="#modalTambahGuru">
-                            ➕ Tambah Guru Baru
-                        </button>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+    <button type="button" class="btn btn-primary btn-sm font-weight-bold" data-bs-toggle="modal" data-bs-target="#modalTambahGuru">
+        ➕ Tambah Guru Baru
+    </button>
+
+    <a href="<?= base_url('admin/users/guru-trash') ?>" class="btn btn-outline-secondary btn-sm font-weight-bold">
+        📂 Lihat Arsip Guru Terhapus (Trash)
+    </a>
+</div>
                     </div>
                     <div class="col-md-8">
                         <form action="<?= base_url('admin/users/guru-tes') ?>" method="GET" class="d-flex justify-content-end">
@@ -100,6 +106,10 @@
                                     <div class="d-flex justify-content-center gap-1">
                                         <button type="button" class="btn btn-xs btn-info text-white py-0 px-2" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#modalDetailGuru<?= $guru['id'] ?>">
                                             👁️ Detail
+                                        </button>
+
+                                        <button type="button" class="btn btn-xs btn-warning text-white py-0 px-2" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#modalEditGuru<?= $guru['id'] ?>">
+                                            📝 Edit
                                         </button>
 
                                         <?php if (strtolower($guru['status'] ?? '') === 'banned'): ?>
@@ -293,7 +303,7 @@
                                         <thead class="table-secondary">
                                             <tr>
                                                 <th style="width: 50px;" class="text-center">No</th>
-                                                <th>Jabatan / Role Pelayanan</th>
+                                                <th style="width: 160px;">Tahun Pelajaran</th> <th>Jabatan / Role Pelayanan</th>
                                                 <th>Detail Tugas / Kelas Ampuan</th>
                                                 <th class="text-center">Tanggal Diplot</th>
                                             </tr>
@@ -304,6 +314,10 @@
                                                     <tr>
                                                         <td class="text-center font-weight-bold"><?= $nh++ ?></td>
                                                         <td>
+                                                            <span class="text-dark font-weight-bold"><?= esc($h['academic_year'] ?? '-') ?></span>
+                                                            <small class="text-muted d-block" style="font-size: 0.75rem;">Semester <?= esc($h['semester'] ?? '-') ?></small>
+                                                        </td>
+                                                        <td>
                                                             <span class="badge bg-primary px-2"><?= esc(str_replace('_', ' ', strtoupper($h['assignment_role']))) ?></span>
                                                         </td>
                                                         <td><strong><?= esc($h['assignment_detail'] ?? 'Guru Bidang Studi') ?></strong></td>
@@ -312,7 +326,7 @@
                                                 <?php endforeach; ?>
                                             <?php else: ?>
                                                 <tr>
-                                                    <td colspan="4" class="text-center text-muted italic py-3">Belum memiliki riwayat penugasan tahunan tercatat.</td>
+                                                    <td colspan="5" class="text-center text-muted italic py-3">Belum memiliki riwayat penugasan tahunan tercatat.</td>
                                                 </tr>
                                             <?php endif; ?>
                                         </tbody>
@@ -321,8 +335,149 @@
                             </div>
 
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup Jendela</button>
+                        </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+
+    <?php if (!empty($daftarGuru)): ?>
+        <?php foreach ($daftarGuru as $guru): ?>
+            <div class="modal fade" id="modalEditGuru<?= $guru['id'] ?>" tabindex="-1" aria-labelledby="labelModalEdit<?= $guru['id'] ?>" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header bg-warning text-white">
+                            <h5 class="modal-title font-weight-bold" id="labelModalEdit<?= $guru['id'] ?>">📝 Formulir Ubah & Manajemen Riwayat Guru</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body bg-light">
+                            
+                            <form action="<?= base_url('admin/users/guru-update/' . $guru['id']) ?>" method="POST" class="mb-4">
+                                <?= csrf_field() ?>
+                                
+                                <h6 class="text-warning font-weight-bold mb-3">🔑 PEMBARUAN DATA LOGIN</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">Nama Lengkap & Gelar <span class="text-danger">*</span></label>
+                                        <input type="text" name="username" class="form-control form-control-sm" value="<?= esc($guru['username']) ?>" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">Email Resmi <span class="text-danger">*</span></label>
+                                        <input type="email" name="email" class="form-control form-control-sm" value="<?= esc($guru['email']) ?>" required>
+                                    </div>
+                                </div>
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">Ganti Password (Kosongkan jika tidak diubah)</label>
+                                        <input type="password" name="password" class="form-control form-control-sm" placeholder="Isi hanya jika ingin ganti password baru">
+                                    </div>
+                                </div>
+
+                                <hr>
+                                <h6 class="text-warning font-weight-bold mb-3">📋 PROPERTI PERSONAL (STATIS)</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">NIP (Nomor Induk Pegawai)</label>
+                                        <input type="text" name="nip" class="form-control form-control-sm" value="<?= esc($guru['nip'] ?? '') ?>" placeholder="18 digit NIP">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">NUPTK</label>
+                                        <input type="text" name="nuptk" class="form-control form-control-sm" value="<?= esc($guru['nuptk'] ?? '') ?>" placeholder="16 digit NUPTK">
+                                    </div>
+                                </div>
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">Jenis Kelamin <span class="text-danger">*</span></label>
+                                        <select name="gender" class="form-control form-control-sm" required>
+                                            <option value="L" <?= ($guru['gender'] ?? '') === 'L' ? 'selected' : '' ?>>Laki-laki</option>
+                                            <option value="P" <?= ($guru['gender'] ?? '') === 'P' ? 'selected' : '' ?>>Perempuan</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <hr class="border-warning">
+                                <div class="bg-white p-3 rounded border border-warning shadow-sm mb-4">
+                                    <h6 class="text-primary font-weight-bold mb-1">➕ PLOTTING JABATAN / TUGAS BARU</h6>
+                                    <p class="text-muted small mb-3">Gunakan bagian ini untuk menambah riwayat penugasan baru di tahun pelajaran berbeda.</p>
+                                    
+                                    <div class="row g-2">
+                                        <div class="col-md-4">
+                                            <label class="xs font-weight-bold text-secondary">Tahun Pelajaran Baru</label>
+                                            <select name="new_academic_year_id" class="form-control form-control-sm">
+                                                <option value="">-- Tidak Tambah Tugas --</option>
+                                                <?php if(!empty($listAcademicYears)): ?>
+                                                    <?php foreach($listAcademicYears as $ay): ?>
+                                                        <option value="<?= $ay['id'] ?>"><?= esc($ay['academic_year']) ?> - <?= esc($ay['semester']) ?></option>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="xs font-weight-bold text-secondary">Jabatan Baru</label>
+                                            <select name="new_assignment_role" class="form-control form-control-sm">
+                                                <option value="">-- Tidak Tambah Tugas --</option>
+                                                <?php if(!empty($listRoles)): ?>
+                                                    <?php foreach($listRoles as $role): ?>
+                                                        <option value="<?= esc($role['role_name']) ?>"><?= esc($role['role_title']) ?></option>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="xs font-weight-bold text-secondary">Keterangan Tugas Baru</label>
+                                            <input type="text" name="new_assignment_detail" class="form-control form-control-sm" placeholder="Contoh: Wali Kelas 8-B">
+                                        </div>
+                                    </div>
+                                    <div class="text-end mt-3">
+                                        <button type="submit" class="btn btn-warning btn-sm text-white font-weight-bold">💾 Simpan Perubahan Profil & Tugas Baru</button>
+                                    </div>
+                                </div>
+                            </form>
+
+                            <hr class="border-secondary">
+                            <h6 class="text-dark font-weight-bold mb-3">🛠️ DAFTAR RIWAYAT JABATAN YANG SUDAH TERDAFTAR</h6>
+                            
+                            <?php if (isset($historiGuru[$guru['id']])): ?>
+                                <?php foreach ($historiGuru[$guru['id']] as $index => $h): ?>
+                                    
+                                    <form action="<?= base_url('admin/users/guru-update-history/' . $h['history_id']) ?>" method="POST" class="bg-white p-2 rounded border mb-2 shadow-sm">
+                                        <?= csrf_field() ?>
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-md-3">
+                                                <select name="edit_academic_year_id" class="form-control form-control-sm" style="font-size:0.8rem;" required>
+                                                    <?php foreach($listAcademicYears as $ay): ?>
+                                                        <option value="<?= $ay['id'] ?>" <?= $ay['id'] == $h['academic_year_id'] ? 'selected' : '' ?>>
+                                                            <?= esc($ay['academic_year']) ?> - <?= esc($ay['semester']) ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <select name="edit_assignment_role" class="form-control form-control-sm" style="font-size:0.8rem;" required>
+                                                    <?php foreach($listRoles as $role): ?>
+                                                        <option value="<?= esc($role['role_name']) ?>" <?= $role['role_name'] == $h['assignment_role'] ? 'selected' : '' ?>>
+                                                            <?= esc($role['role_title']) ?>
+                                                        </option>
+                                                    <?php endforeach; ?>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-4">
+                                                <input type="text" name="edit_assignment_detail" class="form-control form-control-sm" style="font-size:0.8rem;" value="<?= esc($h['assignment_detail'] ?? '') ?>" placeholder="Detail tugas">
+                                            </div>
+                                            <div class="col-md-2 text-center">
+                                                <div class="btn-group btn-group-sm">
+                                                    <button type="submit" class="btn btn-sm btn-outline-success py-1" title="Simpan Perubahan Baris Ini">✔️ Update</button>
+                                                    
+                                                    <a href="<?= base_url('admin/users/guru-delete-history/' . $h['history_id']) ?>" class="btn btn-sm btn-outline-danger py-1" onclick="return confirm('Hapus baris riwayat ini?')" title="Hapus Riwayat Ini">🗑️</a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </form>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <p class="text-muted small italic">Tidak ada riwayat jabatan.</p>
+                            <?php endif; ?>
+
                         </div>
                     </div>
                 </div>
