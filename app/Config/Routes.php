@@ -61,8 +61,10 @@ $routes->group('admin', ['filter' => 'session'], function($routes) {
     $routes->get('users/guru-tes', 'UserGuruController::index');
     $routes->get('users/siswa-tes', 'UserSiswaController::index');
 
+    $routes->post('users/guru-store', 'UserGuruController::storeGuru');
+    $routes->post('users/siswa-store', 'UserSiswaController::storeSiswa');
+
     // RUTE BARU UNTUK SAKLAR STATUS LOGIN (Menerima ID)
     $routes->get('users/guru-toggle/(:num)', 'UserGuruController::toggleStatus/$1');
     $routes->get('users/siswa-toggle/(:num)', 'UserSiswaController::toggleStatus/$1');
 });
-

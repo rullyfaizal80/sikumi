@@ -84,4 +84,80 @@ class UserSiswaController extends BaseController
 
         return redirect()->back()->with('error', '❌ Siswa tidak ditemukan.');
     }
+
+    public function storeSiswa()
+{
+    $db = \Config\Database::connect();
+    
+    // 1. Ambil input dari form satu kesatuan
+    $username   = $this->request->getPost('username');
+    $email      = $this->request->getPost('email');
+    $password   = $this->request->getPost('password'); // password login
+    $nisn       = $this->request->getPost('nisn');
+    $gender     = $this->request->getPost('gender');
+    
+    // Data Dinamis Semester/Kelas Saat Ini
+    $academic_year_id = $this->request->getPost('academic_year_id'); // Tahun Pelajaran Aktif saat input
+    $class_level      = $this->request->getPost('class_level');      // Kelas 7
+    $class_room       = $this->request->getPost('class_room');       // Ruang A
+
+    // 2. MULAI PROSES TRANSAKSI SATU KESATUAN
+    $db->transStart();
+
+    // A. Masukkan ke tabel 'users' (Shield Auth)
+    $db->table('users')->insert([
+        'username'   => $username,
+        'active'     => 1,
+        'created_at' => date('Y-m-d H:i:s'),
+        'updated_at' => date('Y-m-d H:i:s')
+    ]);
+    $newUserId = $db->insertID(); // Ambil ID User yang baru saja tercipta
+
+    // B. Masukkan Kredensial Email & Password ke 'auth_identities'
+    $db->table('auth_identities')->insert([
+        'user_id'    => $newUserId,
+        'type'       => 'email_password',
+        'secret'     => $email,
+        'secret2'    => password_hash($password, PASSWORD_DEFAULT), // Enkripsi aman
+        'created_at' => date('Y-m-d H:i:s'),
+        'updated_at' => date('Y-m-d H:i:s')
+    ]);
+
+    // C. Ikat hak akses sebagai 'siswa' di 'auth_groups_users'
+    $db->table('auth_groups_users')->insert([
+        'user_id'    => $newUserId,
+        'group'      => 'siswa',
+        'created_at' => date('Y-m-d H:i:s')
+    ]);
+
+    // D. Masukkan Properti Induk Statis ke 'student_profiles'
+    $db->table('student_profiles')->insert([
+        'user_id'    => $newUserId,
+        'nisn'       => $nisn,
+        'gender'     => $gender,
+        'created_at' => date('Y-m-d H:i:s'),
+        'updated_at' => date('Y-m-d H:i:s')
+    ]);
+    $newProfileId = $db->insertID();
+
+    // E. Masukkan Properti Dinamis (Tahun Akademik & Kelas Pertama Siswa)
+    $db->table('student_academic_history')->insert([
+        'student_profile_id' => $newProfileId,
+        'academic_year_id'   => $academic_year_id,
+        'class_level'        => $class_level,
+        'class_room'         => $class_room,
+        'status'             => 'aktif',
+        'created_at'         => date('Y-m-d H:i:s'),
+        'updated_at' => date('Y-m-d H:i:s')
+    ]);
+
+    // 3. SELESAIKAN TRANSAKSI
+    $db->transComplete();
+
+    if ($db->transStatus() === FALSE) {
+        return redirect()->back()->with('error', '❌ Gagal menambahkan akun siswa terjadi kesalahan sistem.');
+    }
+
+    return redirect()->back()->with('sukses', '✅ Akun siswa dan data riwayat kelas berhasil diterbitkan!');
+}
 }

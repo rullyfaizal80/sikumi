@@ -27,7 +27,14 @@
                     <div class="col-md-6">
                         <h5 class="mb-0" style="font-weight: 600;">Daftar Siswa Aktif</h5>
                     </div>
-                    <div class="col-md-6">
+                    <div class="card-header bg-white py-3">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-success text-white btn-sm font-weight-bold" data-bs-toggle="modal" data-bs-target="#modalTambahSiswa">
+                            ➕ Tambah Siswa Baru
+                        </button>
+                    </div>
+                    <div class="col-md-8">
                         <form action="<?= base_url('admin/users/siswa-tes') ?>" method="GET" class="d-flex justify-content-end">
                             <div class="input-group input-group-sm" style="max-width: 300px;">
                                 <input type="text" name="search" class="form-control" placeholder="Cari nama atau email siswa..." value="<?= esc($keyword) ?>">
@@ -38,6 +45,8 @@
                             </div>
                         </form>
                     </div>
+                </div>
+            </div>
                 </div>
             </div>
 
@@ -122,5 +131,97 @@
         </div>
 
     </div>
+
+    <div class="modal fade" id="modalTambahSiswa" tabindex="-1" role="dialog" aria-labelledby="modalTambahSiswaLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title font-weight-bold" id="modalTambahSiswaLabel">🎓 Formulir Akun & Properti Siswa Baru</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="<?= base_url('admin/users/siswa-store') ?>" method="POST">
+                    <?= csrf_field() ?>
+                    <div class="modal-body">
+                        
+                        <h6 class="text-success font-weight-bold mb-3">🔑 DATA AKSES LOGIN</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="small font-weight-bold">Nama Lengkap Siswa <span class="text-danger">*</span></label>
+                                <input type="text" name="username" class="form-control form-control-sm" placeholder="Contoh: Aditya Pratama" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small font-weight-bold">Email Akun / Siswa <span class="text-danger">*</span></label>
+                                <input type="email" name="email" class="form-control form-control-sm" placeholder="Contoh: aditya@student.mimha.sch.id" required>
+                            </div>
+                        </div>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="small font-weight-bold">Password Akun <span class="text-danger">*</span></label>
+                                <input type="password" name="password" class="form-control form-control-sm" placeholder="Minimal 8 Karakter" required>
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h6 class="text-success font-weight-bold mb-3">📋 INDUK PROPERTI PERSONAL (STATIS)</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="small font-weight-bold">NISN (Nomor Induk Siswa Nasional)</label>
+                                <input type="text" name="nisn" class="form-control form-control-sm" placeholder="Masukkan 10 digit NISN">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small font-weight-bold">NIS (Nomor Induk Internal)</label>
+                                <input type="text" name="nis" class="form-control form-control-sm" placeholder="Masukkan NIS Madrasah">
+                            </div>
+                        </div>
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="small font-weight-bold">Jenis Kelamin <span class="text-danger">*</span></label>
+                                <select name="gender" class="form-control form-control-sm" required>
+                                    <option value="">-- Pilih --</option>
+                                    <option value="L">Laki-laki</option>
+                                    <option value="P">Perempuan</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="small font-weight-bold">No. WA Orang Tua / Wali</label>
+                                <input type="text" name="phone_ortu" class="form-control form-control-sm" placeholder="Contoh: 081234567xxx">
+                            </div>
+                        </div>
+
+                        <hr>
+                        <h6 class="text-success font-weight-bold mb-3">🏫 RIWAYAT AKADEMIK & PENEMPATAN KELAS (DINAMIS)</h6>
+                        <div class="row mb-2">
+                            <div class="col-md-4">
+                                <label class="small font-weight-bold">Tahun Pelajaran Masuk <span class="text-danger">*</span></label>
+                                <select name="academic_year_id" class="form-control form-control-sm" required>
+                                    <option value="1">2026/2027 - Ganjil</option> 
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="small font-weight-bold">Tingkat / Jenjang Kelas <span class="text-danger">*</span></label>
+                                <select name="class_level" class="form-control form-control-sm" required>
+                                    <option value="7">Kelas 7</option>
+                                    <option value="8">Kelas 8</option>
+                                    <option value="9">Kelas 9</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="small font-weight-bold">Nama Rombel / Ruang <span class="text-danger">*</span></label>
+                                <input type="text" name="class_room" class="form-control form-control-sm" placeholder="Contoh: A, B, Umar, atau Abu Bakar" required>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-success text-white btn-sm">💾 Terbitkan Akun Siswa</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
+    <script src="<?= base_url('assets/js/adminlte.min.js') ?>"></script>
 </body>
 </html>
