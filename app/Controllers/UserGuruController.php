@@ -113,52 +113,53 @@ class UserGuruController extends BaseController
     }
 
     /**
-     * FUNGSI PENGHAPUSAN PINTAR (OPTIMIZED: Mengatasi Akun Dummy Tanpa Profil)
+     * Hapus Akun Guru (Smart Delete: Acuan dari Riwayat Jabatan)
      */
     public function deleteGuru($id)
     {
         $db = \Config\Database::connect();
-
-        // 1. Cek profil guru terlebih dahulu
+        
         $profile = $db->table('teacher_profiles')->where('user_id', $id)->get()->getRow();
+        
+        // Deteksi apakah admin masih menyisakan riwayat jabatan atau sudah dikosongkan
+        $hasHistory = false;
+        if ($profile) {
+            $historyCount = $db->table('teacher_academic_history')
+                               ->where('teacher_profile_id', $profile->id)
+                               ->countAllResults();
+            if ($historyCount > 0) {
+                $hasHistory = true;
+            }
+        }
 
         $db->transStart();
 
-        // JIKA TIDAK PUNYA PROFIL (Akun dummy lama hasil suntik massal SQL)
-        if (!$profile) {
-            $db->table('auth_groups_users')->where('user_id', $id)->delete();
-            $db->table('auth_identities')->where('user_id', $id)->delete();
-            $db->table('users')->where('id', $id)->delete(); // Clean Delete langsung
-
-            $db->transComplete();
-            return redirect()->back()->with('sukses', '🗑️ Akun dummy lama berhasil dibersihkan seutuhnya (Clean Delete).');
-        }
-
-        // JIKA MEMILIKI PROFIL: Hitung jumlah riwayat penugasan akademiknya
-        $jumlahRiwayat = $db->table('teacher_academic_history')
-                            ->where('teacher_profile_id', $profile->id)
-                            ->countAllResults();
-
-        if ($jumlahRiwayat <= 1) {
-            // SKENARIO A: CLEAN DELETE (HAPUS TOTAL GURU BARU)
-            $db->table('teacher_academic_history')->where('teacher_profile_id', $profile->id)->delete();
-            $db->table('teacher_profiles')->where('id', $profile->id)->delete();
-            $db->table('auth_groups_users')->where('user_id', $id)->delete();
-            $db->table('auth_identities')->where('user_id', $id)->delete();
-            $db->table('users')->where('id', $id)->delete();
-
-            $db->transComplete();
-            return redirect()->back()->with('sukses', '🗑️ Akun guru baru berhasil dihapus bersih dari sistem.');
-        } else {
-            // SKENARIO B: SOFT DELETE (GURU BERSEJARAH)
+        if ($hasHistory) {
+            // EKSEKUSI SOFT DELETE: Jika jabatan tidak dikosongkan, masuk ke TRASH
             $db->table('users')->where('id', $id)->update([
                 'deleted_at' => date('Y-m-d H:i:s'),
-                'status'     => 'banned'
+                'active'     => 0
             ]);
-
-            $db->transComplete();
-            return redirect()->back()->with('sukses', '🔒 Akun diarsipkan (Soft Delete). Data riwayat masa lalu tetap aman.');
+            $pesan = '🗑️ Akun guru dipindahkan ke Gudang Arsip (Soft Delete) karena masih memiliki rekam jejak jabatan.';
+        } else {
+            // EKSEKUSI HARD DELETE: Jika jabatan sudah dikosongkan admin, HAPUS PERMANEN
+            if ($profile) {
+                $db->table('teacher_profiles')->where('user_id', $id)->delete();
+            }
+            $db->table('auth_identities')->where('user_id', $id)->delete();
+            $db->table('auth_groups_users')->where('user_id', $id)->delete();
+            $db->table('users')->where('id', $id)->delete();
+            
+            $pesan = '💥 Akun guru dihapus permanen (Hard Delete) dari sistem karena properti riwayat jabatan kosong.';
         }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return redirect()->back()->with('error', '❌ Terjadi kesalahan saat memproses penghapusan akun.');
+        }
+
+        return redirect()->to(base_url('admin/users/guru-tes'))->with('sukses', $pesan);
     }
 
     /**
@@ -388,30 +389,30 @@ class UserGuruController extends BaseController
     }
 
     /**
-     * FUNGSI BARU: Menghapus baris riwayat penugasan spesifik dari dalam Modal Edit
+     * Hapus Baris Riwayat Jabatan/Tugas Guru (Bisa dihapus sampai habis)
      */
     public function deleteHistory($historyId)
     {
         $db = \Config\Database::connect();
 
-        // Ambil data riwayat untuk tahu ini milik profile mana
+        // 1. Cek apakah data riwayat yang akan dihapus memang ada di database
         $history = $db->table('teacher_academic_history')->where('id', $historyId)->get()->getRow();
         if (!$history) {
-            return redirect()->back()->with('error', '❌ Riwayat tidak ditemukan.');
+            return redirect()->back()->with('error', '❌ Baris riwayat tidak ditemukan.');
         }
 
-        // Cek total riwayat yang dipunyai guru ini sekarang
-        $totalRiwayat = $db->table('teacher_academic_history')
-                           ->where('teacher_profile_id', $history->teacher_profile_id)
-                           ->countAllResults();
+        $db->transStart();
 
-        // PROTEKSI: Sisakan minimal 1 riwayat wajib agar akun tidak error/kosong tanpa status
-        if ($totalRiwayat <= 1) {
-            return redirect()->back()->with('error', '❌ Gagal. Guru wajib memiliki minimal 1 riwayat jabatan aktif.');
-        }
-
+        // 2. Langsung eksekusi hapus tanpa syarat minimal sisa 1 properti
         $db->table('teacher_academic_history')->where('id', $historyId)->delete();
 
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return redirect()->back()->with('error', '❌ Gagal menghapus baris riwayat guru.');
+        }
+
+        // Menggunakan redirect()->back() agar jendela Modal Edit Guru tetap terbuka otomatis setelah submit
         return redirect()->back()->with('sukses', '🗑️ Baris riwayat jabatan berhasil dihapus.');
     }
 
@@ -447,12 +448,13 @@ class UserGuruController extends BaseController
 
         $db->transStart();
 
-        // Kembalikan deleted_at menjadi NULL dan status menjadi 'active' (bawaan Shield)
+        // Mengembalikan seluruh status akses menjadi normal kembali
         $db->table('users')
            ->where('id', $id)
            ->update([
                'deleted_at' => null,
-               'status'     => null // hapus status banned agar bisa login kembali
+               'status'     => null, // Hapus status banned/bawaan shield jika ada
+               'active'     => 1    // <-- KUNCI PERBAIKAN: Set kembali ke 1 agar status di tabel kembali "Aktif"
            ]);
 
         $db->transComplete();
@@ -461,6 +463,6 @@ class UserGuruController extends BaseController
             return redirect()->to(base_url('admin/users/guru-trash'))->with('error', '❌ Gagal memulihkan akun guru.');
         }
 
-        return redirect()->to(base_url('admin/users/guru-tes'))->with('sukses', '✔️ Akun guru berhasil dipulihkan! Silakan cek tabel utama.');
+        return redirect()->to(base_url('admin/users/guru-tes'))->with('sukses', '✔️ Akun guru berhasil dipulihkan dan diaktifkan kembali.');
     }
 }
