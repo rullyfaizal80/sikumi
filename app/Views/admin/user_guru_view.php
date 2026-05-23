@@ -8,14 +8,19 @@
 </head>
 <body class="p-4 bg-light">
     <div class="container">
-        
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h3 class="mb-0" style="color: #FF9F00; font-weight: 700;">👨‍🏫 Data Akun Guru & Staf</h3>
                 <p class="text-muted small mb-0">Modul Rebuild: Fitur Pencarian & Pagination Manual Terukur.</p>
             </div>
-            <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm">Dashboard</a>
+            <div>
+                <a href="<?= base_url('admin/users/guru-trash') ?>" class="btn btn-outline-secondary btn-sm font-weight-bold">
+                <i class="fas fa-trash-alt mr-1"></i> Jendela Arsip Trash
+                </a>
+                <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm">Dashboard</a>
+            </div>
         </div>
+
         <?php if (session()->getFlashdata('sukses')): ?>
             <div class="alert alert-success alert-dismissible fade show shadow-sm mb-3" role="alert">
                 <?= session()->getFlashdata('sukses') ?>
@@ -26,31 +31,27 @@
                 <div class="row align-items-center">
                     <div class="col-md-6">
                         <h5 class="mb-0" style="font-weight: 600;">Daftar Guru Terdaftar</h5>
-                    </div>
+                    </div>                  
                     <div class="card-header bg-white py-3">
-                <div class="row align-items-center">
-                    <div class="col-md-4">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-    <button type="button" class="btn btn-primary btn-sm font-weight-bold" data-bs-toggle="modal" data-bs-target="#modalTambahGuru">
-        ➕ Tambah Guru Baru
-    </button>
-
-    <a href="<?= base_url('admin/users/guru-trash') ?>" class="btn btn-outline-secondary btn-sm font-weight-bold">
-        📂 Lihat Arsip Guru Terhapus (Trash)
-    </a>
-</div>
-                    </div>
-                    <div class="col-md-8">
-                        <form action="<?= base_url('admin/users/guru-tes') ?>" method="GET" class="d-flex justify-content-end">
-                            <div class="input-group input-group-sm" style="max-width: 300px;">
-                                <input type="text" name="search" class="form-control" placeholder="Cari nama atau email..." value="<?= esc($keyword) ?>">
-                                <button class="btn btn-warning text-white" type="submit">🔍 Cari</button>
-                                <?php if (!empty($keyword)): ?>
-                                    <a href="<?= base_url('admin/users/guru-tes') ?>" class="btn btn-outline-secondary">❌ Reset</a>
-                                <?php endif; ?>
+                        <div class="row align-items-center">
+                            <div class="col-md-4">
+                               <button type="button" class="btn btn-primary btn-sm font-weight-bold" data-bs-toggle="modal" data-bs-target="#modalTambahGuru">
+                                    ➕ Tambah Guru Baru
+                                </button>
                             </div>
-                        </form>
-                    </div>
+                            <div class="col-md-8">
+                                <form action="<?= base_url('admin/users/guru-tes') ?>" method="GET" class="d-flex justify-content-end">
+                                    <div class="input-group input-group-sm" style="max-width: 300px;">
+                                        <input type="text" name="search" class="form-control" placeholder="Cari nama atau email..." value="<?= esc($keyword) ?>">
+                                        <button class="btn btn-warning text-white" type="submit">🔍 Cari</button>
+                                        <?php if (!empty($keyword)): ?>
+                                        <a href="<?= base_url('admin/users/guru-tes') ?>" class="btn btn-outline-secondary">❌ Reset</a>
+                                        <?php endif; ?>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>                          
                 </div>
             </div>
             

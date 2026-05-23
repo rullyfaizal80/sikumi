@@ -160,4 +160,53 @@ class UserSiswaController extends BaseController
 
     return redirect()->back()->with('sukses', '✅ Akun siswa dan data riwayat kelas berhasil diterbitkan!');
 }
+
+/**
+     * Memindahkan akun siswa ke Gudang Arsip (Soft Delete)
+     */
+    public function deleteSiswa($id)
+    {
+        $db = \Config\Database::connect();
+        
+        $db->table('users')->where('id', $id)->update([
+            'deleted_at' => date('Y-m-d H:i:s')
+        ]);
+
+        return redirect()->to(base_url('admin/users/siswa-tes'))->with('sukses', '🗑️ Akun siswa berhasil dipindahkan ke gudang arsip non-aktif.');
+    }
+
+    /**
+     * Halaman Gudang Arsip Siswa Terhapus (Trash)
+     */
+    public function trashSiswa()
+    {
+        $db = \Config\Database::connect();
+
+        // Mengambil data siswa yang memiliki deleted_at (tidak null)
+        $daftarTrash = $db->table('users u')
+                          ->select('u.id, u.username, u.deleted_at, ai.secret as email')
+                          ->join('auth_groups_users agu', 'agu.user_id = u.id', 'inner')
+                          ->join('auth_identities ai', 'ai.user_id = u.id AND ai.type = "email_password"', 'left')
+                          ->where('agu.group', 'siswa')
+                          ->where('u.deleted_at !=', null)
+                          ->orderBy('u.deleted_at', 'DESC')
+                          ->get()
+                          ->getResultArray();
+
+        return view('admin/user_siswa_trash_view', ['daftarTrash' => $daftarTrash]);
+    }
+
+    /**
+     * Mengembalikan akun siswa dari masa Soft Delete
+     */
+    public function restoreSiswa($id)
+    {
+        $db = \Config\Database::connect();
+        
+        $db->table('users')->where('id', $id)->update([
+            'deleted_at' => null
+        ]);
+
+        return redirect()->to(base_url('admin/users/siswa-tes'))->with('sukses', '✔️ Akun siswa berhasil dipulihkan dan aktif kembali!');
+    }
 }

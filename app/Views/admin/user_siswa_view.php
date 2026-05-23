@@ -10,12 +10,17 @@
     <div class="container">
         
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h3 class="mb-0" style="color: #28A745; font-weight: 700;">🧑‍🎓 Data Akun Login Siswa</h3>
-                <p class="text-muted small mb-0">Modul Rebuild: Manajemen Akun Ratusan Siswa Terukur.</p>
-            </div>
-            <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm">Dashboard</a>
-        </div>
+    <div>
+        <h3 class="mb-0" style="color: #28A745; font-weight: 700;">🧑‍🎓 Data Akun Login Siswa</h3>
+        <p class="text-muted small mb-0">Modul Rebuild: Manajemen Akun Ratusan Siswa Terukur.</p>
+    </div>
+    <div>
+        <a href="<?= base_url('admin/users/siswa-trash') ?>" class="btn btn-outline-danger btn-sm font-weight-bold shadow-sm me-2">
+            <i class="fas fa-trash-alt mr-1"></i> Jendela Arsip Trash
+        </a>
+        <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm">Dashboard</a>
+    </div>
+</div>
         <?php if (session()->getFlashdata('sukses')): ?>
             <div class="alert alert-success alert-dismissible fade show shadow-sm mb-3" role="alert">
                 <?= session()->getFlashdata('sukses') ?>
@@ -27,7 +32,7 @@
                     <div class="col-md-6">
                         <h5 class="mb-0" style="font-weight: 600;">Daftar Siswa Aktif</h5>
                     </div>
-                    <div class="card-header bg-white py-3">
+            <div class="card-header bg-white py-3">
                 <div class="row align-items-center">
                     <div class="col-md-4">
                         <button type="button" class="btn btn-success text-white btn-sm font-weight-bold" data-bs-toggle="modal" data-bs-target="#modalTambahSiswa">

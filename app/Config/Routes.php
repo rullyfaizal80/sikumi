@@ -76,4 +76,9 @@ $routes->group('admin', ['filter' => 'session'], function($routes) {
 
     $routes->get('users/guru-trash', 'UserGuruController::trashGuru');
     $routes->get('users/guru-restore/(:num)', 'UserGuruController::restoreGuru/$1');
+
+    // Tambahkan ini di dalam grup rute admin Anda
+    $routes->get('users/siswa-trash', 'UserSiswaController::trashSiswa');
+    $routes->get('users/siswa-restore/(:num)', 'UserSiswaController::restoreSiswa/$1');
+    $routes->get('users/siswa-delete/(:num)', 'UserSiswaController::deleteSiswa/$1'); // Untuk trigger masuk trash
 });
