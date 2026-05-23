@@ -95,11 +95,16 @@
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-center">
+                                    <div class="d-flex justify-content-center gap-1">
+                                        <button type="button" class="btn btn-info btn-sm text-white" data-bs-toggle="modal" data-bs-target="#modalDetailSiswa<?= $siswa['id'] ?>" title="Lihat Detail Profil">
+                                            👁️ Detail
+                                        </button>
                                     <?php if (strtolower($siswa['status'] ?? '') === 'banned'): ?>
                                         <a href="<?= base_url('admin/users/siswa-toggle/' . $siswa['id']) ?>" class="btn btn-xs btn-outline-success py-0 px-2" style="font-size: 0.75rem;">✔️ Pulihkan</a>
                                     <?php else: ?>
                                         <a href="<?= base_url('admin/users/siswa-toggle/' . $siswa['id']) ?>" class="btn btn-xs btn-outline-danger py-0 px-2" style="font-size: 0.75rem;" onclick="return confirm('Bekukan akses login siswa ini?')">🚫 Blokir</a>
                                     <?php endif; ?>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
@@ -225,6 +230,117 @@
             </div>
         </div>
     </div>
+
+    <?php if (!empty($daftarSiswa)): ?>
+        <?php foreach ($daftarSiswa as $siswa): ?>
+            <div class="modal fade" id="modalDetailSiswa<?= $siswa['id'] ?>" tabindex="-1" aria-labelledby="labelModalSiswa<?= $siswa['id'] ?>" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header bg-info text-white py-3">
+                            <h5 class="modal-title font-weight-bold" id="labelModalSiswa<?= $siswa['id'] ?>">
+                                <i class="fas fa-id-card mr-2"></i> Profil & Rekam Jejak: <?= esc($siswa['username']) ?>
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body p-4">
+                            
+                            <h6 class="text-info font-weight-bold mb-3 border-bottom pb-2">📌 Informasi Biodata Dasar</h6>
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <table class="table table-sm table-borderless small m-0">
+                                        <tr>
+                                            <td style="width: 35%; font-weight: 600;">Nama Akun</td>
+                                            <td>: <?= esc($siswa['username']) ?></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600;">Email Terdaftar</td>
+                                            <td>: <?= esc($siswa['email'] ?? '-') ?></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600;">NISN</td>
+                                            <td>: <span class="badge bg-secondary"><?= esc($siswa['nisn'] ?? '-') ?></span></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600;">NIS Lokal</td>
+                                            <td>: <?= esc($siswa['nis'] ?? '-') ?></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table table-sm table-borderless small m-0">
+                                        <tr>
+                                            <td style="width: 35%; font-weight: 600;">Jenis Kelamin</td>
+                                            <td>: <?= (isset($siswa['gender']) && $siswa['gender'] == 'L') ? 'Laki-laki' : ((isset($siswa['gender']) && $siswa['gender'] == 'P') ? 'Perempuan' : '-') ?></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600;">Tempat Lahir</td>
+                                            <td>: <?= esc($siswa['birth_place'] ?? '-') ?></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600;">Tanggal Lahir</td>
+                                            <td>: <?= !empty($siswa['birth_date']) ? date('d-m-Y', strtotime($siswa['birth_date'])) : '-' ?></td>
+                                        </tr>
+                                        <tr>
+                                            <td style="font-weight: 600;">No. HP Orang Tua</td>
+                                            <td>: <span class="text-success font-weight-bold"><?= esc($siswa['phone_ortu'] ?? '-') ?></span></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <h6 class="text-info font-weight-bold mb-3 border-bottom pb-2">⏳ Kronologi Akademik & Kelas (History)</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped table-bordered small m-0 text-center">
+                                    <thead class="bg-light font-weight-bold">
+                                        <tr>
+                                            <th style="width: 5%;">No</th>
+                                            <th>Tahun Pelajaran</th>
+                                            <th>Semester</th>
+                                            <th>Tingkat</th>
+                                            <th>Rombel / Ruang</th>
+                                            <th>Status Keaktifan</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (!empty($riwayat_siswa[$siswa['id']])): ?>
+                                            <?php $noHist = 1; foreach ($riwayat_siswa[$siswa['id']] as $hist): ?>
+                                                <tr>
+                                                    <td><?= $noHist++ ?></td>
+                                                    <td class="font-weight-bold"><?= esc($hist['academic_year']) ?></td>
+                                                    <td><?= esc($hist['semester']) ?></td>
+                                                    <td>Kelas <?= esc($hist['class_level']) ?></td>
+                                                    <td class="font-weight-bold text-primary"><?= esc($hist['class_room']) ?></td>
+                                                    <td>
+                                                        <?php if ($hist['status'] == 'aktif'): ?>
+                                                            <span class="badge bg-success">Aktif</span>
+                                                        <?php elseif ($hist['status'] == 'lulus'): ?>
+                                                            <span class="badge bg-primary">Lulus</span>
+                                                        <?php elseif ($hist['status'] == 'pindah'): ?>
+                                                            <span class="badge bg-warning text-dark">Pindah</span>
+                                                        <?php else: ?>
+                                                            <span class="badge bg-danger">Keluar</span>
+                                                        <?php endif; ?>
+                                                    </td>
+                                                </tr>
+                                            <?php endforeach; ?>
+                                        <?php else: ?>
+                                            <tr>
+                                                <td colspan="6" class="text-center text-muted py-3">Belum ada riwayat akademik terdaftar untuk siswa ini.</td>
+                                            </tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                        </div>
+                        <div class="modal-footer bg-light py-2">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup Jendela</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
 
     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
     <script src="<?= base_url('assets/js/adminlte.min.js') ?>"></script>

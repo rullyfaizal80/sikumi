@@ -19,26 +19,30 @@ class UserSiswaController extends BaseController
         $limit = 10; 
         $offset = ($page - 1) * $limit;
 
-        // 3. Query khusus mencari user yang tergabung dalam grup 'siswa'
+        // 3. Query khusus mencari user grup 'siswa' + Join Profile Statis
         $builder = $db->table('users u')
-                      ->select('u.id, u.username, u.active, u.status, u.created_at, ai.secret as email')
+                      ->select('u.id, u.username, u.active, u.status, u.created_at, ai.secret as email, 
+                                sp.id as student_profile_id, sp.nisn, sp.nis, sp.gender, sp.phone_ortu, sp.birth_place, sp.birth_date')
                       ->join('auth_identities ai', 'ai.user_id = u.id AND ai.type = "email_password"', 'left')
-                      ->join('auth_groups_users agu', 'agu.user_id = u.id', 'inner') // Inner join karena siswa wajib punya grup 'siswa'
+                      ->join('auth_groups_users agu', 'agu.user_id = u.id', 'inner')
+                      ->join('student_profiles sp', 'sp.user_id = u.id', 'left') // LEFT JOIN profil statis
                       ->where('u.deleted_at', null)
-                      ->where('agu.group', 'siswa'); // KUNCI: Hanya grup siswa
+                      ->where('agu.group', 'siswa');
 
         if (!empty($keyword)) {
             $builder->groupStart()
                     ->like('u.username', $keyword)
                     ->orLike('ai.secret', $keyword)
+                    ->orLike('sp.nisn', $keyword)
+                    ->orLike('sp.nis', $keyword)
                     ->groupEnd();
         }
 
-        // 4. Hitung Total Data Siswa sebelum dipotong limit
+        // Hitung total data sebelum limitasi halaman
         $totalBuilder = clone $builder;
-        $totalData = $totalBuilder->countAllResults();
+        $totalData = $totalBuilder->countAllResults(false);
 
-        // 5. Ambil potongan data untuk halaman aktif
+        // Ambil potongan data untuk halaman aktif
         $daftarSiswa = $builder->orderBy('u.username', 'ASC')
                                ->limit($limit, $offset)
                                ->get()
@@ -47,16 +51,39 @@ class UserSiswaController extends BaseController
         $totalHalaman = ceil($totalData / $limit);
         if ($totalHalaman < 1) $totalHalaman = 1;
 
-        $data = [
-            'daftarSiswa'  => $daftarSiswa,
-            'keyword'      => $keyword,
-            'page'         => $page,
-            'limit'        => $limit,
-            'totalData'    => $totalData,
-            'totalHalaman' => $totalHalaman
-        ];
+        // 4. Ambil opsi data tahun akademik untuk form pendaftaran modal
+        $tahunAkademik = $db->table('academic_years')->orderBy('academic_year', 'DESC')->orderBy('semester', 'DESC')->get()->getResultArray();
 
-        return view('admin/user_siswa_view', $data);
+        // 5. Ambil data riwayat akademik per siswa untuk diletakkan di modal detail
+        $riwayatSiswa = [];
+        if (!empty($daftarSiswa)) {
+            foreach ($daftarSiswa as $siswa) {
+                if (!empty($siswa['student_profile_id'])) {
+                    $riwayatSiswa[$siswa['id']] = $db->table('student_academic_history sah')
+                                                     ->select('sah.id as history_id, sah.class_level, sah.class_room, sah.status, ay.academic_year, ay.semester')
+                                                     ->join('academic_years ay', 'ay.id = sah.academic_year_id', 'left')
+                                                     ->where('sah.student_profile_id', $siswa['student_profile_id'])
+                                                     ->orderBy('ay.academic_year', 'DESC')
+                                                     ->orderBy('ay.semester', 'DESC')
+                                                     ->get()
+                                                     ->getResultArray();
+                } else {
+                    $riwayatSiswa[$siswa['id']] = [];
+                }
+            }
+        }
+
+        // Send data ke view dengan key variabel asli milik view
+        return view('admin/user_siswa_view', [
+            'daftarSiswa'    => $daftarSiswa,
+            'keyword'        => $keyword,
+            'page'           => $page,
+            'limit'          => $limit,
+            'totalHalaman'   => $totalHalaman,
+            'totalData'      => $totalData,
+            'tahun_akademik' => $tahunAkademik,
+            'riwayat_siswa'  => $riwayatSiswa
+        ]);
     }
 
     /**
