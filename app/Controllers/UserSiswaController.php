@@ -188,20 +188,6 @@ class UserSiswaController extends BaseController
     return redirect()->back()->with('sukses', '✅ Akun siswa dan data riwayat kelas berhasil diterbitkan!');
 }
 
-/**
-     * Memindahkan akun siswa ke Gudang Arsip (Soft Delete)
-     */
-    public function deleteSiswa($id)
-    {
-        $db = \Config\Database::connect();
-        
-        $db->table('users')->where('id', $id)->update([
-            'deleted_at' => date('Y-m-d H:i:s')
-        ]);
-
-        return redirect()->to(base_url('admin/users/siswa-tes'))->with('sukses', '🗑️ Akun siswa berhasil dipindahkan ke gudang arsip non-aktif.');
-    }
-
     /**
      * Halaman Gudang Arsip Siswa Terhapus (Trash)
      */
@@ -235,5 +221,208 @@ class UserSiswaController extends BaseController
         ]);
 
         return redirect()->to(base_url('admin/users/siswa-tes'))->with('sukses', '✔️ Akun siswa berhasil dipulihkan dan aktif kembali!');
+    }
+
+/**
+     * Memproses Perbaruan Data Profil & Akun Akun Siswa
+     */
+    public function updateSiswa($id)
+    {
+        $db = \Config\Database::connect();
+
+        // 1. Ambil input data dari form modal edit
+        $username   = $this->request->getPost('username');
+        $email      = $this->request->getPost('email');
+        $password   = $this->request->getPost('password');
+        $nisn       = $this->request->getPost('nisn');
+        $nis        = $this->request->getPost('nis');
+        $gender     = $this->request->getPost('gender');
+        $phone_ortu = $this->request->getPost('phone_ortu');
+        $birth_place= $this->request->getPost('birth_place');
+        $birth_date = $this->request->getPost('birth_date');
+
+        $db->transStart();
+
+        // 2. Update tabel dasar 'users'
+        $db->table('users')->where('id', $id)->update([
+            'username'   => $username,
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
+
+        // 3. Update tabel 'auth_identities' (untuk email)
+        $db->table('auth_identities')
+           ->where('user_id', $id)
+           ->where('type', 'email_password')
+           ->update([
+               'secret' => $email
+           ]);
+
+        // 4. Jika kolom password diisi, lakukan hashing dan perbarui password
+        if (!empty($password) && strlen($password) >= 8) {
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+            $db->table('auth_identities')
+               ->where('user_id', $id)
+               ->where('type', 'email_password')
+               ->update([
+                   'secret2' => $hashedPassword
+               ]);
+        }
+
+        // 5. Cek apakah profil statis siswa sudah ada di database atau belum
+        $profileExists = $db->table('student_profiles')->where('user_id', $id)->get()->getRow();
+
+        $profileData = [
+            'nisn'        => !empty($nisn) ? $nisn : null,
+            'nis'         => !empty($nis) ? $nis : null,
+            'gender'      => $gender,
+            'phone_ortu'  => !empty($phone_ortu) ? $phone_ortu : null,
+            'birth_place' => !empty($birth_place) ? $birth_place : null,
+            'birth_date'  => !empty($birth_date) ? $birth_date : null,
+            'updated_at'  => date('Y-m-d H:i:s')
+        ];
+
+        if ($profileExists) {
+            // Jika sudah ada recordnya, lakukan update
+            $db->table('student_profiles')->where('user_id', $id)->update($profileData);
+        } else {
+            // Antisipasi jika data profile belum terbuat sebelumnya, lakukan insert
+            $profileData['user_id']    = $id;
+            $profileData['created_at'] = date('Y-m-d H:i:s');
+            $db->table('student_profiles')->insert($profileData);
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return redirect()->back()->with('error', '❌ Gagal memperbarui data profil siswa.');
+        }
+
+        return redirect()->to(base_url('admin/users/siswa-tes'))->with('sukses', '✔️ Profil dan akun siswa berhasil diperbarui.');
+    }
+
+    /**
+     * 1. Tambah Riwayat Akademik Baru (Plotting Kelas Baru)
+     */
+    public function addHistorySiswa($userId)
+    {
+        $db = \Config\Database::connect();
+        
+        // Pastikan record student_profiles sudah ada untuk mendapatkan student_profile_id
+        $profile = $db->table('student_profiles')->where('user_id', $userId)->get()->getRow();
+        if (!$profile) {
+            $db->table('student_profiles')->insert([
+                'user_id'    => $userId,
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+            $studentProfileId = $db->insertID();
+        } else {
+            $studentProfileId = $profile->id;
+        }
+
+        $academicYearId = $this->request->getPost('academic_year_id');
+        $classLevel     = $this->request->getPost('class_level');
+        $classRoom      = $this->request->getPost('class_room');
+
+        // Validasi: Cegah duplikasi plotting pada Tahun Ajaran & Semester yang sama
+        $cekDuplikat = $db->table('student_academic_history')
+                          ->where('student_profile_id', $studentProfileId)
+                          ->where('academic_year_id', $academicYearId)
+                          ->get()->getRow();
+
+        if ($cekDuplikat) {
+            return redirect()->back()->with('error', '❌ Siswa sudah terdaftar/diplotting pada Tahun Pelajaran tersebut!');
+        }
+
+        $db->table('student_academic_history')->insert([
+            'student_profile_id' => $studentProfileId,
+            'academic_year_id'   => $academicYearId,
+            'class_level'        => $classLevel,
+            'class_room'         => $classRoom,
+            'status'             => 'aktif',
+            'created_at'         => date('Y-m-d H:i:s'),
+            'updated_at'         => date('Y-m-d H:i:s')
+        ]);
+
+        return redirect()->to(base_url('admin/users/siswa-tes'))->with('sukses', '✔️ Berhasil melakukan plotting kelas baru untuk siswa.');
+    }
+
+    /**
+     * 2. Perbarui Baris Riwayat Akademik Siswa (Inline Update)
+     */
+    public function updateHistorySiswa($historyId)
+    {
+        $db = \Config\Database::connect();
+
+        $db->table('student_academic_history')->where('id', $historyId)->update([
+            'class_level' => $this->request->getPost('class_level'),
+            'class_room'  => $this->request->getPost('class_room'),
+            'status'      => $this->request->getPost('status'),
+            'updated_at'  => date('Y-m-d H:i:s')
+        ]);
+
+        return redirect()->to(base_url('admin/users/siswa-tes'))->with('sukses', '✔️ Baris riwayat akademik berhasil diperbarui.');
+    }
+
+    /**
+     * 3. Hapus Baris Riwayat Akademik Siswa
+     */
+    public function deleteHistorySiswa($historyId)
+    {
+        $db = \Config\Database::connect();
+        $db->table('student_academic_history')->where('id', $historyId)->delete();
+
+        return redirect()->to(base_url('admin/users/siswa-tes'))->with('sukses', '🗑️ Baris riwayat akademik berhasil dihapus.');
+    }
+
+    /**
+     * Hapus Akun Siswa (Smart Delete: Hard vs Soft)
+     */
+    public function deleteSiswa($id)
+    {
+        $db = \Config\Database::connect();
+        
+        // 1. Cek apakah siswa memiliki profil statis
+        $profile = $db->table('student_profiles')->where('user_id', $id)->get()->getRow();
+        
+        // 2. Deteksi keberadaan Riwayat Akademik (Plotting Kelas)
+        $hasHistory = false;
+        if ($profile) {
+            $historyCount = $db->table('student_academic_history')
+                               ->where('student_profile_id', $profile->id)
+                               ->countAllResults();
+            if ($historyCount > 0) {
+                $hasHistory = true;
+            }
+        }
+
+        $db->transStart();
+
+        if ($hasHistory) {
+            // EKSEKUSI SOFT DELETE (Karena punya rekam jejak)
+            $db->table('users')->where('id', $id)->update([
+                'deleted_at' => date('Y-m-d H:i:s'),
+                'active'     => 0
+            ]);
+            $pesan = '🗑️ Akun dipindahkan ke Arsip (Soft Delete) karena siswa sudah memiliki rekam jejak kelas historis.';
+        } else {
+            // EKSEKUSI HARD DELETE (Bersihkan total karena dianggap salah buat/batal)
+            if ($profile) {
+                $db->table('student_profiles')->where('user_id', $id)->delete();
+            }
+            $db->table('auth_identities')->where('user_id', $id)->delete();
+            $db->table('auth_groups_users')->where('user_id', $id)->delete();
+            $db->table('users')->where('id', $id)->delete();
+            
+            $pesan = '💥 Akun dihapus permanen (Hard Delete) dari sistem karena tidak memiliki riwayat kelas.';
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return redirect()->back()->with('error', '❌ Terjadi kesalahan saat memproses penghapusan akun.');
+        }
+
+        return redirect()->to(base_url('admin/users/siswa-tes'))->with('sukses', $pesan);
     }
 }

@@ -99,11 +99,20 @@
                                         <button type="button" class="btn btn-info btn-sm text-white" data-bs-toggle="modal" data-bs-target="#modalDetailSiswa<?= $siswa['id'] ?>" title="Lihat Detail Profil">
                                             👁️ Detail
                                         </button>
-                                    <?php if (strtolower($siswa['status'] ?? '') === 'banned'): ?>
-                                        <a href="<?= base_url('admin/users/siswa-toggle/' . $siswa['id']) ?>" class="btn btn-xs btn-outline-success py-0 px-2" style="font-size: 0.75rem;">✔️ Pulihkan</a>
-                                    <?php else: ?>
-                                        <a href="<?= base_url('admin/users/siswa-toggle/' . $siswa['id']) ?>" class="btn btn-xs btn-outline-danger py-0 px-2" style="font-size: 0.75rem;" onclick="return confirm('Bekukan akses login siswa ini?')">🚫 Blokir</a>
-                                    <?php endif; ?>
+                                        <button type="button" class="btn btn-xs btn-warning text-white py-0 px-2" style="font-size: 0.75rem;" data-bs-toggle="modal" data-bs-target="#modalEditSiswa<?= $siswa['id'] ?>">
+                                            📝 Edit
+                                        </button>
+
+                                        <?php if (strtolower($siswa['status'] ?? '') === 'banned'): ?>
+                                            <a href="<?= base_url('admin/users/siswa-toggle/' . $siswa['id']) ?>" class="btn btn-xs btn-outline-success py-0 px-2" style="font-size: 0.75rem;">✔️ Izinkan</a>
+                                        <?php else: ?>
+                                            <a href="<?= base_url('admin/users/siswa-toggle/' . $siswa['id']) ?>" class="btn btn-xs btn-outline-dark py-0 px-2" style="font-size: 0.75rem;" onclick="return confirm('Bekukan akses login akun ini?')">🚫 Blokir</a>
+                                        <?php endif; ?>
+
+                                        <a href="<?= base_url('admin/users/siswa-delete/' . $siswa['id']) ?>" class="btn btn-danger btn-sm text-white font-weight-bold shadow-sm" onclick="return confirm('Apakah Anda yakin ingin menghapus akun siswa ini?\n\nSistem akan otomatis menentukan Hard Delete (Permanen) atau Soft Delete (Arsip) berdasarkan rekam jejak kelas siswa.')" title="Hapus Akun Siswa">
+                                            🗑️ Hapus
+                                        </a>
+                                        
                                     </div>
                                 </td>
                             </tr>
@@ -143,93 +152,105 @@
     </div>
 
     <div class="modal fade" id="modalTambahSiswa" tabindex="-1" role="dialog" aria-labelledby="modalTambahSiswaLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header bg-success text-white">
-                    <h5 class="modal-title font-weight-bold" id="modalTambahSiswaLabel">🎓 Formulir Akun & Properti Siswa Baru</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form action="<?= base_url('admin/users/siswa-store') ?>" method="POST">
-                    <?= csrf_field() ?>
-                    <div class="modal-body">
-                        
-                        <h6 class="text-success font-weight-bold mb-3">🔑 DATA AKSES LOGIN</h6>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="small font-weight-bold">Nama Lengkap Siswa <span class="text-danger">*</span></label>
-                                <input type="text" name="username" class="form-control form-control-sm" placeholder="Contoh: Aditya Pratama" required>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="small font-weight-bold">Email Akun / Siswa <span class="text-danger">*</span></label>
-                                <input type="email" name="email" class="form-control form-control-sm" placeholder="Contoh: aditya@student.mimha.sch.id" required>
-                            </div>
-                        </div>
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <label class="small font-weight-bold">Password Akun <span class="text-danger">*</span></label>
-                                <input type="password" name="password" class="form-control form-control-sm" placeholder="Minimal 8 Karakter" required>
-                            </div>
-                        </div>
-
-                        <hr>
-                        <h6 class="text-success font-weight-bold mb-3">📋 INDUK PROPERTI PERSONAL (STATIS)</h6>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <label class="small font-weight-bold">NISN (Nomor Induk Siswa Nasional)</label>
-                                <input type="text" name="nisn" class="form-control form-control-sm" placeholder="Masukkan 10 digit NISN">
-                            </div>
-                            <div class="col-md-6">
-                                <label class="small font-weight-bold">NIS (Nomor Induk Internal)</label>
-                                <input type="text" name="nis" class="form-control form-control-sm" placeholder="Masukkan NIS Madrasah">
-                            </div>
-                        </div>
-                        <div class="row mb-4">
-                            <div class="col-md-6">
-                                <label class="small font-weight-bold">Jenis Kelamin <span class="text-danger">*</span></label>
-                                <select name="gender" class="form-control form-control-sm" required>
-                                    <option value="">-- Pilih --</option>
-                                    <option value="L">Laki-laki</option>
-                                    <option value="P">Perempuan</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="small font-weight-bold">No. WA Orang Tua / Wali</label>
-                                <input type="text" name="phone_ortu" class="form-control form-control-sm" placeholder="Contoh: 081234567xxx">
-                            </div>
-                        </div>
-
-                        <hr>
-                        <h6 class="text-success font-weight-bold mb-3">🏫 RIWAYAT AKADEMIK & PENEMPATAN KELAS (DINAMIS)</h6>
-                        <div class="row mb-2">
-                            <div class="col-md-4">
-                                <label class="small font-weight-bold">Tahun Pelajaran Masuk <span class="text-danger">*</span></label>
-                                <select name="academic_year_id" class="form-control form-control-sm" required>
-                                    <option value="1">2026/2027 - Ganjil</option> 
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="small font-weight-bold">Tingkat / Jenjang Kelas <span class="text-danger">*</span></label>
-                                <select name="class_level" class="form-control form-control-sm" required>
-                                    <option value="7">Kelas 7</option>
-                                    <option value="8">Kelas 8</option>
-                                    <option value="9">Kelas 9</option>
-                                </select>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="small font-weight-bold">Nama Rombel / Ruang <span class="text-danger">*</span></label>
-                                <input type="text" name="class_room" class="form-control form-control-sm" placeholder="Contoh: A, B, Umar, atau Abu Bakar" required>
-                            </div>
-                        </div>
-
-                    </div>
-                    <div class="modal-footer bg-light">
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-success text-white btn-sm">💾 Terbitkan Akun Siswa</button>
-                    </div>
-                </form>
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title font-weight-bold" id="modalTambahSiswaLabel">🎓 Formulir Akun & Properti Siswa Baru</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
+            <form action="<?= base_url('admin/users/siswa-store') ?>" method="POST">
+                <?= csrf_field() ?>
+                <div class="modal-body">
+                    
+                    <h6 class="text-success font-weight-bold mb-3">🔑 DATA AKSES LOGIN</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="small font-weight-bold">Nama Lengkap Siswa <span class="text-danger">*</span></label>
+                            <input type="text" name="username" class="form-control form-control-sm" placeholder="Contoh: Aditya Pratama" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small font-weight-bold">Email Akun / Siswa <span class="text-danger">*</span></label>
+                            <input type="email" name="email" class="form-control form-control-sm" placeholder="Contoh: aditya@student.mimha.sch.id" required>
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="small font-weight-bold">Password Akun <span class="text-danger">*</span></label>
+                            <input type="password" name="password" class="form-control form-control-sm" placeholder="Minimal 8 Karakter" required>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h6 class="text-success font-weight-bold mb-3">📋 INDUK PROPERTI PERSONAL (STATIS)</h6>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="small font-weight-bold">NISN (Nomor Induk Siswa Nasional)</label>
+                            <input type="text" name="nisn" class="form-control form-control-sm" placeholder="Masukkan 10 digit NISN">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small font-weight-bold">NIS (Nomor Induk Internal)</label>
+                            <input type="text" name="nis" class="form-control form-control-sm" placeholder="Masukkan NIS Madrasah">
+                        </div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="small font-weight-bold">Jenis Kelamin <span class="text-danger">*</span></label>
+                            <select name="gender" class="form-control form-control-sm" required>
+                                <option value="">-- Pilih --</option>
+                                <option value="L">Laki-laki</option>
+                                <option value="P">Perempuan</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="small font-weight-bold">No. WA Orang Tua / Wali</label>
+                            <input type="text" name="phone_ortu" class="form-control form-control-sm" placeholder="Contoh: 081234567xxx">
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h6 class="text-success font-weight-bold mb-3">🏫 RIWAYAT AKADEMIK & PENEMPATAN KELAS (DINAMIS)</h6>
+                    <div class="row mb-2">
+                        
+                        <div class="col-md-4">
+                            <label class="small font-weight-bold">Tahun Pelajaran Masuk <span class="text-danger">*</span></label>
+                            <select name="academic_year_id" class="form-control form-control-sm" required>
+                                <option value="">-- Pilih Tahun Ajaran --</option>
+                                <?php if (!empty($tahun_akademik)): ?>
+                                    <?php foreach ($tahun_akademik as $ta): ?>
+                                        <option value="<?= $ta['id'] ?>">
+                                            <?= esc($ta['academic_year']) ?> - <?= esc($ta['semester']) ?> 
+                                            <?= ($ta['is_active'] == 1) ? '(Aktif)' : '' ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <option value="" disabled>Data Tahun Akademik Kosong</option>
+                                <?php endif; ?>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="small font-weight-bold">Tingkat / Jenjang Kelas <span class="text-danger">*</span></label>
+                            <select name="class_level" class="form-control form-control-sm" required>
+                                <option value="">-- Pilih Tingkat --</option>
+                                <option value="7">Kelas 7</option>
+                                <option value="8">Kelas 8</option>
+                                <option value="9">Kelas 9</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="small font-weight-bold">Nama Rombel / Ruang <span class="text-danger">*</span></label>
+                            <input type="text" name="class_room" class="form-control form-control-sm" placeholder="Contoh: A, B, Umar, atau Abu Bakar" required>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success text-white btn-sm">💾 Terbitkan Akun Siswa</button>
+                </div>
+            </form>
         </div>
     </div>
+</div>
 
     <?php if (!empty($daftarSiswa)): ?>
         <?php foreach ($daftarSiswa as $siswa): ?>
@@ -330,6 +351,171 @@
                                         <?php endif; ?>
                                     </tbody>
                                 </table>
+                            </div>
+
+                        </div>
+                        <div class="modal-footer bg-light py-2">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup Jendela</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endforeach; ?>
+    <?php endif; ?>
+
+    <?php if (!empty($daftarSiswa)): ?>
+        <?php foreach ($daftarSiswa as $siswa): ?>
+            <div class="modal fade" id="modalEditSiswa<?= $siswa['id'] ?>" tabindex="-1" aria-labelledby="labelModalEdit<?= $siswa['id'] ?>" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content border-0 shadow">
+                        <div class="modal-header bg-warning text-dark py-3">
+                            <h5 class="modal-title font-weight-bold" id="labelModalEdit<?= $siswa['id'] ?>">
+                                <i class="fas fa-user-edit mr-2"></i> Perbarui Akun & Rekam Jejak: <?= esc($siswa['username']) ?>
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        
+                        <form action="<?= base_url('admin/users/siswa-update/' . $siswa['id']) ?>" method="POST">
+                            <?= csrf_field() ?>
+                            <div class="modal-body p-4 pb-0">
+                                <h6 class="text-warning font-weight-bold mb-3 border-bottom pb-2">🔑 KREDENSIAL LOGIN AKUN</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">Nama Lengkap Siswa <span class="text-danger">*</span></label>
+                                        <input type="text" name="username" class="form-control form-control-sm" value="<?= esc($siswa['username']) ?>" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">Email Akun <span class="text-danger">*</span></label>
+                                        <input type="email" name="email" class="form-control form-control-sm" value="<?= esc($siswa['email']) ?>" required>
+                                    </div>
+                                </div>
+                                <div class="row mb-4">
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">Password Baru <span class="text-muted text-xs">(Kosongkan jika tidak diganti)</span></label>
+                                        <input type="password" name="password" class="form-control form-control-sm" placeholder="Minimal 8 karakter jika ingin diubah">
+                                    </div>
+                                </div>
+
+                                <h6 class="text-warning font-weight-bold mb-3 border-bottom pb-2">📋 INDUK PROPERTI PERSONAL (STATIS)</h6>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">NISN (10 Digit)</label>
+                                        <input type="text" name="nisn" class="form-control form-control-sm" value="<?= esc($siswa['nisn'] ?? '') ?>" placeholder="Masukkan NISN">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">NIS Internal</label>
+                                        <input type="text" name="nis" class="form-control form-control-sm" value="<?= esc($siswa['nis'] ?? '') ?>" placeholder="Masukkan NIS Internal">
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">Jenis Kelamin <span class="text-danger">*</span></label>
+                                        <select name="gender" class="form-control form-control-sm" required>
+                                            <option value="L" <?= ($siswa['gender'] == 'L') ? 'selected' : '' ?>>Laki-laki</option>
+                                            <option value="P" <?= ($siswa['gender'] == 'P') ? 'selected' : '' ?>>Perempuan</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">No. WA Orang Tua / Wali</label>
+                                        <input type="text" name="phone_ortu" class="form-control form-control-sm" value="<?= esc($siswa['phone_ortu'] ?? '') ?>" placeholder="Contoh: 081234xxx">
+                                    </div>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">Tempat Lahir</label>
+                                        <input type="text" name="birth_place" class="form-control form-control-sm" value="<?= esc($siswa['birth_place'] ?? '') ?>">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="small font-weight-bold">Tanggal Lahir</label>
+                                        <input type="date" name="birth_date" class="form-control form-control-sm" value="<?= esc($siswa['birth_date'] ?? '') ?>">
+                                    </div>
+                                </div>
+                                <div class="text-right mb-3">
+                                    <button type="submit" class="btn btn-warning btn-sm font-weight-bold text-dark shadow-sm">💾 Perbarui Biodata Utama</button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div class="modal-body p-4 pt-0">
+                            <hr class="mt-0">
+                            
+                            <h6 class="text-success font-weight-bold mb-3"><i class="fas fa-plus-circle mr-1"></i> PLOTTING TAHUN AJARAN / KELAS BARU</h6>
+                            <form action="<?= base_url('admin/users/siswa-add-history/' . $siswa['id']) ?>" method="POST" class="bg-light p-3 rounded border mb-4">
+                                <?= csrf_field() ?>
+                                <div class="row align-items-end">
+                                    <div class="col-md-4 mb-2 mb-md-0">
+                                        <label class="small font-weight-bold text-muted">Tahun Pelajaran <span class="text-danger">*</span></label>
+                                        <select name="academic_year_id" class="form-control form-control-sm" required>
+                                            <option value="">-- Pilih --</option>
+                                            <?php if (!empty($tahun_akademik)): ?>
+                                                <?php foreach ($tahun_akademik as $ta): ?>
+                                                    <option value="<?= $ta['id'] ?>"><?= esc($ta['academic_year']) ?> - <?= esc($ta['semester']) ?></option>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 mb-2 mb-md-0">
+                                        <label class="small font-weight-bold text-muted">Tingkat Kelas <span class="text-danger">*</span></label>
+                                        <select name="class_level" class="form-control form-control-sm" required>
+                                            <option value="7">Kelas 7</option>
+                                            <option value="8">Kelas 8</option>
+                                            <option value="9">Kelas 9</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 mb-2 mb-md-0">
+                                        <label class="small font-weight-bold text-muted">Rombel / Ruang <span class="text-danger">*</span></label>
+                                        <input type="text" name="class_room" class="form-control form-control-sm" placeholder="Contoh: Umar" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="submit" class="btn btn-success btn-sm w-100 font-weight-bold text-white shadow-sm">➕ Plotting</button>
+                                    </div>
+                                </div>
+                            </form>
+
+                            <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-history mr-1"></i> REKAM JEJAK / RIWAYAT KELAS SISWA</h6>
+                            <div class="riwayat-container" style="max-height: 250px; overflow-y: auto;">
+                                <?php if (!empty($riwayat_siswa[$siswa['id']])): ?>
+                                    <?php foreach ($riwayat_siswa[$siswa['id']] as $hist): ?>
+                                        <form action="<?= base_url('admin/users/siswa-update-history/' . $hist['history_id']) ?>" method="POST" class="mb-2 shadow-sm border rounded bg-white p-2">
+                                            <?= csrf_field() ?>
+                                            <div class="row align-items-center">
+                                                <div class="col-md-4">
+                                                    <span class="small font-weight-bold text-secondary">
+                                                        🗓️ <?= esc($hist['academic_year']) ?> - <?= esc($hist['semester']) ?>
+                                                    </span>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <select name="class_level" class="form-control form-control-sm">
+                                                        <option value="7" <?= ($hist['class_level'] == '7') ? 'selected' : '' ?>>7</option>
+                                                        <option value="8" <?= ($hist['class_level'] == '8') ? 'selected' : '' ?>>8</option>
+                                                        <option value="9" <?= ($hist['class_level'] == '9') ? 'selected' : '' ?>>9</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <input type="text" name="class_room" class="form-control form-control-sm font-weight-bold text-primary" value="<?= esc($hist['class_room']) ?>" required>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <select name="status" class="form-control form-control-sm">
+                                                        <option value="aktif" <?= ($hist['status'] == 'aktif') ? 'selected' : '' ?>>Aktif</option>
+                                                        <option value="lulus" <?= ($hist['status'] == 'lulus') ? 'selected' : '' ?>>Lulus</option>
+                                                        <option value="pindah" <?= ($hist['status'] == 'pindah') ? 'selected' : '' ?>>Pindah</option>
+                                                        <option value="keluar" <?= ($hist['status'] == 'keluar') ? 'selected' : '' ?>>Keluar</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-2 text-center">
+                                                    <div class="btn-group btn-group-sm w-100">
+                                                        <button type="submit" class="btn btn-outline-success py-1" title="Update Baris Ini">✔️</button>
+                                                        <a href="<?= base_url('admin/users/siswa-delete-history/' . $hist['history_id']) ?>" class="btn btn-outline-danger py-1" onclick="return confirm('Hapus baris riwayat kelas ini?')" title="Hapus Riwayat">🗑️</a>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <div class="text-center text-muted small border border-dashed py-3 rounded">
+                                        Siswa ini belum memiliki catatan riwayat kelas aktif.
+                                    </div>
+                                <?php endif; ?>
                             </div>
 
                         </div>
