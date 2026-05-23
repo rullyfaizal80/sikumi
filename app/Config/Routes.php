@@ -86,4 +86,7 @@ $routes->group('admin', ['filter' => 'session'], function($routes) {
     $routes->post('users/siswa-add-history/(:num)', 'UserSiswaController::addHistorySiswa/$1');
     $routes->post('users/siswa-update-history/(:num)', 'UserSiswaController::updateHistorySiswa/$1');
     $routes->get('users/siswa-delete-history/(:num)', 'UserSiswaController::deleteHistorySiswa/$1');
+
+    $routes->get('users/siswa-trash', 'UserSiswaController::trashSiswa');
+    $routes->get('users/siswa-restore/(:num)', 'UserSiswaController::restoreSiswa/$1');
 });
