@@ -93,3 +93,19 @@ $routes->group('admin', ['filter' => 'session'], function($routes) {
     $routes->get('users/siswa-trash', 'UserSiswaController::trashSiswa');
     $routes->get('users/siswa-restore/(:num)', 'UserSiswaController::restoreSiswa/$1');
 });
+
+$routes->group('admin', ['filter' => 'session'], function($routes) {
+
+    $routes->get('master-data', 'MasterDataController::index');
+    
+    // --- RUTE MASTER DATA MATA PELAJARAN ---
+    $routes->post('master-data/subject-store', 'MasterDataController::storeSubject');
+    $routes->post('master-data/subject-update/(:num)', 'MasterDataController::updateSubject/$1');
+    $routes->get('master-data/subject-delete/(:num)', 'MasterDataController::deleteSubject/$1');
+
+    // --- RUTE MASTER DATA KELAS (BARU TAMBAHAN) ---
+    $routes->post('master-data/class-store', 'MasterDataController::storeClass');
+    $routes->post('master-data/class-update/(:num)', 'MasterDataController::updateClass/$1');
+    $routes->get('master-data/class-delete/(:num)', 'MasterDataController::deleteClass/$1');
+    
+});
