@@ -38,6 +38,9 @@ class Filters extends BaseFilters
         'tokens'        => \CodeIgniter\Shield\Filters\TokenAuth::class,   // <-- TAMBAHKAN BARIS INI
         'chain'         => \CodeIgniter\Shield\Filters\AuthenticationChainFilter::class, // <-- TAMBAHKAN BARIS INI
         'antibot'       => \App\Filters\AntiBotFilter::class,
+        'group'         => \CodeIgniter\Shield\Filters\GroupFilter::class,
+        'permission'    => \CodeIgniter\Shield\Filters\PermissionFilter::class,
+        'dynamic_acl'   => \App\Filters\DynamicPermissionFilter::class,
     ];
 
     /**
@@ -114,5 +117,9 @@ class Filters extends BaseFilters
         'antibot' => [
             'before' => ['login'] // <-- TAMBAHKAN BARIS INI
         ],
+
+        'dynamic_acl' => [
+            'before' => ['admin', 'admin/*']
+        ]
     ];
 }

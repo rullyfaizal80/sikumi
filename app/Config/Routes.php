@@ -25,7 +25,7 @@ $routes->get('blocked', function() {
 // =========================================================================
 // JALUR KHUSUS HALAMAN ADMIN (GRUP TERPUSAT)
 // =========================================================================
-$routes->group('admin', ['filter' => 'session'], static function ($routes) {
+$routes->group('admin', static function ($routes) {
     
     // --- MANAJEMEN PENGGUNA & HAK AKSES ---
     $routes->get('users', 'AdminController::index');
