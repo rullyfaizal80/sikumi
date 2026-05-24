@@ -15,7 +15,6 @@
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h3 style="color: #FF9F00; font-weight: 700;">⚙️ Setelan Tahun Akademik <span style="color: #FFC107;">SiKuMi</span></h3>
                 <div>
-                    <a href="<?= base_url('admin/users') ?>" class="btn btn-outline-secondary btn-sm me-2">👥 Kelola Pengguna</a>
                     <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm">⬅️ Ke Dashboard</a>
                 </div>
             </div>

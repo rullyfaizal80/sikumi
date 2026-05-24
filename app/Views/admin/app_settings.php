@@ -41,7 +41,6 @@
                     <h3 class="mb-0" style="color: #FF9F00; font-weight: 700; font-size: 1.5rem;">⚙️ Pusat Pengaturan <span style="color: #FFC107;">SiKuMi</span></h3>
                 </div>
                 <div class="col-12 col-sm-6 text-center text-sm-end">
-                    <a href="<?= base_url('admin/users') ?>" class="btn btn-outline-secondary btn-sm me-1 mb-1"><i class="bi bi-people"></i> Kelola Pengguna</a>
                     <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm mb-1"><i class="bi bi-arrow-left-short"></i> Dashboard</a>
                 </div>
             </div>

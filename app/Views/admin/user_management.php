@@ -47,21 +47,21 @@
                         <div class="col-lg-8">
                             <div class="card shadow-sm h-100 border-top border-warning border-3">
                                 <!-- KODE BARU: HEADER TABEL DILENGKAPI TOMBOL TAMBAH GURU -->
-<div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-    <h5 class="card-title mb-0" style="font-weight: 600;">👤 Daftar Akun Guru & Staf</h5>
-    <!-- Tombol Pemicu Modal Pop-up Tambah User
-    <button type="button" class="btn btn-warning btn-sm text-white font-weight-bold shadow-sm" style="background-color: #FF9F00; border: none;" data-bs-toggle="modal" data-bs-target="#modalTambahUser">
-        <i class="bi bi-person-plus-fill me-1"></i> ➕ Tambah Akun Guru
-    </button> -->
-    <?php if ($showSiswa === '1'): ?>
-    <a href="<?= base_url('admin/users?show_siswa=0') ?>" class="btn btn-sm btn-dark font-weight-bold shadow-sm">
-        <i class="fas fa-eye-slash mr-1"></i> 🫣 Sembunyikan Siswa Murni
-    </a>
-<?php else: ?>
-    <a href="<?= base_url('admin/users?show_siswa=1') ?>" class="btn btn-sm btn-info text-white font-weight-bold shadow-sm">
-        <i class="fas fa-users mr-1"></i> 👁️ Tampilkan Peran Siswa
-    </a>
-<?php endif; ?>
+<div class="card-header bg-white py-3 d-flex align-items-center">
+    <h5 class="card-title mb-0" style="font-weight: 600;">👤 Daftar Akun</h5>
+    
+    <!-- Pembungkus tombol dipaksa ke kanan layar pengguna -->
+    <div class="ml-auto ms-auto">
+        <?php if ($showSiswa === '1'): ?>
+            <a href="<?= base_url('admin/users?show_siswa=0') ?>" class="btn btn-sm btn-dark font-weight-bold shadow-sm">
+                <i class="fas fa-eye-slash mr-1"></i> 🫣 Sembunyikan Role Siswa
+            </a>
+        <?php else: ?>
+            <a href="<?= base_url('admin/users?show_siswa=1') ?>" class="btn btn-sm btn-info text-white font-weight-bold shadow-sm">
+                <i class="fas fa-users mr-1"></i> 👁️ Tampilkan Role Siswa
+            </a>
+        <?php endif; ?>
+    </div>
 </div>
                                 <div class="card-body p-0">
                                     <div class="table-responsive">
