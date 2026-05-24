@@ -23,6 +23,9 @@ $routes->group('admin', ['filter' => 'session'], static function ($routes) {
     $routes->post('roles/store', 'AdminController::storeRole');
     $routes->post('users/update-roles', 'AdminController::updateUserRoles');
 
+    $routes->post('users/role-update/(:num)', 'AdminController::updateRole/$1');
+    $routes->get('users/role-delete/(:num)', 'AdminController::deleteRole/$1');
+
     $routes->get('permission-matrix', 'AdminController::permissionMatrix');
     $routes->post('permission-matrix/save', 'AdminController::saveMatrix');
 

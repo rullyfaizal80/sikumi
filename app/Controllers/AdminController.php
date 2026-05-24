@@ -10,62 +10,126 @@ class AdminController extends BaseController
 {
 
 public function index()
-{
-    $userModel = new UserModel();
-    $roleModel = new CustomRoleModel();
+    {
+        $userModel = new UserModel();
+        $roleModel = new CustomRoleModel();
+        $db = \Config\Database::connect();
 
-    // 1. GANTI findAll() MENJADI paginate() UNTUK MEMBATASI DATA (Misal: 10 data per halaman)
-    // Fitur ini otomatis membaca parameter '?page=' dari URL Anda
-    $daftarUser = $userModel->paginate(10, 'default');
+        // 1. TANGKAP PARAMETER FILTER TAMPILKAN SISWA (Default: 0 / Sembunyikan)
+        $showSiswa = $this->request->getGet('show_siswa') ?? '0';
 
-    // 2. Ambil objek pager untuk menggerakkan komponen navigasi tombol di halaman view
-    $pager = $userModel->pager;
+        if ($showSiswa !== '1') {
+            // =========================================================================
+            // REVISI FILTER: Sembunyikan SEMUA user yang memiliki role 'siswa'
+            // =========================================================================
+            $subQuery = "(SELECT user_id FROM auth_groups_users WHERE `group` = 'siswa')";
+            $userModel->where("id NOT IN {$subQuery}", null, false);
+            // =========================================================================
+        }
 
-    $daftarRole = $roleModel->findAll();
+        // 2. Paginate otomatis membatasi 10 data per halaman
+        $daftarUser = $userModel->paginate(10, 'default');
+        $pager = $userModel->pager;
 
-    // KODE BARU Anda tetap dipertahankan dengan sempurna
-    $db = \Config\Database::connect();
-    $builder = $db->table('auth_groups_users agu');
-    $builder->select('agu.user_id, cr.role_title');
-    $builder->join('custom_roles cr', 'cr.role_name = agu.group');
-    $userGrupRaw = $builder->get()->getResultArray();
+        $daftarRole = $roleModel->findAll();
 
-    // Kelompokkan Nama Resmi Peran berdasarkan ID Pengguna
-    $peranUser = [];
-    foreach ($userGrupRaw as $row) {
-        $peranUser[$row['user_id']][] = $row['role_title'];
+        $builder = $db->table('auth_groups_users agu');
+        $builder->select('agu.user_id, cr.role_title');
+        $builder->join('custom_roles cr', 'cr.role_name = agu.group');
+        $userGrupRaw = $builder->get()->getResultArray();
+
+        $peranUser = [];
+        foreach ($userGrupRaw as $row) {
+            $peranUser[$row['user_id']][] = $row['role_title'];
+        }
+
+        $data = [
+            'users'      => $daftarUser,
+            'roles'      => $daftarRole, 
+            'peranUser'  => $peranUser,
+            'pager'      => $pager,
+            'showSiswa'  => $showSiswa // Kirim status filter ke view
+        ];
+
+        return view('admin/user_management', $data);
     }
 
-    // 3. Masukkan variabel 'pager' ke dalam array data kiriman ke view
-    $data = [
-        'users'      => $daftarUser,
-        'roles'      => $daftarRole, 
-        'peranUser'  => $peranUser,
-        'pager'      => $pager // <-- Wajib dikirimkan untuk mencetak tombol halaman
-    ];
+    /**
+     * Update/Edit Nama & Judul Peran Jabatan (Role)
+     */
+    public function updateRole($id)
+    {
+        $roleModel = new CustomRoleModel();
+        $db = \Config\Database::connect();
 
-    return view('admin/user_management', $data);
-}
+        $role = $roleModel->find($id);
+        if (!$role) {
+            return redirect()->back()->with('error', '❌ Peran tidak ditemukan.');
+        }
 
-    // Tambahkan fungsi ini di dalam file app/Controllers/AdminController.php
-public function storeRole()
-{
-    // 1. Tangkap data input dari form visual
-    $roleName  = $this->request->getPost('role_name');
-    $roleTitle = $this->request->getPost('role_title');
+        $oldRoleName = $role['role_name'];
+        $newRoleName = $this->request->getPost('role_name');
+        $roleTitle   = $this->request->getPost('role_title');
 
-    // 2. Masukkan data ke dalam tabel custom_roles menggunakan model kustom kita
-    $roleModel = new \App\Models\CustomRoleModel();
-    $roleModel->insert([
-        'role_name'  => $roleName,
-        'role_title' => $roleTitle,
-        'created_at' => date('Y-m-d H:i:s'),
-        'updated_at' => date('Y-m-d H:i:s')
-    ]);
+        $db->transStart();
 
-    // 3. Kembalikan ke halaman admin sambil membawa pesan sukses
-    return redirect()->to('admin/users')->with('sukses', 'Peran jabatan baru "' . $roleTitle . '" berhasil disimpan ke database kustom!');
-}
+        // Update data master di tabel custom_roles
+        $roleModel->update($id, [
+            'role_name'  => $newRoleName,
+            'role_title' => $roleTitle,
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
+
+        // Jika nama role internal berubah, perbarui juga di tabel auth_groups_users agar link user tidak putus
+        if ($oldRoleName !== $newRoleName) {
+            $db->table('auth_groups_users')
+               ->where('group', $oldRoleName)
+               ->update(['group' => $newRoleName]);
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return redirect()->back()->with('error', '❌ Gagal memperbarui data peran.');
+        }
+
+        return redirect()->to('admin/users')->with('sukses', '✔️ Peran jabatan berhasil diperbarui.');
+    }
+
+    /**
+     * Hapus Peran Jabatan beserta Relasi Penggunanya (Cascading Manual)
+     */
+    public function deleteRole($id)
+    {
+        $roleModel = new CustomRoleModel();
+        $db = \Config\Database::connect();
+
+        $role = $roleModel->find($id);
+        if (!$role) {
+            return redirect()->back()->with('error', '❌ Peran tidak ditemukan.');
+        }
+
+        // PROTEKSI: Mencegah penghapusan role bawaan inti sistem demi keamanan aplikasi
+        if (in_array($role['role_name'], ['admin', 'siswa', 'guru'])) {
+            return redirect()->back()->with('error', '❌ Role bawaan inti sistem (admin/siswa/guru) adalah pondasi aplikasi dan tidak boleh dihapus!');
+        }
+
+        $db->transStart();
+
+        // 1. Bersihkan penugasan role ini pada user di tabel auth_groups_users
+        $db->table('auth_groups_users')->where('group', $role['role_name'])->delete();
+
+        // 2. Hapus role master (custom_roles_permissions otomatis terhapus karena ON DELETE CASCADE di DB)
+        $roleModel->delete($id);
+
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return redirect()->back()->with('error', '❌ Gagal menghapus peran.');
+        }
+
+        return redirect()->to('admin/users')->with('sukses', '🗑️ Peran beserta seluruh penugasan pengguna berhasil dihapus bersih.');
+    }
 
 // Tambahkan fungsi pengelola multi-jabatan ini ke dalam app/Controllers/AdminController.php
 public function updateUserRoles()
@@ -457,5 +521,34 @@ public function activateAcademic($id)
             return redirect()->to(base_url('admin/settings?tab=angkatan'))
                              ->with('error', 'Gagal menghapus data: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Tambah Peran Jabatan Baru (Role)
+     */
+    public function storeRole()
+    {
+        // 1. Tangkap data input dari form visual
+        $roleName  = $this->request->getPost('role_name');
+        $roleTitle = $this->request->getPost('role_title');
+
+        // 2. Masukkan data ke dalam tabel custom_roles menggunakan model kustom
+        $roleModel = new \App\Models\CustomRoleModel();
+        
+        // Proteksi Tambahan: Cek apakah kode peran sudah ada agar tidak duplikat
+        $cekRole = $roleModel->where('role_name', $roleName)->first();
+        if ($cekRole) {
+            return redirect()->back()->with('error', '❌ Gagal! Kode peran sistem "' . $roleName . '" sudah digunakan. Silakan gunakan kode lain.');
+        }
+
+        $roleModel->insert([
+            'role_name'  => $roleName,
+            'role_title' => $roleTitle,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
+
+        // 3. Kembalikan ke halaman admin sambil membawa pesan sukses
+        return redirect()->to(base_url('admin/users'))->with('sukses', '✔️ Peran jabatan baru "' . $roleTitle . '" berhasil disimpan ke database!');
     }
 }

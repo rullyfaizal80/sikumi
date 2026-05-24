@@ -53,6 +53,15 @@
     <button type="button" class="btn btn-warning btn-sm text-white font-weight-bold shadow-sm" style="background-color: #FF9F00; border: none;" data-bs-toggle="modal" data-bs-target="#modalTambahUser">
         <i class="bi bi-person-plus-fill me-1"></i> ➕ Tambah Akun Guru
     </button> -->
+    <?php if ($showSiswa === '1'): ?>
+    <a href="<?= base_url('admin/users?show_siswa=0') ?>" class="btn btn-sm btn-dark font-weight-bold shadow-sm">
+        <i class="fas fa-eye-slash mr-1"></i> 🫣 Sembunyikan Siswa Murni
+    </a>
+<?php else: ?>
+    <a href="<?= base_url('admin/users?show_siswa=1') ?>" class="btn btn-sm btn-info text-white font-weight-bold shadow-sm">
+        <i class="fas fa-users mr-1"></i> 👁️ Tampilkan Peran Siswa
+    </a>
+<?php endif; ?>
 </div>
                                 <div class="card-body p-0">
                                     <div class="table-responsive">
@@ -168,12 +177,48 @@
     <?php foreach ($roles as $r): ?>
         <div class="list-group-item d-flex justify-content-between align-items-center bg-light-subtle">
             <div>
-                <strong class="text-dark d-block small"><?= $r['role_title'] ?></strong>
-                <span class="text-muted" style="font-size: 11px;">Kode: <code><?= $r['role_name'] ?></code></span>
+                <strong class="text-dark d-block small"><?= esc($r['role_title']) ?></strong>
+                <span class="text-muted" style="font-size: 11px;">Kode: <code><?= esc($r['role_name']) ?></code></span>
             </div>
-            <span class="badge bg-secondary rounded-pill small" style="font-size: 10px;">Aktif</span>
+            
+            <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-warning btn-sm px-2 text-dark" data-bs-toggle="modal" data-bs-target="#modalEditRole<?= $r['id'] ?>" title="Edit Peran">
+                    📝
+                </button>
+                <a href="<?= base_url('admin/users/role-delete/' . $r['id']) ?>" class="btn btn-danger btn-sm px-2 text-white" onclick="return confirm('Hapus peran ini? Seluruh user yang memiliki peran ini akan kehilangan akses jabatannya otomatis.')" title="Hapus Peran">
+                    🗑️
+                </a>
+            </div>
         </div>
-    <?php endforeach; ?>
+
+        <div class="modal fade" id="modalEditRole<?= $r['id'] ?>" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-warning">
+                        <h5 class="modal-title font-weight-bold text-dark">📝 Ubah Peran Jabatan</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form action="<?= base_url('admin/users/role-update/' . $r['id']) ?>" method="POST">
+                        <?= csrf_field() ?>
+                        <div class="modal-body text-start">
+                            <div class="mb-3">
+                                <label class="small font-weight-bold">Kode Peran Sistem (Role Name)</label>
+                                <input type="text" name="role_name" class="form-control form-control-sm" value="<?= esc($r['role_name']) ?>" required <?= in_array($r['role_name'], ['admin', 'siswa', 'guru_pengajar']) ? 'readonly' : '' ?>>
+                            </div>
+                            <div class="mb-3">
+                                <label class="small font-weight-bold">Nama Resmi Peran (Role Title)</label>
+                                <input type="text" name="role_title" class="form-control form-control-sm" value="<?= esc($r['role_title']) ?>" required>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light">
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                            <button type="submit" class="btn btn-warning btn-sm font-weight-bold text-dark">💾 Simpan Perubahan</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <?php endforeach; ?>
 </div>
 
                                 </div>
@@ -293,7 +338,6 @@
         </div>
     </div>
 </div>
-
 
  <!-- ============================================================= -->
     <!-- URUTAN PEMANGGILAN SCRIPT WAJIB SEPERTI INI AGAR POP-UP AKTIF -->
