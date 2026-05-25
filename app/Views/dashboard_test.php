@@ -58,14 +58,18 @@
 <!-- ======================================================== -->
 <ul class="navbar-nav">
     <li class="nav-item d-flex align-items-center ps-2">
-        
-        <!-- GANTI TAG <i> LAMA DENGAN BARIS <img /> BARU INI: -->
-        <img src="<?= base_url('assets/img/logo.png') ?>" alt="Logo MIMHa" class="me-2" style="height: 32px; width: auto; object-fit: contain;">
-        
-        <span class="navbar-text font-weight-bold p-0" style="color: #212529; font-weight: 800; font-size: 19px; letter-spacing: 0.5px;">
+    <!-- GANTI TAG <i> LAMA DENGAN BARIS <img /> BARU INI: -->
+    <img src="<?= base_url('assets/img/logo.png') ?>" alt="Logo MIMHa" class="me-2" style="height: 48px; width: auto; object-fit: contain;">
+    
+    <!-- Menggunakan d-flex flex-column agar teks developer berada di bawah judul -->
+    <div class="d-flex flex-column justify-content-center">
+        <span class="navbar-text font-weight-bold p-0" style="color: #212529; font-weight: 800; font-size: 19px; letter-spacing: 0.5px; line-height: 1.2;">
             Sistem Kurikulum <span style="color: #FF9F00;">MIMHa</span> <span class="text-muted font-weight-normal" style="font-size: 15px;">(SiKuMi)</span>
         </span>
-    </li>
+        <!-- Kalimat baru di bawah judul -->
+        <small class="text-muted" style="font-size: 11px; font-weight: 500; margin-top: 2px;">Developed by Rully Faizal</small>
+    </div>
+</li>
 </ul>
 
                  <!-- SISI KANAN NAVBAR: INFORMASI USER, JAM REAL-TIME & LOGOUT -->
@@ -98,9 +102,12 @@
         <aside class="app-sidebar shadow-sm">
             
             <!-- Label Atas Khas Navigasi Keuangan -->
-            <div class="sidebar-brand p-3 text-center">
-                <span class="brand-text font-weight-bold text-dark" style="font-size: 13px; letter-spacing: 1px; font-weight: 700;">MENU UTAMA SEKOLAH</span>
-            </div>
+            <!-- Menggunakan d-flex dan min-height agar sejajar dengan tinggi navbar, serta padding vertikal yang disesuaikan -->
+<div class="sidebar-brand d-flex align-items-center justify-content-center" style="height: 65px; padding: 0 1rem; border-bottom: 1px solid #dee2e6;">
+    <span class="brand-text font-weight-bold text-dark" style="font-size: 13px; letter-spacing: 1px; font-weight: 700;">
+        MENU UTAMA
+    </span>
+</div>
             
             <!-- Rendering Daftar Menu Hasil Database -->
             <div class="sidebar-wrapper p-2">
@@ -108,13 +115,6 @@
                     <?php $currentUri = service('uri')->getPath(); ?>
                     
                     <ul class="nav flex-column" role="menu">
-                        
-                        <!-- <li class="nav-item mb-3">
-                            <a href="<?= base_url('/') ?>" class="nav-link <?= ($currentUri == '/' || $currentUri == '') ? 'bg-primary text-white shadow-sm' : '' ?>" style="border-radius: 6px;">
-                                <i class="nav-icon bi bi-grid-1x2-fill <?= ($currentUri == '/' || $currentUri == '') ? 'text-white' : 'text-secondary' ?> me-2"></i> 
-                                <p class="mb-0 font-weight-bold">Dashboard</p>
-                            </a>
-                        </li> -->
 
                         <?php foreach ($sidebarMenu as $mId => $node): ?>
                             
