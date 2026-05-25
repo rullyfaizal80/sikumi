@@ -96,4 +96,12 @@ $routes->group('admin', static function ($routes) {
     $routes->post('master-data/class-store', 'MasterDataController::storeClass');
     $routes->post('master-data/class-update/(:num)', 'MasterDataController::updateClass/$1');
     $routes->get('master-data/class-delete/(:num)', 'MasterDataController::deleteClass/$1');
+
+    $routes->get('rombel', 'RombelController::index');
+    $routes->post('rombel/store', 'RombelController::store');
+    $routes->post('rombel/update/(:num)', 'RombelController::update/$1');
+    $routes->post('rombel/plot-store', 'RombelController::plotStore');
+    $routes->get('rombel/plot-delete/(:num)', 'RombelController::plotDelete/$1');
+    $routes->post('rombel/copy', 'RombelController::copySemester');
+    $routes->get('rombel/delete/(:num)', 'RombelController::delete/$1');
 });
