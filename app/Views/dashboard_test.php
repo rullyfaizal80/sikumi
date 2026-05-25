@@ -18,6 +18,28 @@
         .nav-link.active { background-color: #dee2e6 !important; color: #000000 !important; font-weight: 700; }
         .nav-header { color: #6c757d !important; font-weight: 700; font-size: 11px; padding-left: 10px; margin-top: 15px; margin-bottom: 5px; text-uppercase: true; }
         .card-stat { border-radius: 8px; border: 1px solid #dee2e6 !important; background-color: #ffffff; }
+        /* Animasi rotasi panah menu sidebar */
+        .menu-arrow {
+            transition: transform 0.3s ease !important;
+            display: inline-block; 
+        }
+        [aria-expanded="true"] .menu-arrow {
+            transform: rotate(-180deg); 
+        }
+        
+        /* Mempercantik garis sub-menu */
+        .sub-menu-container {
+            border-left: 2px dashed #ced4da; /* Garis dibuat putus-putus agar elegan */
+            margin-left: 1.2rem;
+            padding-left: 0.5rem;
+        }
+
+        /* Pembeda Visual Induk Menu */
+        .main-menu-item {
+            background-color: #e9ecef; /* Warna latar sedikit gelap */
+            border-left: 4px solid #0d6efd; /* Garis biru di sebelah kiri */
+            border-radius: 4px;
+        }
     </style>
 </head>
 <body class="layout-fixed sidebar-expand-lg">
@@ -83,36 +105,61 @@
             <!-- Rendering Daftar Menu Hasil Database -->
             <div class="sidebar-wrapper p-2">
                 <nav class="mt-1">
-                    <ul class="nav flex-column" data-lte-toggle="treeview" role="menu" data-accordion="false">
+                    <?php $currentUri = service('uri')->getPath(); ?>
+                    
+                    <ul class="nav flex-column" role="menu">
                         
-                        <!-- Menu Beranda Default -->
-                        <li class="nav-item mb-2">
-                            <a href="<?= base_url('/') ?>" class="nav-link active d-flex align-items-center">
-                                <i class="bi bi-grid-1x2-fill me-2 text-secondary" style="font-size: 14px;"></i> 
-                                <span>Dashboard</span>
+                        <!-- <li class="nav-item mb-3">
+                            <a href="<?= base_url('/') ?>" class="nav-link <?= ($currentUri == '/' || $currentUri == '') ? 'bg-primary text-white shadow-sm' : '' ?>" style="border-radius: 6px;">
+                                <i class="nav-icon bi bi-grid-1x2-fill <?= ($currentUri == '/' || $currentUri == '') ? 'text-white' : 'text-secondary' ?> me-2"></i> 
+                                <p class="mb-0 font-weight-bold">Dashboard</p>
                             </a>
-                        </li>
+                        </li> -->
 
-                        <!-- PROSES PERULANGAN STRUKTUR MENU BERJENJANG DARI DATABASE -->
                         <?php foreach ($sidebarMenu as $mId => $node): ?>
                             
-                            <!-- JUDUL KELOMPOK MENU UTAMA (FOLDER) -->
-                            <li class="nav-header">
-                                <?= $node['induk']['permission_description'] ?>
-                            </li>
-                            
-                            <!-- DAFTAR SUB-MENU DI BAWAHNYA -->
                             <?php if (!empty($node['anak'])): ?>
-                                <?php foreach ($node['anak'] as $sub): ?>
-                                    <li class="nav-item">
-                                        <a href="<?= $sub['is_active'] == 1 ? base_url($sub['menu_link']) : '#' ?>" 
-                                           class="nav-link py-1 ps-3 small d-flex align-items-center fitur-belum-siap"
-                                           data-nama="<?= $sub['permission_description'] ?>" style="color: #495057 !important;">
-                                            <i class="bi bi-circle-fill me-2 text-muted" style="font-size: 6px; opacity: 0.5;"></i>
-                                            <?= $sub['permission_description'] ?>
-                                        </a>
-                                    </li>
-                                <?php endforeach; ?>
+                                
+                                <li class="nav-item mb-2">
+                                    <div data-bs-toggle="collapse" data-bs-target="#menuLipat<?= $mId ?>" role="button" aria-expanded="true" aria-controls="menuLipat<?= $mId ?>" class="nav-link font-weight-bold d-flex justify-content-between align-items-center main-menu-item" style="color: #212529 !important; cursor: pointer;">
+                                        
+                                        <div>
+                                            <i class="nav-icon <?= esc($node['induk']['icon']) ?> text-primary me-2"></i>
+                                            <span class="mb-0 text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;">
+                                                <?= esc($node['induk']['permission_description']) ?>
+                                            </span>
+                                        </div>
+                                        
+                                        <span class="menu-arrow text-secondary" style="font-size: 12px;">▼</span>
+                                    </div>
+                                    
+                                    <div class="collapse show mt-1" id="menuLipat<?= $mId ?>">
+                                        <ul class="nav flex-column sub-menu-container py-1">
+                                            <?php foreach ($node['anak'] as $sub): ?>
+                                                <?php $isActiveSub = (strpos($currentUri, $sub['menu_link']) !== false && $sub['menu_link'] !== '#'); ?>
+                                                <li class="nav-item">
+                                                    <a href="<?= $sub['is_active'] == 1 ? base_url($sub['menu_link']) : '#' ?>" 
+                                                       class="nav-link py-2 mb-1 <?= $isActiveSub ? 'text-primary font-weight-bold bg-white shadow-sm' : '' ?> <?= $sub['is_active'] == 0 ? 'fitur-belum-siap opacity-50' : '' ?>"
+                                                       style="font-size: 14px; color: <?= $isActiveSub ? '#0d6efd' : '#495057' ?> !important; border-radius: 4px;">
+                                                        <i class="<?= esc($sub['icon'] ?? 'bi bi-dash') ?> me-2 <?= $isActiveSub ? 'text-primary' : 'text-muted' ?>" style="font-size: 12px;"></i>
+                                                        <?= esc($sub['permission_description']) ?>
+                                                    </a>
+                                                </li>
+                                            <?php endforeach; ?>
+                                        </ul>
+                                    </div>
+                                </li>
+
+                            <?php else: ?>
+                                <?php $isActiveInduk = (strpos($currentUri, $node['induk']['menu_link']) !== false && $node['induk']['menu_link'] !== '#'); ?>
+                                <li class="nav-item mb-2">
+                                    <a href="<?= base_url($node['induk']['menu_link']) ?>" class="nav-link font-weight-bold main-menu-item <?= $isActiveInduk ? 'text-primary' : '' ?>" style="color: <?= $isActiveInduk ? '#0d6efd' : '#212529' ?> !important;">
+                                        <i class="nav-icon <?= esc($node['induk']['icon']) ?> text-primary me-2"></i> 
+                                        <span class="mb-0 text-uppercase" style="font-size: 0.85rem; letter-spacing: 0.5px;">
+                                            <?= esc($node['induk']['permission_description']) ?>
+                                        </span>
+                                    </a>
+                                </li>
                             <?php endif; ?>
 
                         <?php endforeach; ?>
@@ -190,10 +237,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Pemanggilan Seluruh Aset JavaScript Secara Lokal -->
-    <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
-    <script src="<?= base_url('assets/js/adminlte.min.js') ?>"></script>
 
      <!-- Pemanggilan Seluruh Aset JavaScript Secara Lokal -->
     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
