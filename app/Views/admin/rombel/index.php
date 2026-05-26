@@ -123,6 +123,10 @@
                                             <h6 class="mb-0 font-weight-bold text-secondary"><i class="bi bi-book"></i> Guru Mata Pelajaran</h6>
                                             <div>
                                                 <button class="btn btn-sm btn-outline-secondary me-1" title="Edit Wali Kelas/Nama Rombel" data-bs-toggle="modal" data-bs-target="#modalEditRombel<?= $r['id'] ?>"><i class="bi bi-pencil-square"></i> Edit</button>
+
+                                                <a href="<?= base_url('admin/rombel/siswa/' . $r['id']) ?>" class="btn btn-sm btn-info text-white shadow-sm me-1" title="Kelola Anggota Rombel">
+    <i class="bi bi-people-fill"></i> Kelola Siswa
+</a>
                                                 
                                                 <a href="<?= base_url('admin/rombel/delete/' . $r['id']) ?>" class="btn btn-sm btn-outline-danger me-2" onclick="return confirm('Apakah Anda yakin ingin menghapus Rombel ini? Pastikan tidak ada mapel yang tersisa.')" title="Hapus Kelas">
                                                     <i class="bi bi-trash"></i> Hapus Kelas

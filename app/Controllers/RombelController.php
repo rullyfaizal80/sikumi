@@ -222,4 +222,53 @@ class RombelController extends BaseController
 
         return redirect()->back()->with('sukses', '🗑️ Rombel berhasil dihapus.');
     }
+
+    public function manageStudents($rombelId)
+{
+    $db = \Config\Database::connect();
+    
+    // 1. Siswa yang sudah di kelas ini
+    $assignedStudents = $db->table('class_student_members csm')
+                           ->select('u.id, u.username')
+                           ->join('users u', 'u.id = csm.student_id')
+                           ->where('csm.rombel_id', $rombelId)
+                           ->get()->getResultArray();
+
+    // 2. Siswa yang belum masuk kelas manapun (Siswa Bebas)
+    // Query: Ambil user 'siswa' yang ID-nya TIDAK ADA di tabel class_student_members
+    $availableStudents = $db->table('users u')
+                            ->join('auth_groups_users agu', 'agu.user_id = u.id')
+                            ->where('agu.group', 'siswa')
+                            ->whereNotIn('u.id', $db->table('class_student_members')->select('student_id'))
+                            ->get()->getResultArray();
+
+    return view('admin/rombel/manage_students', [
+        'rombelId' => $rombelId,
+        'assigned' => $assignedStudents,
+        'available' => $availableStudents
+    ]);
+}
+
+public function storeStudents()
+{
+    $rombelId = $this->request->getPost('rombel_id');
+    $studentIds = $this->request->getPost('student_ids'); // Array dari select box
+
+    if (!empty($studentIds)) {
+        $db = \Config\Database::connect();
+        foreach ($studentIds as $sId) {
+            try {
+                $db->table('class_student_members')->insert([
+                    'rombel_id'  => $rombelId,
+                    'student_id' => $sId
+                ]);
+            } catch (\Exception $e) {
+                // Jika error (karena duplicate unique constraint), abaikan
+                continue;
+            }
+        }
+    }
+    return redirect()->back()->with('sukses', '✔️ Siswa berhasil ditambahkan ke kelas.');
+}
+
 }

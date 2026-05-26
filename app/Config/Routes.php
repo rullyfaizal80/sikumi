@@ -104,4 +104,8 @@ $routes->group('admin', static function ($routes) {
     $routes->get('rombel/plot-delete/(:num)', 'RombelController::plotDelete/$1');
     $routes->post('rombel/copy', 'RombelController::copySemester');
     $routes->get('rombel/delete/(:num)', 'RombelController::delete/$1');
+
+    $routes->get('rombel/siswa/(:num)', 'RombelSiswaController::manage/$1');
+    $routes->post('rombel/siswa/add', 'RombelSiswaController::add');
+    $routes->post('rombel/siswa/remove', 'RombelSiswaController::remove');
 });
