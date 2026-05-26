@@ -14,13 +14,22 @@ class RombelController extends BaseController
     {
         $db = \Config\Database::connect();
         
-        // 1. Ambil daftar Tahun Ajaran dari database
+        // 1. Ambil daftar Tahun Ajaran dari database (untuk dropdown opsi)
         $tahunAjaran = $db->table('academic_years')->orderBy('id', 'DESC')->get()->getResultArray();
         
-        // 2. Tangkap parameter Tahun Ajaran yang dipilih dari URL (?ta=...)
+        // 2. KUNCI PERBAIKAN: Tangkap parameter Tahun Ajaran atau gunakan yang AKTIF
         $selectedTaId = $this->request->getGet('ta');
-        if (!$selectedTaId && !empty($tahunAjaran)) {
-            $selectedTaId = $tahunAjaran[0]['id'];
+        
+        if (empty($selectedTaId)) {
+            // Jika user baru buka halaman (tidak ada filter), cari yang berstatus Aktif
+            $activeYear = $db->table('academic_years')->where('is_active', 1)->get()->getRow();
+            
+            if ($activeYear) {
+                $selectedTaId = $activeYear->id; // Jadikan semester aktif sebagai default
+            } else {
+                // Fallback darurat: Jika belum ada yang di-set aktif, ambil data teratas
+                $selectedTaId = !empty($tahunAjaran) ? $tahunAjaran[0]['id'] : null;
+            }
         }
 
         // 3. Ambil data Master
@@ -40,7 +49,7 @@ class RombelController extends BaseController
                        ->where('agu.group', 'walas') 
                        ->get()->getResultArray();
 
-        // 5. Ambil data Rombel yang aktif pada Tahun Ajaran yang dipilih
+        // 5. Ambil data Rombel berdasarkan Tahun Ajaran yang sedang terpilih ($selectedTaId)
         $rombelModel = new ClassRombelModel();
         $rombels = $rombelModel->select('class_rombel.*, mc.class_name as tingkat, mc.level_type, u.username as nama_walas')
                                ->join('master_classes mc', 'mc.id = class_rombel.master_class_id')
