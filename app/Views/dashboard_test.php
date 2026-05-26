@@ -52,6 +52,13 @@
         <!-- ======================================================== -->
         <nav class="app-header navbar navbar-expand navbar-light">
             <div class="container-fluid">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button" title="Buka/Tutup Menu">
+    <span style="font-size: 1.5rem; line-height: 1; font-weight: bold; color: inherit;">☰</span>
+</a>
+                    </li>
+                </ul>
                 
                 <!-- ======================================================== -->
 <!-- REVISI SISI KIRI NAVBAR: MENGGUNAKAN LOGO FILE .PNG LOKAL -->
