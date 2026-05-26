@@ -42,11 +42,26 @@ class UserSiswaController extends BaseController
         $totalBuilder = clone $builder;
         $totalData = $totalBuilder->countAllResults(false);
 
-        // Ambil potongan data untuk halaman aktif
+        // 1. Ambil potongan data untuk halaman aktif
         $daftarSiswa = $builder->orderBy('u.username', 'ASC')
                                ->limit($limit, $offset)
                                ->get()
                                ->getResultArray();
+
+        // 2. Tempelkan Riwayat Rombel Otomatis ke masing-masing Siswa
+        foreach ($daftarSiswa as &$siswa) {
+            $siswa['history'] = $db->table('class_rombel_students crs')
+                ->select('cr.rombel_name, mc.class_name as tingkat, ay.academic_year, ay.semester')
+                ->join('class_rombel cr', 'cr.id = crs.rombel_id')
+                ->join('master_classes mc', 'mc.id = cr.master_class_id')
+                ->join('academic_years ay', 'ay.id = cr.academic_year_id')
+                ->where('crs.student_id', $siswa['id'])
+                ->orderBy('ay.id', 'DESC')
+                ->get()->getResultArray();
+        }
+        
+        // KUNCI PERBAIKANNYA ADA DI BARIS INI:
+        unset($siswa); // Putuskan referensi agar perulangan di View tidak bentrok
 
         $totalHalaman = ceil($totalData / $limit);
         if ($totalHalaman < 1) $totalHalaman = 1;

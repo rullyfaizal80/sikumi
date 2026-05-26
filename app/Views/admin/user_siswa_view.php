@@ -259,7 +259,7 @@
                     <div class="modal-content border-0 shadow">
                         <div class="modal-header bg-info text-white py-3">
                             <h5 class="modal-title font-weight-bold" id="labelModalSiswa<?= $siswa['id'] ?>">
-                                <i class="fas fa-id-card mr-2"></i> Profil & Rekam Jejak: <?= esc($siswa['username']) ?>
+                                <i class="bi bi-person-vcard mr-2"></i> Profil & Rekam Jejak: <?= esc($siswa['username']) ?>
                             </h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
@@ -309,7 +309,12 @@
                                 </div>
                             </div>
 
-                            <h6 class="text-info font-weight-bold mb-3 border-bottom pb-2">⏳ Kronologi Akademik & Kelas (History)</h6>
+                            <h6 class="text-info font-weight-bold mb-3 border-bottom pb-2">⏳ Kronologi Akademik & Kelas (Otomatis)</h6>
+                            
+                            <div class="alert alert-info py-2 small shadow-sm border-0 mb-3">
+                                <i class="bi bi-info-circle-fill"></i> <strong>Informasi:</strong> Pemindahan atau pengeluaran siswa dari kelas dilakukan melalui menu <strong>Manajemen Rombel > Kelola Siswa</strong>.
+                            </div>
+
                             <div class="table-responsive">
                                 <table class="table table-sm table-striped table-bordered small m-0 text-center">
                                     <thead class="bg-light font-weight-bold">
@@ -319,34 +324,24 @@
                                             <th>Semester</th>
                                             <th>Tingkat</th>
                                             <th>Rombel / Ruang</th>
-                                            <th>Status Keaktifan</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php if (!empty($riwayat_siswa[$siswa['id']])): ?>
-                                            <?php $noHist = 1; foreach ($riwayat_siswa[$siswa['id']] as $hist): ?>
+                                        <?php if (!empty($siswa['history'])): ?>
+                                            <?php $noHist = 1; foreach ($siswa['history'] as $hist): ?>
                                                 <tr>
                                                     <td><?= $noHist++ ?></td>
                                                     <td class="font-weight-bold"><?= esc($hist['academic_year']) ?></td>
                                                     <td><?= esc($hist['semester']) ?></td>
-                                                    <td>Kelas <?= esc($hist['class_level']) ?></td>
-                                                    <td class="font-weight-bold text-primary"><?= esc($hist['class_room']) ?></td>
-                                                    <td>
-                                                        <?php if ($hist['status'] == 'aktif'): ?>
-                                                            <span class="badge bg-success">Aktif</span>
-                                                        <?php elseif ($hist['status'] == 'lulus'): ?>
-                                                            <span class="badge bg-primary">Lulus</span>
-                                                        <?php elseif ($hist['status'] == 'pindah'): ?>
-                                                            <span class="badge bg-warning text-dark">Pindah</span>
-                                                        <?php else: ?>
-                                                            <span class="badge bg-danger">Keluar</span>
-                                                        <?php endif; ?>
-                                                    </td>
+                                                    <td>Tingkat <?= esc($hist['tingkat']) ?></td>
+                                                    <td class="font-weight-bold text-primary"><?= esc($hist['rombel_name']) ?></td>
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
                                             <tr>
-                                                <td colspan="6" class="text-center text-muted py-3">Belum ada riwayat akademik terdaftar untuk siswa ini.</td>
+                                                <td colspan="5" class="text-center text-muted py-3">
+                                                    Siswa ini berstatus <strong>Siswa Bebas</strong> dan belum di-plot ke kelas manapun.
+                                                </td>
                                             </tr>
                                         <?php endif; ?>
                                     </tbody>
@@ -361,7 +356,7 @@
                 </div>
             </div>
         <?php endforeach; ?>
-    <?php endif; ?>
+<?php endif; ?>
 
     <?php if (!empty($daftarSiswa)): ?>
         <?php foreach ($daftarSiswa as $siswa): ?>
