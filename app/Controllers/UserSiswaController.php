@@ -131,17 +131,14 @@ class UserSiswaController extends BaseController
 {
     $db = \Config\Database::connect();
     
-    // 1. Ambil input dari form satu kesatuan
+    // 1. Ambil input dari form satu kesatuan (HANYA AKUN & BIODATA DASAR)
     $username   = $this->request->getPost('username');
     $email      = $this->request->getPost('email');
     $password   = $this->request->getPost('password'); // password login
     $nisn       = $this->request->getPost('nisn');
     $gender     = $this->request->getPost('gender');
     
-    // Data Dinamis Semester/Kelas Saat Ini
-    $academic_year_id = $this->request->getPost('academic_year_id'); // Tahun Pelajaran Aktif saat input
-    $class_level      = $this->request->getPost('class_level');      // Kelas 7
-    $class_room       = $this->request->getPost('class_room');       // Ruang A
+    // Variabel input Tahun Pelajaran dan Kelas SUDAH DIHAPUS dari sini
 
     // 2. MULAI PROSES TRANSAKSI SATU KESATUAN
     $db->transStart();
@@ -180,18 +177,8 @@ class UserSiswaController extends BaseController
         'created_at' => date('Y-m-d H:i:s'),
         'updated_at' => date('Y-m-d H:i:s')
     ]);
-    $newProfileId = $db->insertID();
-
-    // E. Masukkan Properti Dinamis (Tahun Akademik & Kelas Pertama Siswa)
-    $db->table('student_academic_history')->insert([
-        'student_profile_id' => $newProfileId,
-        'academic_year_id'   => $academic_year_id,
-        'class_level'        => $class_level,
-        'class_room'         => $class_room,
-        'status'             => 'aktif',
-        'created_at'         => date('Y-m-d H:i:s'),
-        'updated_at' => date('Y-m-d H:i:s')
-    ]);
+    
+    // BAGIAN E (student_academic_history) SEPENUHNYA DIHAPUS
 
     // 3. SELESAIKAN TRANSAKSI
     $db->transComplete();
@@ -200,7 +187,8 @@ class UserSiswaController extends BaseController
         return redirect()->back()->with('error', '❌ Gagal menambahkan akun siswa terjadi kesalahan sistem.');
     }
 
-    return redirect()->back()->with('sukses', '✅ Akun siswa dan data riwayat kelas berhasil diterbitkan!');
+    // Pesan sukses disesuaikan
+    return redirect()->back()->with('sukses', '✅ Akun siswa berhasil dibuat! Siswa berstatus "Siswa Bebas" (Belum masuk kelas).');
 }
 
     /**

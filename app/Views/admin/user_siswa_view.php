@@ -207,41 +207,6 @@
                         </div>
                     </div>
 
-                    <hr>
-                    <h6 class="text-success font-weight-bold mb-3">🏫 RIWAYAT AKADEMIK & PENEMPATAN KELAS (DINAMIS)</h6>
-                    <div class="row mb-2">
-                        
-                        <div class="col-md-4">
-                            <label class="small font-weight-bold">Tahun Pelajaran Masuk <span class="text-danger">*</span></label>
-                            <select name="academic_year_id" class="form-control form-control-sm" required>
-                                <option value="">-- Pilih Tahun Ajaran --</option>
-                                <?php if (!empty($tahun_akademik)): ?>
-                                    <?php foreach ($tahun_akademik as $ta): ?>
-                                        <option value="<?= $ta['id'] ?>">
-                                            <?= esc($ta['academic_year']) ?> - <?= esc($ta['semester']) ?> 
-                                            <?= ($ta['is_active'] == 1) ? '(Aktif)' : '' ?>
-                                        </option>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <option value="" disabled>Data Tahun Akademik Kosong</option>
-                                <?php endif; ?>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="small font-weight-bold">Tingkat / Jenjang Kelas <span class="text-danger">*</span></label>
-                            <select name="class_level" class="form-control form-control-sm" required>
-                                <option value="">-- Pilih Tingkat --</option>
-                                <option value="7">Kelas 7</option>
-                                <option value="8">Kelas 8</option>
-                                <option value="9">Kelas 9</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="small font-weight-bold">Nama Rombel / Ruang <span class="text-danger">*</span></label>
-                            <input type="text" name="class_room" class="form-control form-control-sm" placeholder="Contoh: A, B, Umar, atau Abu Bakar" required>
-                        </div>
-                    </div>
-
                 </div>
                 <div class="modal-footer bg-light">
                     <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
