@@ -214,7 +214,8 @@
                                                 </td>
                                                 <td class="text-center align-middle">
                                                     <?php if($tp['is_active'] == 0) : ?>
-                                                        <a href="<?= base_url('admin/academic/activate/'.$tp['id']) ?>" class="btn btn-xs btn-primary btn-sm w-100 py-1" style="font-size: 11px;">Aktifkan</a>
+                                                        
+                                                        <a href="<?= base_url('admin/settings/academic-activate/'.$tp['id']) ?>" class="btn btn-xs btn-primary btn-sm w-100 py-1" style="font-size: 11px;">Aktifkan</a>                                                    
                                                     <?php else: ?>
                                                         <button type="button" class="btn btn-xs btn-outline-success btn-sm w-100 py-1" style="font-size: 11px;" disabled>Digunakan</button>
                                                     <?php endif; ?>

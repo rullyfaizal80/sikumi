@@ -47,7 +47,9 @@ $routes->group('admin', static function ($routes) {
     $routes->post('settings/delete-angkatan', 'AdminController::deleteAngkatan'); 
     
     // SINKRONISASI TAB 4: Mengaktifkan Semester Berjalan
-    $routes->get('academic/activate/(:num)', 'AdminController::activateAcademic/$1');
+   // $routes->get('academic/activate/(:num)', 'AdminController::activateAcademic/$1');
+
+    $routes->get('settings/academic-activate/(:num)', '\App\Controllers\AdminController::activateAcademic/$1');
 
     // --- KALENDER PENDIDIKAN (KALDIK) ---
     $routes->get('kaldik', 'KaldikController::index');
