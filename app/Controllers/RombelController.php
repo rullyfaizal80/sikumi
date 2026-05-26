@@ -14,20 +14,16 @@ class RombelController extends BaseController
     {
         $db = \Config\Database::connect();
         
-        // 1. Ambil daftar Tahun Ajaran dari database (untuk dropdown opsi)
+        // 1. Ambil daftar Tahun Ajaran dari database
         $tahunAjaran = $db->table('academic_years')->orderBy('id', 'DESC')->get()->getResultArray();
         
-        // 2. KUNCI PERBAIKAN: Tangkap parameter Tahun Ajaran atau gunakan yang AKTIF
+        // 2. Tangkap parameter Tahun Ajaran atau gunakan yang AKTIF
         $selectedTaId = $this->request->getGet('ta');
-        
         if (empty($selectedTaId)) {
-            // Jika user baru buka halaman (tidak ada filter), cari yang berstatus Aktif
             $activeYear = $db->table('academic_years')->where('is_active', 1)->get()->getRow();
-            
             if ($activeYear) {
-                $selectedTaId = $activeYear->id; // Jadikan semester aktif sebagai default
+                $selectedTaId = $activeYear->id;
             } else {
-                // Fallback darurat: Jika belum ada yang di-set aktif, ambil data teratas
                 $selectedTaId = !empty($tahunAjaran) ? $tahunAjaran[0]['id'] : null;
             }
         }
@@ -49,7 +45,7 @@ class RombelController extends BaseController
                        ->where('agu.group', 'walas') 
                        ->get()->getResultArray();
 
-        // 5. Ambil data Rombel berdasarkan Tahun Ajaran yang sedang terpilih ($selectedTaId)
+        // 5. Ambil data Rombel berdasarkan Tahun Ajaran yang terpilih
         $rombelModel = new ClassRombelModel();
         $rombels = $rombelModel->select('class_rombel.*, mc.class_name as tingkat, mc.level_type, u.username as nama_walas')
                                ->join('master_classes mc', 'mc.id = class_rombel.master_class_id')
@@ -58,6 +54,14 @@ class RombelController extends BaseController
                                ->orderBy('mc.id', 'ASC')
                                ->orderBy('class_rombel.rombel_name', 'ASC')
                                ->findAll();
+
+        // 🌟 PROSES BARU: Hitung jumlah siswa yang masuk ke masing-masing rombel
+        foreach ($rombels as &$rombel) {
+            $rombel['jumlah_siswa'] = $db->table('class_rombel_students')
+                                         ->where('rombel_id', $rombel['id'])
+                                         ->countAllResults();
+        }
+        unset($rombel); // Putuskan referensi penunjuk link perulangan
 
         // 6. Ambil data Plotting Guru Mapel untuk setiap Rombel
         $plottingMapel = [];

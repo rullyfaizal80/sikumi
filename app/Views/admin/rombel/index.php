@@ -106,13 +106,21 @@
                                     <button class="accordion-button collapsed py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<?= $r['id'] ?>" aria-expanded="false" aria-controls="collapse<?= $r['id'] ?>">
                                         <div class="d-flex w-100 justify-content-between align-items-center pe-3">
                                             <div>
-                                                <span class="badge bg-primary fs-6 me-2"><?= esc($r['rombel_name']) ?></span>
-                                                <span class="text-muted small">Tingkat <?= esc($r['tingkat']) ?> (<?= esc($r['level_type']) ?>)</span>
-                                            </div>
-                                            <div class="text-end">
-                                                <span class="small text-muted d-block" style="font-size: 0.75rem;">Wali Kelas:</span>
-                                                <span class="font-weight-bold"><i class="bi bi-person-badge"></i> <?= esc($r['nama_walas'] ?? 'Belum Diatur') ?></span>
-                                            </div>
+    <span class="badge bg-primary fs-6 me-2"><?= esc($r['rombel_name']) ?></span>      
+    <span class="text-muted small d-block d-md-inline-block mt-1 mt-md-0">
+        Tingkat <?= esc($r['tingkat']) ?> (<?= esc($r['level_type']) ?>)
+    </span>
+    <span class="badge bg-info text-dark me-2" style="font-size: 12px; vertical-align: middle;">
+        👥 <?= $r['jumlah_siswa'] ?> Siswa
+    </span>
+</div>
+
+<div class="text-end">
+    <span class="small text-muted d-block" style="font-size: 0.75rem;">Wali Kelas:</span>
+    <span class="font-weight-bold">
+        <i class="bi bi-person-badge"></i> <?= esc($r['nama_walas'] ?? 'Belum Diatur') ?>
+    </span>
+</div>
                                         </div>
                                     </button>
                                 </h2>
@@ -125,8 +133,8 @@
                                                 <button class="btn btn-sm btn-outline-secondary me-1" title="Edit Wali Kelas/Nama Rombel" data-bs-toggle="modal" data-bs-target="#modalEditRombel<?= $r['id'] ?>"><i class="bi bi-pencil-square"></i> Edit</button>
 
                                                 <a href="<?= base_url('admin/rombel/siswa/' . $r['id']) ?>" class="btn btn-sm btn-info text-white shadow-sm me-1" title="Kelola Anggota Rombel">
-    <i class="bi bi-people-fill"></i> Kelola Siswa
-</a>
+                                                    <i class="bi bi-people-fill"></i> Kelola Siswa
+                                                </a>
                                                 
                                                 <a href="<?= base_url('admin/rombel/delete/' . $r['id']) ?>" class="btn btn-sm btn-outline-danger me-2" onclick="return confirm('Apakah Anda yakin ingin menghapus Rombel ini? Pastikan tidak ada mapel yang tersisa.')" title="Hapus Kelas">
                                                     <i class="bi bi-trash"></i> Hapus Kelas
