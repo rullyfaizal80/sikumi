@@ -112,68 +112,76 @@ class UserSiswaController extends BaseController
     }
 
     public function storeSiswa()
-{
-    $db = \Config\Database::connect();
-    
-    // 1. Ambil input dari form satu kesatuan (HANYA AKUN & BIODATA DASAR)
-    $username   = $this->request->getPost('username');
-    $email      = $this->request->getPost('email');
-    $password   = $this->request->getPost('password'); // password login
-    $nisn       = $this->request->getPost('nisn');
-    $gender     = $this->request->getPost('gender');
-    
-    // Variabel input Tahun Pelajaran dan Kelas SUDAH DIHAPUS dari sini
+    {
+        $db = \Config\Database::connect();
+        
+        // 1. Ambil input dari form satu kesatuan (HANYA AKUN & BIODATA DASAR)
+        $username    = $this->request->getPost('username');
+        $email       = $this->request->getPost('email');
+        $password    = $this->request->getPost('password'); // password login
+        $nisn        = $this->request->getPost('nisn');
+        $nis         = $this->request->getPost('nis');         // BARU
+        $gender      = $this->request->getPost('gender');
+        $phone_ortu  = $this->request->getPost('phone_ortu');  // BARU
+        $birth_place = $this->request->getPost('birth_place'); // BARU
+        $birth_date  = $this->request->getPost('birth_date');  // BARU
+        
+        // Variabel input Tahun Pelajaran dan Kelas SUDAH DIHAPUS dari sini
 
-    // 2. MULAI PROSES TRANSAKSI SATU KESATUAN
-    $db->transStart();
+        // 2. MULAI PROSES TRANSAKSI SATU KESATUAN
+        $db->transStart();
 
-    // A. Masukkan ke tabel 'users' (Shield Auth)
-    $db->table('users')->insert([
-        'username'   => $username,
-        'active'     => 1,
-        'created_at' => date('Y-m-d H:i:s'),
-        'updated_at' => date('Y-m-d H:i:s')
-    ]);
-    $newUserId = $db->insertID(); // Ambil ID User yang baru saja tercipta
+        // A. Masukkan ke tabel 'users' (Shield Auth)
+        $db->table('users')->insert([
+            'username'   => $username,
+            'active'     => 1,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
+        $newUserId = $db->insertID(); // Ambil ID User yang baru saja tercipta
 
-    // B. Masukkan Kredensial Email & Password ke 'auth_identities'
-    $db->table('auth_identities')->insert([
-        'user_id'    => $newUserId,
-        'type'       => 'email_password',
-        'secret'     => $email,
-        'secret2'    => password_hash($password, PASSWORD_DEFAULT), // Enkripsi aman
-        'created_at' => date('Y-m-d H:i:s'),
-        'updated_at' => date('Y-m-d H:i:s')
-    ]);
+        // B. Masukkan Kredensial Email & Password ke 'auth_identities'
+        $db->table('auth_identities')->insert([
+            'user_id'    => $newUserId,
+            'type'       => 'email_password',
+            'secret'     => $email,
+            'secret2'    => password_hash($password, PASSWORD_DEFAULT), // Enkripsi aman
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
 
-    // C. Ikat hak akses sebagai 'siswa' di 'auth_groups_users'
-    $db->table('auth_groups_users')->insert([
-        'user_id'    => $newUserId,
-        'group'      => 'siswa',
-        'created_at' => date('Y-m-d H:i:s')
-    ]);
+        // C. Ikat hak akses sebagai 'siswa' di 'auth_groups_users'
+        $db->table('auth_groups_users')->insert([
+            'user_id'    => $newUserId,
+            'group'      => 'siswa',
+            'created_at' => date('Y-m-d H:i:s')
+        ]);
 
-    // D. Masukkan Properti Induk Statis ke 'student_profiles'
-    $db->table('student_profiles')->insert([
-        'user_id'    => $newUserId,
-        'nisn'       => $nisn,
-        'gender'     => $gender,
-        'created_at' => date('Y-m-d H:i:s'),
-        'updated_at' => date('Y-m-d H:i:s')
-    ]);
-    
-    // BAGIAN E (student_academic_history) SEPENUHNYA DIHAPUS
+        // D. Masukkan Properti Induk Statis ke 'student_profiles'
+        $db->table('student_profiles')->insert([
+            'user_id'     => $newUserId,
+            'nisn'        => !empty($nisn) ? $nisn : null,
+            'nis'         => !empty($nis) ? $nis : null,
+            'gender'      => $gender,
+            'birth_place' => !empty($birth_place) ? $birth_place : null,
+            'birth_date'  => !empty($birth_date) ? $birth_date : null,
+            'phone_ortu'  => !empty($phone_ortu) ? $phone_ortu : null,
+            'created_at'  => date('Y-m-d H:i:s'),
+            'updated_at'  => date('Y-m-d H:i:s')
+        ]);
+        
+        // BAGIAN E (student_academic_history) SEPENUHNYA DIHAPUS
 
-    // 3. SELESAIKAN TRANSAKSI
-    $db->transComplete();
+        // 3. SELESAIKAN TRANSAKSI
+        $db->transComplete();
 
-    if ($db->transStatus() === FALSE) {
-        return redirect()->back()->with('error', '❌ Gagal menambahkan akun siswa terjadi kesalahan sistem.');
+        if ($db->transStatus() === FALSE) {
+            return redirect()->back()->with('error', '❌ Gagal menambahkan akun siswa terjadi kesalahan sistem.');
+        }
+
+        // Pesan sukses disesuaikan
+        return redirect()->back()->with('sukses', '✅ Akun siswa berhasil dibuat! Siswa berstatus "Siswa Bebas" (Belum masuk kelas).');
     }
-
-    // Pesan sukses disesuaikan
-    return redirect()->back()->with('sukses', '✅ Akun siswa berhasil dibuat! Siswa berstatus "Siswa Bebas" (Belum masuk kelas).');
-}
 
     /**
      * Memproses Perbaruan Data Profil & Akun Akun Siswa
