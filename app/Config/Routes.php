@@ -77,12 +77,8 @@ $routes->group('admin', static function ($routes) {
     $routes->get('users/siswa-toggle/(:num)', 'UserSiswaController::toggleStatus/$1');
 
     $routes->get('users/siswa-delete/(:num)', 'UserSiswaController::deleteSiswa/$1');
-    $routes->get('users/siswa-trash', 'UserSiswaController::trashSiswa'); // Duplikat sudah dihapus
-    $routes->get('users/siswa-restore/(:num)', 'UserSiswaController::restoreSiswa/$1'); // Duplikat sudah dihapus
-
-    $routes->post('users/siswa-add-history/(:num)', 'UserSiswaController::addHistorySiswa/$1');
-    $routes->post('users/siswa-update-history/(:num)', 'UserSiswaController::updateHistorySiswa/$1');
-    $routes->get('users/siswa-delete-history/(:num)', 'UserSiswaController::deleteHistorySiswa/$1');
+    $routes->get('users/siswa-trash', 'UserSiswaController::trashSiswa');
+    $routes->get('users/siswa-restore/(:num)', 'UserSiswaController::restoreSiswa/$1');
 
     // --- MASTER DATA ---
     $routes->get('master-data', 'MasterDataController::index');

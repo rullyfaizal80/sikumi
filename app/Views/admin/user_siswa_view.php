@@ -151,7 +151,7 @@
 
     </div>
 
-    <div class="modal fade" id="modalTambahSiswa" tabindex="-1" role="dialog" aria-labelledby="modalTambahSiswaLabel" aria-hidden="true">
+<div class="modal fade" id="modalTambahSiswa" tabindex="-1" role="dialog" aria-labelledby="modalTambahSiswaLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
@@ -206,6 +206,16 @@
                             <input type="text" name="phone_ortu" class="form-control form-control-sm" placeholder="Contoh: 081234567xxx">
                         </div>
                     </div>
+                    <div class="row">
+    <div class="col-md-6 mb-3">
+        <label for="birth_place" class="form-label small font-weight-bold">Tempat Lahir</label>
+        <input type="text" name="birth_place" id="birth_place" class="form-control form-control-sm" placeholder="Contoh: Bandung" required>
+    </div>
+    <div class="col-md-6 mb-3">
+        <label for="birth_date" class="form-label small font-weight-bold">Tanggal Lahir</label>
+        <input type="date" name="birth_date" id="birth_date" class="form-control form-control-sm" required>
+    </div>
+</div>
 
                 </div>
                 <div class="modal-footer bg-light">
@@ -321,7 +331,7 @@
                 </div>
             </div>
         <?php endforeach; ?>
-<?php endif; ?>
+    <?php endif; ?>
 
     <?php if (!empty($daftarSiswa)): ?>
         <?php foreach ($daftarSiswa as $siswa): ?>
@@ -396,89 +406,7 @@
                             </div>
                         </form>
 
-                        <div class="modal-body p-4 pt-0">
-                            <hr class="mt-0">
-                            
-                            <h6 class="text-success font-weight-bold mb-3"><i class="fas fa-plus-circle mr-1"></i> PLOTTING TAHUN AJARAN / KELAS BARU</h6>
-                            <form action="<?= base_url('admin/users/siswa-add-history/' . $siswa['id']) ?>" method="POST" class="bg-light p-3 rounded border mb-4">
-                                <?= csrf_field() ?>
-                                <div class="row align-items-end">
-                                    <div class="col-md-4 mb-2 mb-md-0">
-                                        <label class="small font-weight-bold text-muted">Tahun Pelajaran <span class="text-danger">*</span></label>
-                                        <select name="academic_year_id" class="form-control form-control-sm" required>
-                                            <option value="">-- Pilih --</option>
-                                            <?php if (!empty($tahun_akademik)): ?>
-                                                <?php foreach ($tahun_akademik as $ta): ?>
-                                                    <option value="<?= $ta['id'] ?>"><?= esc($ta['academic_year']) ?> - <?= esc($ta['semester']) ?></option>
-                                                <?php endforeach; ?>
-                                            <?php endif; ?>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3 mb-2 mb-md-0">
-                                        <label class="small font-weight-bold text-muted">Tingkat Kelas <span class="text-danger">*</span></label>
-                                        <select name="class_level" class="form-control form-control-sm" required>
-                                            <option value="7">Kelas 7</option>
-                                            <option value="8">Kelas 8</option>
-                                            <option value="9">Kelas 9</option>
-                                        </select>
-                                    </div>
-                                    <div class="col-md-3 mb-2 mb-md-0">
-                                        <label class="small font-weight-bold text-muted">Rombel / Ruang <span class="text-danger">*</span></label>
-                                        <input type="text" name="class_room" class="form-control form-control-sm" placeholder="Contoh: Umar" required>
-                                    </div>
-                                    <div class="col-md-2">
-                                        <button type="submit" class="btn btn-success btn-sm w-100 font-weight-bold text-white shadow-sm">➕ Plotting</button>
-                                    </div>
-                                </div>
-                            </form>
-
-                            <h6 class="text-primary font-weight-bold mb-3"><i class="fas fa-history mr-1"></i> REKAM JEJAK / RIWAYAT KELAS SISWA</h6>
-                            <div class="riwayat-container" style="max-height: 250px; overflow-y: auto;">
-                                <?php if (!empty($riwayat_siswa[$siswa['id']])): ?>
-                                    <?php foreach ($riwayat_siswa[$siswa['id']] as $hist): ?>
-                                        <form action="<?= base_url('admin/users/siswa-update-history/' . $hist['history_id']) ?>" method="POST" class="mb-2 shadow-sm border rounded bg-white p-2">
-                                            <?= csrf_field() ?>
-                                            <div class="row align-items-center">
-                                                <div class="col-md-4">
-                                                    <span class="small font-weight-bold text-secondary">
-                                                        🗓️ <?= esc($hist['academic_year']) ?> - <?= esc($hist['semester']) ?>
-                                                    </span>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <select name="class_level" class="form-control form-control-sm">
-                                                        <option value="7" <?= ($hist['class_level'] == '7') ? 'selected' : '' ?>>7</option>
-                                                        <option value="8" <?= ($hist['class_level'] == '8') ? 'selected' : '' ?>>8</option>
-                                                        <option value="9" <?= ($hist['class_level'] == '9') ? 'selected' : '' ?>>9</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <input type="text" name="class_room" class="form-control form-control-sm font-weight-bold text-primary" value="<?= esc($hist['class_room']) ?>" required>
-                                                </div>
-                                                <div class="col-md-2">
-                                                    <select name="status" class="form-control form-control-sm">
-                                                        <option value="aktif" <?= ($hist['status'] == 'aktif') ? 'selected' : '' ?>>Aktif</option>
-                                                        <option value="lulus" <?= ($hist['status'] == 'lulus') ? 'selected' : '' ?>>Lulus</option>
-                                                        <option value="pindah" <?= ($hist['status'] == 'pindah') ? 'selected' : '' ?>>Pindah</option>
-                                                        <option value="keluar" <?= ($hist['status'] == 'keluar') ? 'selected' : '' ?>>Keluar</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-2 text-center">
-                                                    <div class="btn-group btn-group-sm w-100">
-                                                        <button type="submit" class="btn btn-outline-success py-1" title="Update Baris Ini">✔️</button>
-                                                        <a href="<?= base_url('admin/users/siswa-delete-history/' . $hist['history_id']) ?>" class="btn btn-outline-danger py-1" onclick="return confirm('Hapus baris riwayat kelas ini?')" title="Hapus Riwayat">🗑️</a>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </form>
-                                    <?php endforeach; ?>
-                                <?php else: ?>
-                                    <div class="text-center text-muted small border border-dashed py-3 rounded">
-                                        Siswa ini belum memiliki catatan riwayat kelas aktif.
-                                    </div>
-                                <?php endif; ?>
-                            </div>
-
-                        </div>
+                        
                         <div class="modal-footer bg-light py-2">
                             <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup Jendela</button>
                         </div>
