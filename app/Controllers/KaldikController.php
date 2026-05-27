@@ -7,22 +7,40 @@ use App\Controllers\BaseController;
 class KaldikController extends BaseController
 {
     // Halaman Utama Pengelolaan & Penampilan Kalender Akademik
-    // Halaman Utama Pengelolaan & Penampilan Kalender Akademik
     public function index()
     {
         $db = \Config\Database::connect();
 
-        // 1. Ambil Tahun Pelajaran & Semester yang berstatus AKTIF saat ini
-        $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+        // 1. Ambil semua daftar Tahun Ajaran untuk opsi Dropdown di View
+        $daftarTahun = $db->table('academic_years')->orderBy('id', 'DESC')->get()->getResultArray();
 
-        // 2. Ambil parameter pilihan filter Kelas dan Jenjang (Default ke Kelas 7 jika belum dipilih)
-        $kelasTerpilih = $this->request->getGet('class_id') ?? 1; // ID 1 = Kelas 7
+        // 2. Tangkap parameter pilihan Tahun Ajaran dari URL (?ta=...)
+        $selectedTaId = $this->request->getGet('ta');
+        $tahunAktif = null;
 
-        // 3. Tarik data master komponen untuk dropdown menu pilihan di View
+        if (!empty($selectedTaId)) {
+            // Jika user memilih dari dropdown, gunakan tahun tersebut
+            $tahunAktif = $db->table('academic_years')->where('id', $selectedTaId)->get()->getRowArray();
+        } 
+        
+        if (empty($tahunAktif)) {
+            // Jika kosong (baru pertama buka), otomatis gunakan yang berstatus AKTIF
+            $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+            
+            if (!$tahunAktif && !empty($daftarTahun)) {
+                 // Fallback darurat jika belum ada yang diset aktif
+                 $tahunAktif = $daftarTahun[0];
+            }
+        }
+
+        // 3. Ambil parameter pilihan filter Kelas dan Jenjang (Default ke Kelas 7)
+        $kelasTerpilih = $this->request->getGet('class_id') ?? 1;
+
+        // 4. Tarik data master komponen untuk dropdown menu pilihan kelas & warna di View
         $daftarKelas = $db->table('master_classes')->get()->getResultArray();
         $daftarWarna = $db->table('master_categories')->get()->getResultArray();
 
-        // [TAMBAHAN BARU]: Ambil opsi hari kerja dari tabel settings (Fallback default ke 5 jika kosong)
+        // 5. Ambil opsi hari kerja dari tabel settings (Fallback default ke 5 jika kosong)
         $hariKerjaSetting = 5;
         if ($db->tableExists('settings')) {
             $getSetting = $db->table('settings')->where('key', 'kaldik_hari_kerja')->get()->getRowArray();
@@ -31,7 +49,7 @@ class KaldikController extends BaseController
             }
         }
 
-        // 4. Tarik data agenda Kaldik yang sudah diploting berdasarkan tahun aktif dan kelas terpilih
+        // 6. Tarik data agenda Kaldik berdasarkan tahun pelajaran & kelas yang sedang dilihat
         $agendaKaldik = [];
         if ($tahunAktif) {
             $agendaKaldik = $db->table('academic_calendars ac')
@@ -45,12 +63,13 @@ class KaldikController extends BaseController
         }
 
         $data = [
-            'tahunAktif'       => $tahunAktif,
+            'daftarTahun'      => $daftarTahun,     // SUNTIKKAN: Untuk Dropdown View
+            'tahunAktif'       => $tahunAktif,      // SUNTIKKAN: Tahun yang sedang tampil
             'kelasTerpilih'    => $kelasTerpilih,
             'daftarKelas'      => $daftarKelas,
             'daftarWarna'      => $daftarWarna,
             'agendaKaldik'     => $agendaKaldik,
-            'hariKerjaSetting' => $hariKerjaSetting // <-- SUNTIKKAN VARIABEL BARU INI KE VIEW
+            'hariKerjaSetting' => $hariKerjaSetting 
         ];
 
         return view('admin/kaldik_manage', $data);
@@ -149,57 +168,65 @@ class KaldikController extends BaseController
         return redirect()->to('admin/kaldik?class_id=' . $classId)->with('sukses', 'Agenda kegiatan berhasil dihapus dari kalender!');
     }
 
-        // Fungsi khusus untuk merender Lembar Cetak Kalender 6 Bulan
-       public function printKaldik()
-{
-    $db = \Config\Database::connect();
+       // Fungsi khusus untuk merender Lembar Cetak Kalender 6 Bulan
+    public function printKaldik()
+    {
+        $db = \Config\Database::connect();
 
-    $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
-    $kelasTerpilih = $this->request->getGet('class_id') ?? 1;
+        // SINKRONISASI: Tangkap URL dari tombol cetak agar mencetak semester yang tepat
+        $selectedTaId = $this->request->getGet('ta');
+        $tahunAktif = null;
 
-    $daftarKelas = $db->table('master_classes')->get()->getResultArray();
-    $daftarWarna = $db->table('master_categories')->get()->getResultArray();
+        if (!empty($selectedTaId)) {
+            $tahunAktif = $db->table('academic_years')->where('id', $selectedTaId)->get()->getRowArray();
+        } 
+        if (empty($tahunAktif)) {
+            $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+        }
 
-    // MENCARI DATA PROFIL, KEPALA MADRASAH & TITI MANGSA DARI TABEL SETTING (JIKA ADA)
-    $namaMadrasah  = null; 
-    $titiMangsa    = null;
-    $kepalaSekolah = null;
-    $npkKepala     = null;
+        $kelasTerpilih = $this->request->getGet('class_id') ?? 1;
 
-    if ($db->tableExists('settings')) {
-        // FIX: Ubah 'nama_madrasah' menjadi 'kaldik_lembaga_nama' agar sinkron dengan fungsi saveSettings
-        $namaMadrasah  = $db->table('settings')->where('key', 'kaldik_lembaga_nama')->get()->getRowArray(); 
-        $titiMangsa    = $db->table('settings')->where('key', 'kaldik_titi_mangsa')->get()->getRowArray();
-        $kepalaSekolah = $db->table('settings')->where('key', 'kaldik_kepala_nama')->get()->getRowArray();
-        $npkKepala     = $db->table('settings')->where('key', 'kaldik_kepala_npk')->get()->getRowArray();
+        $daftarKelas = $db->table('master_classes')->get()->getResultArray();
+        $daftarWarna = $db->table('master_categories')->get()->getResultArray();
+
+        // MENCARI DATA PROFIL, KEPALA MADRASAH & TITI MANGSA DARI TABEL SETTING (JIKA ADA)
+        $namaMadrasah  = null; 
+        $titiMangsa    = null;
+        $kepalaSekolah = null;
+        $npkKepala     = null;
+
+        if ($db->tableExists('settings')) {
+            $namaMadrasah  = $db->table('settings')->where('key', 'kaldik_lembaga_nama')->get()->getRowArray(); 
+            $titiMangsa    = $db->table('settings')->where('key', 'kaldik_titi_mangsa')->get()->getRowArray();
+            $kepalaSekolah = $db->table('settings')->where('key', 'kaldik_kepala_nama')->get()->getRowArray();
+            $npkKepala     = $db->table('settings')->where('key', 'kaldik_kepala_npk')->get()->getRowArray();
+        }
+
+        $agendaKaldik = [];
+        if ($tahunAktif) {
+            $agendaKaldik = $db->table('academic_calendars ac')
+                               ->select('ac.*, mc.category_name, mc.color_hex, ac.category_id')
+                               ->join('master_categories mc', 'mc.id = ac.category_id')
+                               ->where('ac.academic_year_id', $tahunAktif['id'])
+                               ->where('ac.class_id', $kelasTerpilih)
+                               ->orderBy('ac.start_date', 'ASC')
+                               ->get()
+                               ->getResultArray();
+        }
+
+        $data = [
+            'tahunAktif'    => $tahunAktif,
+            'kelasTerpilih' => $kelasTerpilih,
+            'daftarKelas'   => $daftarKelas,
+            'daftarWarna'   => $daftarWarna,
+            'agendaKaldik'  => $agendaKaldik,
+            'namaMadrasah'  => $namaMadrasah ? $namaMadrasah['value'] : 'MIMHa Tsanawiyah Informatika', 
+            'titiMangsa'    => $titiMangsa ? $titiMangsa['value'] : 'Bandung, 02 Januari 2026',
+            'kepalaNama'    => $kepalaSekolah ? $kepalaSekolah['value'] : 'Yana Purnama, S.Pd',
+            'kepalaNpk'     => $npkKepala ? $npkKepala['value'] : '3912390046098'
+        ];
+
+        return view('admin/kaldik_print_view', $data);
     }
-
-    $agendaKaldik = [];
-    if ($tahunAktif) {
-        $agendaKaldik = $db->table('academic_calendars ac')
-                           ->select('ac.*, mc.category_name, mc.color_hex, ac.category_id')
-                           ->join('master_categories mc', 'mc.id = ac.category_id')
-                           ->where('ac.academic_year_id', $tahunAktif['id'])
-                           ->where('ac.class_id', $kelasTerpilih)
-                           ->orderBy('ac.start_date', 'ASC')
-                           ->get()
-                           ->getResultArray();
-    }
-
-    $data = [
-        'tahunAktif'    => $tahunAktif,
-        'kelasTerpilih' => $kelasTerpilih,
-        'daftarKelas'   => $daftarKelas,
-        'daftarWarna'   => $daftarWarna,
-        'agendaKaldik'  => $agendaKaldik,
-        // SUNTIKKAN NILAI DATABASE (Mendukung Fallback Default jika bernilai null)
-        'namaMadrasah'  => $namaMadrasah ? $namaMadrasah['value'] : 'MIMHa Tsanawiyah Informatika', 
-        'titiMangsa'    => $titiMangsa ? $titiMangsa['value'] : 'Bandung, 02 Januari 2026',
-        'kepalaNama'    => $kepalaSekolah ? $kepalaSekolah['value'] : 'Yana Purnama, S.Pd',
-        'kepalaNpk'     => $npkKepala ? $npkKepala['value'] : '3912390046098'
-    ];
-
-    return view('admin/kaldik_print_view', $data);
-}
 
 }

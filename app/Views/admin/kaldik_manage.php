@@ -54,19 +54,32 @@
                 </ul>
                 <ul class="navbar-nav ms-auto align-items-center gap-2">
                     <li class="nav-item">
-                        <form action="<?= base_url('admin/kaldik') ?>" method="GET" class="d-flex align-items-center gap-2 bg-light p-1 rounded border">
-                            <label class="small font-weight-bold text-muted mb-0 ps-2">Kelas:</label>
-                            <select name="class_id" class="form-select form-select-sm border-0 font-weight-bold bg-light" onchange="this.form.submit()" style="width: 110px;">
-                                <?php foreach ($daftarKelas as $k): ?>
-                                    <option value="<?= $k['id'] ?>" <?= $kelasTerpilih == $k['id'] ? 'selected' : '' ?>>
-                                        Kelas <?= $k['class_name'] ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
-                        </form>
+                        <form action="<?= base_url('admin/kaldik') ?>" method="GET" class="d-flex align-items-center gap-2 bg-light p-1 rounded border shadow-sm">
+    
+    <label class="small font-weight-bold text-muted mb-0 ps-2 d-none d-md-block">Filter:</label>
+    
+    <!-- 1. DROPDOWN TAHUN PELAJARAN (OTOMATIS SUBMIT & ADA PENANDA AKTIF) -->
+    <select name="ta" class="form-select form-select-sm border-0 font-weight-bold bg-white text-dark" onchange="this.form.submit()" style="width: auto; min-width: 170px;">
+        <?php foreach ($daftarTahun as $ta) : ?>
+            <option value="<?= $ta['id'] ?>" <?= ($tahunAktif && $tahunAktif['id'] == $ta['id']) ? 'selected' : '' ?>>
+                <?= $ta['academic_year'] ?> - <?= $ta['semester'] ?> <?= $ta['is_active'] == 1 ? '🌟 (Aktif)' : '' ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+
+    <!-- 2. DROPDOWN KELAS (OTOMATIS SUBMIT) -->
+    <select name="class_id" class="form-select form-select-sm border-0 font-weight-bold bg-white text-dark" onchange="this.form.submit()" style="width: 110px;">
+        <?php foreach ($daftarKelas as $k): ?>
+            <option value="<?= $k['id'] ?>" <?= $kelasTerpilih == $k['id'] ? 'selected' : '' ?>>
+                Kelas <?= $k['class_name'] ?>
+            </option>
+        <?php endforeach; ?>
+    </select>
+
+</form>
                     </li>
                     <li class="nav-item"><button type="button" class="btn btn-outline-dark btn-sm font-weight-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCopyKaldik"><i class="bi bi-copy me-1"></i> Copy Kaldik</button></li>
-                    <li class="nav-item"><a href="<?= base_url('/') ?>" class="btn btn-sm btn-secondary font-weight-bold px-3">Dashboard</a></li>
+                    <li class="nav-item"><a href="<?= base_url('/') ?>" class="btn btn-sm btn-secondary font-weight-bold px-3">🏠 Dashboard</a></li>
                 </ul>
             </div>
         </nav>
@@ -124,10 +137,10 @@
                                         <h4 class="text-dark my-0" style="font-weight: 800; font-size: 22px; letter-spacing: -0.5px;">KALENDER PENDIDIKAN SEMESTER <?= strtoupper($currentSemester) ?></h4>
                                         <span class="text-muted small">Target Monitor: <strong>Kelas <?= $kelasTerpilih == 1 ? '7' : ($kelasTerpilih == 2 ? '8' : '9') ?> (MTs)</strong> | Tahun Pelajaran <?= $rawYear ?></span>
                                     </div>
-                                        <!-- REVISI TOMBOL CETAK DI KALDIK_MANAGE.PHP AGAR MELUNCUR KE HALAMAN PREVIEW -->
-                                        <a href="<?= base_url('admin/kaldik/print?class_id=' . $kelasTerpilih) ?>" target="_blank" class="btn btn-sm btn-outline-secondary font-weight-bold shadow-sm">
-                                            <i class="bi bi-printer-fill me-1"></i> Cetak Kalender (PDF)
-                                        </a>
+                                      <!-- REVISI TOMBOL CETAK AGAR MEMBAWA PARAMETER TAHUN DAN KELAS -->
+<a href="<?= base_url('admin/kaldik/print?ta=' . ($tahunAktif ? $tahunAktif['id'] : '') . '&class_id=' . $kelasTerpilih) ?>" target="_blank" class="btn btn-sm btn-outline-secondary font-weight-bold shadow-sm">
+    <i class="bi bi-printer-fill me-1"></i>🖨️ Cetak Kalender (PDF)
+</a>
                                     </div>
 
                                 <!-- GRID 6 KOTAK BULANAN HORIZONTAL -->
