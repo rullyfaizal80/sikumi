@@ -106,7 +106,7 @@
                                         <input type="text" name="kaldik_kepala_nama" class="form-control form-control-sm" value="<?= $settings['kaldik_kepala_nama'] ?? 'Yana Purnama, S.Pd.' ?>" required>
                                     </div>
                                     <div>
-                                        <label class="form-label font-weight-bold small">NIP Kepala</label>
+                                        <label class="form-label font-weight-bold small">NPK Kepala</label>
                                         <input type="text" name="kaldik_kepala_npk" class="form-control form-control-sm" value="<?= $settings['kaldik_kepala_npk'] ?? '2102309482039' ?>" required>
                                     </div>
                                     <div>
