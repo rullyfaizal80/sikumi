@@ -229,4 +229,113 @@ class KaldikController extends BaseController
         return view('admin/kaldik_print_view', $data);
     }
 
+    // =========================================================================
+    // KHUSUS AKSES GURU (READ-ONLY)
+    // =========================================================================
+    public function guruIndex()
+    {
+        $db = \Config\Database::connect();
+
+        $daftarTahun = $db->table('academic_years')->orderBy('id', 'DESC')->get()->getResultArray();
+        $selectedTaId = $this->request->getGet('ta');
+        $tahunAktif = null;
+
+        if (!empty($selectedTaId)) {
+            $tahunAktif = $db->table('academic_years')->where('id', $selectedTaId)->get()->getRowArray();
+        } 
+        if (empty($tahunAktif)) {
+            $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+            if (!$tahunAktif && !empty($daftarTahun)) $tahunAktif = $daftarTahun[0];
+        }
+
+        $kelasTerpilih = $this->request->getGet('class_id') ?? 1;
+        $daftarKelas = $db->table('master_classes')->get()->getResultArray();
+        $daftarWarna = $db->table('master_categories')->get()->getResultArray();
+
+        $hariKerjaSetting = 5;
+        if ($db->tableExists('settings')) {
+            $getSetting = $db->table('settings')->where('key', 'kaldik_hari_kerja')->get()->getRowArray();
+            if ($getSetting) $hariKerjaSetting = (int)$getSetting['value'];
+        }
+
+        $agendaKaldik = [];
+        if ($tahunAktif) {
+            $agendaKaldik = $db->table('academic_calendars ac')
+                   ->select('ac.*, mc.category_name, mc.color_hex, ac.category_id')
+                   ->join('master_categories mc', 'mc.id = ac.category_id')
+                   ->where('ac.academic_year_id', $tahunAktif['id'])
+                   ->where('ac.class_id', $kelasTerpilih)
+                   ->orderBy('ac.start_date', 'ASC')
+                   ->get()
+                   ->getResultArray();
+        }
+
+        $data = [
+            'daftarTahun'      => $daftarTahun,
+            'tahunAktif'       => $tahunAktif,
+            'kelasTerpilih'    => $kelasTerpilih,
+            'daftarKelas'      => $daftarKelas,
+            'daftarWarna'      => $daftarWarna,
+            'agendaKaldik'     => $agendaKaldik,
+            'hariKerjaSetting' => $hariKerjaSetting 
+        ];
+
+        // MENGARAH KE FOLDER GURU
+        return view('guru/kaldik_view', $data);
+    }
+
+    public function guruPrint()
+    {
+        $db = \Config\Database::connect();
+
+        $selectedTaId = $this->request->getGet('ta');
+        $tahunAktif = null;
+
+        if (!empty($selectedTaId)) {
+            $tahunAktif = $db->table('academic_years')->where('id', $selectedTaId)->get()->getRowArray();
+        } 
+        if (empty($tahunAktif)) {
+            $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+        }
+
+        $kelasTerpilih = $this->request->getGet('class_id') ?? 1;
+        $daftarKelas = $db->table('master_classes')->get()->getResultArray();
+        $daftarWarna = $db->table('master_categories')->get()->getResultArray();
+
+        $namaMadrasah = null; $titiMangsa = null; $kepalaSekolah = null; $npkKepala = null;
+        if ($db->tableExists('settings')) {
+            $namaMadrasah  = $db->table('settings')->where('key', 'kaldik_lembaga_nama')->get()->getRowArray(); 
+            $titiMangsa    = $db->table('settings')->where('key', 'kaldik_titi_mangsa')->get()->getRowArray();
+            $kepalaSekolah = $db->table('settings')->where('key', 'kaldik_kepala_nama')->get()->getRowArray();
+            $npkKepala     = $db->table('settings')->where('key', 'kaldik_kepala_npk')->get()->getRowArray();
+        }
+
+        $agendaKaldik = [];
+        if ($tahunAktif) {
+            $agendaKaldik = $db->table('academic_calendars ac')
+                               ->select('ac.*, mc.category_name, mc.color_hex, ac.category_id')
+                               ->join('master_categories mc', 'mc.id = ac.category_id')
+                               ->where('ac.academic_year_id', $tahunAktif['id'])
+                               ->where('ac.class_id', $kelasTerpilih)
+                               ->orderBy('ac.start_date', 'ASC')
+                               ->get()
+                               ->getResultArray();
+        }
+
+        $data = [
+            'tahunAktif'    => $tahunAktif,
+            'kelasTerpilih' => $kelasTerpilih,
+            'daftarKelas'   => $daftarKelas,
+            'daftarWarna'   => $daftarWarna,
+            'agendaKaldik'  => $agendaKaldik,
+            'namaMadrasah'  => $namaMadrasah ? $namaMadrasah['value'] : 'MIMHa Tsanawiyah Informatika', 
+            'titiMangsa'    => $titiMangsa ? $titiMangsa['value'] : 'Bandung, 02 Januari 2026',
+            'kepalaNama'    => $kepalaSekolah ? $kepalaSekolah['value'] : 'Yana Purnama, S.Pd',
+            'kepalaNpk'     => $npkKepala ? $npkKepala['value'] : '3912390046098'
+        ];
+
+        // KITA BISA MENGGUNAKAN VIEW PRINT MILIK ADMIN KARENA ITU MURNI HANYA TAMPILAN CETAK
+        return view('admin/kaldik_print_view', $data);
+    }
+
 }

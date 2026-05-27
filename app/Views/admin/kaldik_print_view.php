@@ -272,7 +272,7 @@
             <p class="font-weight-bold mb-4" style="font-weight: 700;">Kepala Madrasah,</p>
             <br>
             <p class="font-weight-bold mb-0 border-bottom border-dark d-inline-block" style="font-weight: 800; text-decoration: underline;"><?= esc($kepalaNama) ?></p>
-            <p class="text-muted small mb-0" style="font-size: 9px;">NPK. <?= esc($kepalaNpk) ?></p>
+            <p class="text-muted small mb-0" style="font-size: 9px;">NIP. <?= esc($kepalaNpk) ?></p>
         </div>
     </div>
 
