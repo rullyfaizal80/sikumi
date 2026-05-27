@@ -36,18 +36,34 @@
         .btn-warning-custom:hover {
             background-color: #e68f00 !important;
         }
+        .maskot-floating {
+    position: absolute;
+    top: 50%;
+    /* 50% adalah titik tengah layar, -420px menggeser maskot tepat ke sebelah kiri kotak login */
+    left: calc(50% - 330px); 
+    transform: translateY(30%);
+    height: 200px; /* Ukuran pas agar seimbang dengan kotak login */
+    width: auto;
+    z-index: 10;
+}
+
+/* Menyembunyikan maskot di HP agar tidak menutupi kotak login */
+@media (max-width: 992px) {
+    .maskot-floating { 
+        display: none !important; 
+    }
+}
+
     </style>
 </head>
 <body>
-
+<img src="<?= base_url('assets/img/sikumi.png') ?>" alt="Maskot SiKuMi" class="maskot-floating">
 <div class="login-box">
     <div class="card card-login shadow-sm p-4">
         
         <!-- SISI ATAS: BRANDING LOGO & NAMA LEMBAGA MERDEKA -->
-        <div class="text-center mb-4">
-            <img src="<?= base_url('assets/img/logo.png') ?>" alt="Logo MIMHa" class="mb-2" style="height: 65px; width: auto; object-fit: contain;">
-            <h5 class="text-dark mb-1" style="font-weight: 700; letter-spacing: -0.5px;">Sistem Kurikulum MIMHa</h5>
-            <span class="text-muted small">(SiKuMi)</span>
+        <div class="text-center mb-0">
+            <img src="<?= base_url('assets/img/logo.png') ?>" alt="Logo MIMHa" class="mb-2" style="height: 150px; width: auto; object-fit: contain;">            
         </div>
 
         <!-- Notifikasi Pesan Kesalahan / Peringatan Sistem -->
@@ -63,7 +79,7 @@
 
             <!-- Input Alamat Email -->
             <div class="mb-3">
-                <label class="form-label small font-weight-bold text-muted mb-1">Alamat Email Guru</label>
+                <label class="form-label small font-weight-bold text-muted mb-1">Email</label>
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-envelope"></i></span>
                     <input type="email" name="email" class="form-control ps-2" placeholder="contoh: rully@mimha.sch.id" value="<?= old('email') ?>" required autofocus autocomplete="email">
@@ -72,7 +88,7 @@
 
             <!-- Input Kata Sandi -->
             <div class="mb-3">
-                <label class="form-label small font-weight-bold text-muted mb-1">Kata Sandi (Password)</label>
+                <label class="form-label small font-weight-bold text-muted mb-1">Password</label>
                 <div class="input-group input-group-sm">
                     <span class="input-group-text bg-light text-muted border-end-0"><i class="bi bi-lock"></i></span>
                     <input type="password" name="password" class="form-control ps-2" placeholder="Masukkan kata sandi Anda" required autocomplete="current-password">
@@ -80,10 +96,13 @@
             </div>
 
             <!-- Fitur Ingat Saya (Remember Me) -->
-            <div class="form-check mb-3 small">
-                <input class="form-check-input" type="checkbox" name="remember" id="rememberMe" <?= old('remember') ? 'checked' : '' ?>>
-                <label class="form-check-label text-muted" for="rememberMe">Ingat sesi masuk saya</label>
-            </div>
+            <!-- Menambahkan d-flex dan justify-content-end untuk memposisikan ke rata kanan -->
+<!-- Menghapus 'form-check' agar style absolute bawaan Bootstrap tidak merusak posisi -->
+<div class="mb-3 small d-flex justify-content-end align-items-center">
+    <label class="form-check-label text-muted" for="rememberMe">Ingat sesi masuk saya</label>
+    <!-- Mengganti 'me-2' menjadi 'ms-2' agar jarak kosong berada di kiri kotak (antara teks dan kotak) -->
+    <input class="form-check-input ms-2" type="checkbox" name="remember" id="rememberMe" <?= old('remember') ? 'checked' : '' ?> style="margin-top: 0; position: static;">
+</div>
 
             <!-- Tombol Submit Form Konvensional -->
             <button type="submit" class="btn btn-sm btn-warning-custom w-100 py-2 shadow-sm rounded mb-2">
@@ -91,6 +110,7 @@
             </button>
         </form>
 
+       
         <!-- ======================================================== -->
         <!-- POSISI PRESISI TOMBOL SSO GOOGLE REKOMENDASI ANDA -->
         <!-- ======================================================== -->

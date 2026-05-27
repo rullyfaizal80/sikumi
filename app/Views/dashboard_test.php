@@ -66,7 +66,7 @@
 <ul class="navbar-nav">
     <li class="nav-item d-flex align-items-center ps-2">
     <!-- GANTI TAG <i> LAMA DENGAN BARIS <img /> BARU INI: -->
-    <img src="<?= base_url('assets/img/logo.png') ?>" alt="Logo MIMHa" class="me-2" style="height: 48px; width: auto; object-fit: contain;">
+    <img src="<?= base_url('assets/img/sikumi.png') ?>" alt="Logo MIMHa" class="me-2" style="height: 48px; width: auto; object-fit: contain;">
     
     <!-- Menggunakan d-flex flex-column agar teks developer berada di bawah judul -->
     <div class="d-flex flex-column justify-content-center">
