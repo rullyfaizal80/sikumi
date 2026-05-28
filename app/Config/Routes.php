@@ -106,6 +106,15 @@ $routes->group('admin', static function ($routes) {
     $routes->get('rombel/siswa/(:num)', 'RombelSiswaController::manage/$1');
     $routes->post('rombel/siswa/add', 'RombelSiswaController::add');
     $routes->post('rombel/siswa/remove', 'RombelSiswaController::remove');
+
+   // --- MANAJEMEN JADWAL PELAJARAN ---
+    $routes->get('schedule', '\App\Controllers\ScheduleController::index');
+    $routes->post('schedule/create-version', '\App\Controllers\ScheduleController::createVersion');
+    $routes->post('schedule/generate-time', '\App\Controllers\ScheduleController::generateTime');
+    $routes->post('schedule/update-time', '\App\Controllers\ScheduleController::updateTime');
+    $routes->get('schedule/delete-day-time/(:any)', '\App\Controllers\ScheduleController::deleteDayTime/$1');
+    $routes->get('schedule/delete-slot-time/(:num)', '\App\Controllers\ScheduleController::deleteSlotTime/$1');
+    $routes->get('schedule/reset-all-slots', '\App\Controllers\ScheduleController::resetAllSlots');
 });
 
 $routes->group('guru', static function ($routes) {
