@@ -10,13 +10,16 @@ class ScheduleController extends BaseController
     {
         $db = \Config\Database::connect();
 
+        // [AUTO-PATCH] Mencegah Error jika kolom belum ada
+        if ($db->tableExists('schedule_jp_targets') && !$db->fieldExists('combined_subject_id', 'schedule_jp_targets')) {
+            $db->query("ALTER TABLE `schedule_jp_targets` ADD `combined_subject_id` INT(11) NULL DEFAULT NULL AFTER `subject_id`");
+        }
+
         $daftarTahun = $db->table('academic_years')->orderBy('id', 'DESC')->get()->getResultArray();
         $selectedTaId = $this->request->getGet('ta');
         $tahunAktif = null;
 
-        if (!empty($selectedTaId)) {
-            $tahunAktif = $db->table('academic_years')->where('id', $selectedTaId)->get()->getRowArray();
-        } 
+        if (!empty($selectedTaId)) { $tahunAktif = $db->table('academic_years')->where('id', $selectedTaId)->get()->getRowArray(); } 
         if (empty($tahunAktif)) {
             $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
             if (!$tahunAktif && !empty($daftarTahun)) $tahunAktif = $daftarTahun[0];
@@ -28,52 +31,256 @@ class ScheduleController extends BaseController
         $activeVersion = null;
         if ($tahunAktif) {
             $versions = $db->table('schedule_versions')->where('academic_year_id', $tahunAktif['id'])->orderBy('id', 'ASC')->get()->getResultArray();
-            
             $selectedVersionId = $this->request->getGet('v');
-            if (!empty($selectedVersionId)) {
-                $activeVersion = $db->table('schedule_versions')->where('id', $selectedVersionId)->get()->getRowArray();
-            }
-            if (empty($activeVersion) && !empty($versions)) {
-                $activeVersion = $versions[0]; 
-            }
+            if (!empty($selectedVersionId)) $activeVersion = $db->table('schedule_versions')->where('id', $selectedVersionId)->get()->getRowArray();
+            if (empty($activeVersion) && !empty($versions)) $activeVersion = $versions[0]; 
         }
 
         $rombels = [];
         if ($tahunAktif) {
-            $rombels = $db->table('class_rombel cr')
-                          ->select('cr.*, mc.class_name, mc.level_type')
-                          ->join('master_classes mc', 'mc.id = cr.master_class_id')
-                          ->where('cr.academic_year_id', $tahunAktif['id'])
-                          ->orderBy('mc.id', 'ASC')
-                          ->orderBy('cr.rombel_name', 'ASC')
-                          ->get()->getResultArray();
+            $rombels = $db->table('class_rombel cr')->select('cr.*, mc.class_name, mc.level_type')->join('master_classes mc', 'mc.id = cr.master_class_id')->where('cr.academic_year_id', $tahunAktif['id'])->orderBy('mc.id', 'ASC')->orderBy('cr.rombel_name', 'ASC')->get()->getResultArray();
         }
 
         $kegiatan = $db->table('master_activities')->get()->getResultArray();
 
-        // PENARIKAN DATA NORMAL (Tanpa Mode Diagnostik Kuning)
         $timeSlots = [];
         if ($activeVersion) {
-            $timeSlots = $db->table('schedule_time_slots')
-                            ->where('version_id', $activeVersion['id'])
-                            ->orderBy('day_name', 'ASC')
-                            ->orderBy('slot_number', 'ASC')
-                            ->get()->getResultArray();
+            $timeSlots = $db->table('schedule_time_slots')->where('version_id', $activeVersion['id'])->orderBy('day_name', 'ASC')->orderBy('slot_number', 'ASC')->get()->getResultArray();
+        }
+
+        // ==========================================
+        // TAB 2: DATA PLOTTING MAPEL & GURU OTOMATIS
+        // ==========================================
+        $subjects = []; $teachers = []; $plottingDataNormal = []; $plottingDataCombined = [];
+        $assignedTeachers = []; $combinedSubjects = []; $combinedChildIds = [];
+
+        if ($activeTab == 'plotting' || $activeTab == 'matriks') {
+            if ($db->tableExists('master_subjects')) $subjects = $db->table('master_subjects')->get()->getResultArray();
+            elseif ($db->tableExists('subjects')) $subjects = $db->table('subjects')->get()->getResultArray();
+
+            if ($db->tableExists('master_teachers')) $teachers = $db->table('master_teachers')->get()->getResultArray();
+            elseif ($db->tableExists('users')) $teachers = $db->table('users')->get()->getResultArray();
+
+            $teacherDict = [];
+            foreach($teachers as $t) { $teacherDict[$t['id']] = $t['teacher_name'] ?? $t['nama_guru'] ?? $t['name'] ?? $t['fullname'] ?? 'Guru ID: '.$t['id']; }
+
+            if ($db->tableExists('class_subject_teachers')) {
+                $cst_data = $db->table('class_subject_teachers')->get()->getResultArray();
+                foreach($cst_data as $row) {
+                    $assignedTeachers[$row['master_subject_id']][$row['rombel_id']] = [
+                        'teacher_id'   => $row['teacher_id'],
+                        'teacher_name' => $teacherDict[$row['teacher_id']] ?? 'Guru ID: '.$row['teacher_id']
+                    ];
+                }
+            }
+
+            if ($activeVersion && $db->tableExists('schedule_jp_targets')) {
+                $targets = $db->table('schedule_jp_targets')->where('version_id', $activeVersion['id'])->get()->getResultArray();
+                foreach($targets as $t) {
+                    if (!empty($t['combined_subject_id'])) { $plottingDataCombined[$t['combined_subject_id']][$t['rombel_id']] = $t; } 
+                    else { $plottingDataNormal[$t['subject_id']][$t['rombel_id']] = $t; }
+                }
+            }
+
+            if ($tahunAktif && $db->tableExists('schedule_combined_subjects')) {
+                $comb = $db->table('schedule_combined_subjects')->where('academic_year_id', $tahunAktif['id'])->get()->getResultArray();
+                foreach ($comb as $c) {
+                    $details = $db->table('schedule_combined_details')->where('combined_subject_id', $c['id'])->get()->getResultArray();
+                    $detailIds = array_column($details, 'master_subject_id');
+                    $c['detail_ids'] = $detailIds;
+                    $combinedChildIds = array_merge($combinedChildIds, $detailIds);
+                    
+                    $detailNames = [];
+                    foreach($subjects as $sub) { if (in_array($sub['id'], $detailIds)) { $detailNames[] = $sub['subject_name'] ?? $sub['nama_mapel']; } }
+                    $c['detail_names_string'] = implode(' + ', $detailNames);
+                    $c['detail_ids_string'] = implode(',', $detailIds);
+                    $combinedSubjects[] = $c;
+                }
+            }
+        }
+
+        // ==========================================
+        // TAB 1: LOGIKA MATRIKS JADWAL SEMUA KELAS
+        // ==========================================
+        $classSchedules = []; $usedJpNormal = []; $usedJpCombined = [];
+        $slotGrid = []; $maxSlot = 0; $matrixDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+
+        if ($activeTab == 'matriks' && $activeVersion) {
+            if ($db->tableExists('class_schedules')) {
+                // Tarik seluruh jadwal pada versi ini sekaligus
+                $schData = $db->table('class_schedules')->where(['version_id' => $activeVersion['id']])->get()->getResultArray();
+                foreach($schData as $sd) {
+                    // Simpan dengan format 2 Dimensi: [ID_SLOT][ID_ROMBEL]
+                    $classSchedules[$sd['slot_id']][$sd['rombel_id']] = $sd; 
+                    
+                    // Hitung jumlah JP yang sudah digunakan per Rombel
+                    if (!empty($sd['subject_id'])) {
+                        $usedJpNormal[$sd['subject_id']][$sd['rombel_id']] = ($usedJpNormal[$sd['subject_id']][$sd['rombel_id']] ?? 0) + 1;
+                    }
+                    if (!empty($sd['combined_subject_id'])) {
+                        $usedJpCombined[$sd['combined_subject_id']][$sd['rombel_id']] = ($usedJpCombined[$sd['combined_subject_id']][$sd['rombel_id']] ?? 0) + 1;
+                    }
+                }
+            }
+            // Petakan ke Grid Waktu
+            foreach($timeSlots as $ts) {
+                $slotGrid[$ts['slot_number']][$ts['day_name']] = $ts;
+                if($ts['slot_number'] > $maxSlot) $maxSlot = $ts['slot_number'];
+            }
         }
 
         $data = [
-            'title'            => 'Manajemen Jadwal - SiKuMi',
-            'daftarTahun'      => $daftarTahun,
-            'tahunAktif'       => $tahunAktif,
-            'activeTab'        => $activeTab,
-            'rombels'          => $rombels,
-            'kegiatan'         => $kegiatan,
-            'versions'         => $versions,
-            'activeVersion'    => $activeVersion,
-            'timeSlots'        => $timeSlots
+            'title'                => 'Manajemen Jadwal - SiKuMi',
+            'daftarTahun'          => $daftarTahun,
+            'tahunAktif'           => $tahunAktif,
+            'activeTab'            => $activeTab,
+            'rombels'              => $rombels,
+            'kegiatan'             => $kegiatan,
+            'versions'             => $versions,
+            'activeVersion'        => $activeVersion,
+            'timeSlots'            => $timeSlots,
+            'subjects'             => $subjects,
+            'teachers'             => $teachers,
+            'plottingDataNormal'   => $plottingDataNormal,
+            'plottingDataCombined' => $plottingDataCombined,
+            'assignedTeachers'     => $assignedTeachers,
+            'combinedSubjects'     => $combinedSubjects,
+            'combinedChildIds'     => $combinedChildIds,
+            // Variabel Khusus Tab 1
+            'classSchedules'       => $classSchedules,
+            'usedJpNormal'         => $usedJpNormal,
+            'usedJpCombined'       => $usedJpCombined,
+            'slotGrid'             => $slotGrid,
+            'maxSlot'              => $maxSlot,
+            'matrixDays'           => $matrixDays
         ];
 
         return view('admin/schedule/index', $data);
+    }
+
+    // ==========================================
+    // FUNGSI SIMPAN TAB 1 (MATRIKS JADWAL)
+    // ==========================================
+    public function saveMatrix()
+    {
+        $db = \Config\Database::connect();
+        $ta = $this->request->getPost('ta');
+        $v = $this->request->getPost('v');
+        $matrix = $this->request->getPost('matrix'); // matrix[slot_id][rombel_id] = value
+
+        $db->table('class_schedules')->where(['version_id' => $v])->delete();
+
+        if (!empty($matrix)) {
+            $insertData = [];
+            foreach ($matrix as $slotId => $rombels) {
+                foreach($rombels as $rombelId => $val) {
+                    if (empty($val)) continue;
+
+                    $slotData = $db->table('schedule_time_slots')->where('id', $slotId)->get()->getRowArray();
+                    if (!$slotData) continue;
+
+                    $row = [ 'academic_year_id' => $ta, 'version_id' => $v, 'rombel_id' => $rombelId, 'day_name' => $slotData['day_name'], 'slot_id' => $slotId ];
+                    
+                    if (strpos($val, 'ACT_') === 0) $row['activity_id'] = str_replace('ACT_', '', $val);
+                    elseif (strpos($val, 'SUB_') === 0) { $parts = explode('_', str_replace('SUB_', '', $val)); $row['subject_id'] = $parts[0]; $row['teacher_id'] = $parts[1] ?? null; }
+                    elseif (strpos($val, 'COM_') === 0) { $parts = explode('_', str_replace('COM_', '', $val)); $row['combined_subject_id'] = $parts[0]; $row['teacher_id'] = $parts[1] ?? null; }
+
+                    $insertData[] = $row;
+                }
+            }
+            if (!empty($insertData)) $db->table('class_schedules')->insertBatch($insertData);
+        }
+        return redirect()->to(base_url("admin/schedule?tab=matriks&ta=$ta&v=$v"))->with('sukses', '✅ Matriks Jadwal berhasil disimpan!');
+    }
+
+    // ==========================================
+    // FUNGSI SIMPAN TAB 2 (PLOTTING JP & GABUNGAN)
+    // ==========================================
+    public function savePlotting()
+    {
+        $db = \Config\Database::connect();
+        $ta = $this->request->getPost('ta'); $v = $this->request->getPost('v');
+        $mapelActive = $this->request->getPost('mapel_active'); $targetJp = $this->request->getPost('target_jp'); $teacherId = $this->request->getPost('teacher_id'); 
+        $combinedActive = $this->request->getPost('combined_active'); $targetJpCombined = $this->request->getPost('target_jp_combined'); $teacherIdCombined = $this->request->getPost('teacher_id_combined'); 
+
+        $db->table('schedule_jp_targets')->where('version_id', $v)->delete();
+        $insertData = [];
+
+        if (!empty($mapelActive) && is_array($mapelActive)) {
+            foreach ($mapelActive as $subjectId => $val) {
+                if (isset($targetJp[$subjectId])) {
+                    foreach ($targetJp[$subjectId] as $rombelId => $jp) {
+                        $tId = $teacherId[$subjectId][$rombelId] ?? null;
+                        if ($jp > 0 && !empty($tId)) { $insertData[] = ['academic_year_id' => $ta, 'version_id' => $v, 'rombel_id' => $rombelId, 'subject_id' => $subjectId, 'combined_subject_id' => null, 'teacher_id' => $tId, 'target_jp' => $jp ]; }
+                    }
+                }
+            }
+        }
+
+        if (!empty($combinedActive) && is_array($combinedActive)) {
+            foreach ($combinedActive as $combId => $val) {
+                if (isset($targetJpCombined[$combId])) {
+                    foreach ($targetJpCombined[$combId] as $rombelId => $jp) {
+                        $tId = $teacherIdCombined[$combId][$rombelId] ?? null;
+                        if ($jp > 0 && !empty($tId)) { $insertData[] = ['academic_year_id' => $ta, 'version_id' => $v, 'rombel_id' => $rombelId, 'subject_id' => null, 'combined_subject_id' => $combId, 'teacher_id' => $tId, 'target_jp' => $jp ]; }
+                    }
+                }
+            }
+        }
+
+        if (!empty($insertData)) $db->table('schedule_jp_targets')->insertBatch($insertData);
+        return redirect()->to(base_url("admin/schedule?tab=plotting&ta=$ta&v=$v"))->with('sukses', '🎯 Plotting Beban JP berhasil disimpan!');
+    }
+
+    private function validateSameTeacher($subjectIds)
+    {
+        $db = \Config\Database::connect();
+        $cstData = $db->table('class_subject_teachers')->whereIn('master_subject_id', $subjectIds)->get()->getResultArray();
+        $teacherCheck = [];
+        foreach($cstData as $row) { if(!empty($row['teacher_id'])) { $teacherCheck[$row['rombel_id']][] = $row['teacher_id']; } }
+        foreach($teacherCheck as $rombelId => $teachers) { if(count(array_unique($teachers)) > 1) return false; }
+        return true;
+    }
+
+    public function saveCombined()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $ta = $this->request->getPost('ta'); $v = $this->request->getPost('v');
+            $name = $this->request->getPost('combined_name'); $subjectIds = $this->request->getPost('subject_ids'); 
+            if (empty($name) || empty($subjectIds)) return redirect()->back()->with('error', 'Minimal 1 mapel harus dicentang.');
+            if (!$this->validateSameTeacher($subjectIds)) return redirect()->back()->with('error', '⚠️ GAGAL MENGGABUNGKAN: Guru pengampu harus sama di setiap kelas.');
+            $db->table('schedule_combined_subjects')->insert(['academic_year_id' => $ta, 'combined_name' => $name]);
+            $newId = $db->insertID();
+            $insertDetails = []; foreach ($subjectIds as $sId) { $insertDetails[] = ['combined_subject_id' => $newId, 'master_subject_id' => $sId]; }
+            $db->table('schedule_combined_details')->insertBatch($insertDetails);
+            return redirect()->to(base_url("admin/schedule?tab=plotting&ta=$ta&v=$v"))->with('sukses', '🔗 Mapel Gabungan ('.esc($name).') berhasil dibuat!');
+        } catch (\Exception $e) { return redirect()->back()->with('error', 'Error: ' . $e->getMessage()); }
+    }
+
+    public function updateCombined()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $ta = $this->request->getPost('ta'); $v = $this->request->getPost('v'); $id = $this->request->getPost('id');
+            $name = $this->request->getPost('combined_name'); $subjectIds = $this->request->getPost('subject_ids'); 
+            if (empty($name) || empty($subjectIds)) return redirect()->back()->with('error', 'Minimal 1 mapel harus dicentang.');
+            if (!$this->validateSameTeacher($subjectIds)) return redirect()->back()->with('error', '⚠️ GAGAL MENGGABUNGKAN: Guru pengampu harus sama di setiap kelas.');
+            $db->table('schedule_combined_subjects')->where('id', $id)->update(['combined_name' => $name]);
+            $db->table('schedule_combined_details')->where('combined_subject_id', $id)->delete();
+            $insertDetails = []; foreach ($subjectIds as $sId) { $insertDetails[] = ['combined_subject_id' => $id, 'master_subject_id' => $sId]; }
+            $db->table('schedule_combined_details')->insertBatch($insertDetails);
+            return redirect()->to(base_url("admin/schedule?tab=plotting&ta=$ta&v=$v"))->with('sukses', '✏️ Mapel Gabungan berhasil diperbarui!');
+        } catch (\Exception $e) { return redirect()->back()->with('error', 'Error: ' . $e->getMessage()); }
+    }
+
+    public function deleteCombined($id)
+    {
+        $db = \Config\Database::connect();
+        $db->table('schedule_combined_details')->where('combined_subject_id', $id)->delete();
+        $db->table('schedule_combined_subjects')->where('id', $id)->delete();
+        $ta = $this->request->getGet('ta'); $v = $this->request->getGet('v');
+        return redirect()->to(base_url("admin/schedule?tab=plotting&ta=$ta&v=$v"))->with('sukses', '🗑️ Mapel Gabungan berhasil dihapus.');
     }
 
     public function createVersion() 
@@ -196,4 +403,52 @@ class ScheduleController extends BaseController
         $db->table('schedule_time_slots')->where('version_id', $v)->delete();
         return redirect()->to(base_url("admin/schedule?tab=waktu&ta=$ta&v=$v"))->with('sukses', '🗑️ Seluruh data slot pada versi ini berhasil dihapus!');
     }
+
+    // ==========================================
+    // FUNGSI MANAJEMEN KEGIATAN UMUM (DINAMIS)
+    // ==========================================
+    public function saveActivity()
+    {
+        $db = \Config\Database::connect();
+        $ta = $this->request->getPost('ta'); 
+        $v = $this->request->getPost('v');
+        $name = $this->request->getPost('activity_name');
+        
+        if (empty($name)) return redirect()->back()->with('error', 'Nama kegiatan tidak boleh kosong.');
+        
+        $db->table('master_activities')->insert(['activity_name' => $name]);
+        return redirect()->to(base_url("admin/schedule?tab=matriks&ta=$ta&v=$v"))->with('sukses', '✨ Kegiatan Umum berhasil ditambahkan!');
+    }
+
+    public function updateActivity()
+    {
+        $db = \Config\Database::connect();
+        $ta = $this->request->getPost('ta'); 
+        $v = $this->request->getPost('v');
+        $id = $this->request->getPost('id'); 
+        $name = $this->request->getPost('activity_name');
+        
+        if (empty($name)) return redirect()->back()->with('error', 'Nama kegiatan tidak boleh kosong.');
+        
+        $db->table('master_activities')->where('id', $id)->update(['activity_name' => $name]);
+        return redirect()->to(base_url("admin/schedule?tab=matriks&ta=$ta&v=$v"))->with('sukses', '✨ Kegiatan Umum berhasil diperbarui!');
+    }
+
+    public function deleteActivity($id)
+    {
+        $db = \Config\Database::connect();
+        $ta = $this->request->getGet('ta'); 
+        $v = $this->request->getGet('v');
+        
+        // Hapus kegiatannya
+        $db->table('master_activities')->where('id', $id)->delete();
+        
+        // Bersihkan jadwal yang terlanjur memakai kegiatan ini agar tidak error
+        if ($db->tableExists('class_schedules')) {
+            $db->table('class_schedules')->where('activity_id', $id)->update(['activity_id' => null]);
+        }
+        
+        return redirect()->to(base_url("admin/schedule?tab=matriks&ta=$ta&v=$v"))->with('sukses', '🗑️ Kegiatan Umum berhasil dihapus!');
+    }
+
 }

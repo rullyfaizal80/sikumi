@@ -115,6 +115,16 @@ $routes->group('admin', static function ($routes) {
     $routes->get('schedule/delete-day-time/(:any)', '\App\Controllers\ScheduleController::deleteDayTime/$1');
     $routes->get('schedule/delete-slot-time/(:num)', '\App\Controllers\ScheduleController::deleteSlotTime/$1');
     $routes->get('schedule/reset-all-slots', '\App\Controllers\ScheduleController::resetAllSlots');
+    $routes->post('schedule/save-plotting', '\App\Controllers\ScheduleController::savePlotting');
+
+    $routes->post('schedule/save-combined', '\App\Controllers\ScheduleController::saveCombined');
+    $routes->get('schedule/delete-combined/(:num)', '\App\Controllers\ScheduleController::deleteCombined/$1');
+    $routes->post('schedule/update-combined', '\App\Controllers\ScheduleController::updateCombined');
+    $routes->post('schedule/save-matrix', '\App\Controllers\ScheduleController::saveMatrix');
+
+    $routes->post('schedule/save-activity', '\App\Controllers\ScheduleController::saveActivity');
+    $routes->post('schedule/update-activity', '\App\Controllers\ScheduleController::updateActivity');
+    $routes->get('schedule/delete-activity/(:num)', '\App\Controllers\ScheduleController::deleteActivity/$1');
 });
 
 $routes->group('guru', static function ($routes) {

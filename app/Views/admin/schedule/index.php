@@ -16,6 +16,7 @@
         .nav-link:hover:not(.active) { background-color: #f8f9fa !important; }
         .btn-emoji { font-size: 14px; text-decoration: none; padding: 3px 8px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; display: inline-block; }
         .btn-emoji:hover { background: #f0f0f0; }
+        .matriks-select { font-size: 11px; cursor: pointer; }
     </style>
 </head>
 <body class="layout-fixed sidebar-expand-lg">
@@ -65,7 +66,7 @@
                                 <input type="hidden" name="tab" value="<?= esc($activeTab) ?>">
                                 
                                 <span class="small font-weight-bold text-muted ps-2">Semester:</span>
-                                <select name="ta" class="form-select form-select-sm border-0 font-weight-bold bg-light" onchange="this.form.submit()" style="width: auto;">
+                                <select name="ta" id="selectTa" class="form-select form-select-sm border-0 font-weight-bold bg-light" style="width: auto;">
                                     <?php foreach ($daftarTahun as $ta) : ?>
                                         <option value="<?= $ta['id'] ?>" <?= ($taId == $ta['id']) ? 'selected' : '' ?>>
                                             <?= $ta['academic_year'] ?> - <?= $ta['semester'] ?>
@@ -74,11 +75,10 @@
                                 </select>
 
                                 <span class="small font-weight-bold text-muted ms-2">Versi Jadwal:</span>
-                                <select name="v" class="form-select form-select-sm border-0 font-weight-bold bg-light text-primary" onchange="if(this.value==='NEW'){ new bootstrap.Modal(document.getElementById('modalNewVersion')).show(); this.value='<?= $verId ?>'; } else { this.form.submit(); }" style="width: auto; min-width:250px;">
+                                <select name="v" id="selectVersion" class="form-select form-select-sm border-0 font-weight-bold bg-light text-primary" style="width: auto; min-width:250px;">
                                     <?php if(empty($versions)): ?>
                                         <option value="" disabled selected>Belum Ada Versi</option>
                                     <?php endif; ?>
-                                    
                                     <?php foreach ($versions as $ver) : ?>
                                         <?php $judul = !empty($ver['schedule_title']) ? ' - ' . esc($ver['schedule_title']) : ''; ?>
                                         <option value="<?= $ver['id'] ?>" <?= ($verId == $ver['id']) ? 'selected' : '' ?>>
@@ -107,10 +107,230 @@
                             <?php else: ?>
 
                                 <div class="tab-content">
-                                    <?php if($activeTab == 'matriks'): ?> <h5 class="text-muted text-center py-5">Matriks Akan Tampil Disini</h5> <?php endif; ?>
-                                    <?php if($activeTab == 'plotting'): ?> <h5 class="text-muted text-center py-5">Form Plotting Akan Tampil Disini</h5> <?php endif; ?>
+                                    
+                                    <?php if($activeTab == 'matriks'): ?>
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <h5>📅 Matriks Jadwal Seluruh Kelas</h5>
+                                            <div>
+                                                <button type="button" class="btn btn-info btn-sm font-weight-bold shadow-sm me-2 text-white" data-bs-toggle="modal" data-bs-target="#modalActivity">
+                                                    ✨ Manajemen Kegiatan
+                                                </button>
+                                                <button type="submit" form="formMatriks" class="btn btn-success btn-sm font-weight-bold shadow-sm">
+                                                    💾 Simpan Semua Perubahan
+                                                </button>
+                                            </div>
+                                        </div>
 
-                                    <!-- TAB 3: PENGATURAN WAKTU -->
+                                        <form action="<?= base_url('admin/schedule/save-matrix') ?>" method="POST" id="formMatriks">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="ta" value="<?= $taId ?>">
+                                            <input type="hidden" name="v" value="<?= $verId ?>">
+
+                                            <?php foreach($matrixDays as $day): ?>
+                                                <?php 
+                                                    $slotsHariIni = array_filter($timeSlots, function($s) use ($day) { return $s['day_name'] == $day; });
+                                                    if(empty($slotsHariIni)) continue;
+                                                ?>
+                                                <div class="card mb-4 shadow-sm border-primary">
+                                                    <div class="card-header bg-primary text-white font-weight-bold py-2"><?= $day ?></div>
+                                                    <div class="table-responsive">
+                                                        <table class="table table-bordered table-sm text-center mb-0" style="font-size: 11px;">
+                                                            <thead class="bg-light">
+                                                                <tr>
+                                                                    <th width="10%" class="align-middle">Jam / Waktu</th>
+                                                                    <?php foreach($rombels as $r): ?>
+                                                                        <th class="align-middle"><?= $r['class_name'] ?>-<?= $r['rombel_name'] ?></th>
+                                                                    <?php endforeach; ?>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                <?php foreach($slotsHariIni as $slot): ?>
+                                                                <tr>
+                                                                    <td class="bg-light align-middle text-center">
+                                                                        <span class="font-weight-bold d-block text-dark"><?= esc($slot['slot_label']) ?></span>
+                                                                        <span class="text-primary fw-bold" style="font-size: 10px;">
+                                                                            <?= date('H:i', strtotime($slot['start_time'])) ?> - <?= date('H:i', strtotime($slot['end_time'])) ?>
+                                                                        </span>
+                                                                    </td>
+                                                                    
+                                                                    <?php foreach($rombels as $r): 
+                                                                        $sch = $classSchedules[$slot['id']][$r['id']] ?? null;
+                                                                    ?>
+                                                                    <td class="align-middle">
+                                                                        <select name="matrix[<?= $slot['id'] ?>][<?= $r['id'] ?>]" class="form-select form-select-sm matriks-select <?= $sch ? 'bg-success text-white fw-bold' : '' ?>" style="font-size: 11px; cursor: pointer;">
+                                                                            <option value="">-</option>
+                                                                            
+                                                                            <optgroup label="✨ KEGIATAN UMUM">
+                                                                                <?php foreach($kegiatan as $act): ?>
+                                                                                    <option value="ACT_<?= $act['id'] ?>" <?= ($sch && $sch['activity_id'] == $act['id']) ? 'selected' : '' ?>>☕ <?= esc($act['activity_name']) ?></option>
+                                                                                <?php endforeach; ?>
+                                                                            </optgroup>
+                                                                            
+                                                                            <optgroup label="🔗 MAPEL GABUNGAN">
+                                                                                <?php foreach($combinedSubjects as $cs): 
+                                                                                    if(!isset($plottingDataCombined[$cs['id']][$r['id']])) continue;
+                                                                                ?>
+                                                                                    <option value="COM_<?= $cs['id'] ?>_<?= $plottingDataCombined[$cs['id']][$r['id']]['teacher_id'] ?>" <?= ($sch && $sch['combined_subject_id'] == $cs['id']) ? 'selected' : '' ?>>🔗 <?= esc($cs['combined_name']) ?></option>
+                                                                                <?php endforeach; ?>
+                                                                            </optgroup>
+                                                                            
+                                                                            <optgroup label="📚 MATA PELAJARAN">
+                                                                                <?php foreach($subjects as $sub): 
+                                                                                    if(in_array($sub['id'], $combinedChildIds) || !isset($plottingDataNormal[$sub['id']][$r['id']])) continue;
+                                                                                ?>
+                                                                                    <option value="SUB_<?= $sub['id'] ?>_<?= $plottingDataNormal[$sub['id']][$r['id']]['teacher_id'] ?>" <?= ($sch && $sch['subject_id'] == $sub['id']) ? 'selected' : '' ?>><?= esc($sub['subject_name'] ?? $sub['nama_mapel']) ?></option>
+                                                                                <?php endforeach; ?>
+                                                                            </optgroup>
+                                                                        </select>
+                                                                    </td>
+                                                                    <?php endforeach; ?>
+                                                                </tr>
+                                                                <?php endforeach; ?>
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </form>
+                                    <?php endif; ?>
+
+                                    <?php if($activeTab == 'plotting'): ?>
+                                        <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
+                                            <div>
+                                                <h5 class="font-weight-bold text-dark mb-1">🎯 Plotting Beban JP (Otomatis Guru)</h5>
+                                                <span class="text-muted small">Versi Aktif: <strong><?= $verName ?><?= $verTitle ?></strong></span>
+                                            </div>
+                                            <div>
+                                                <button type="button" class="btn btn-warning btn-sm font-weight-bold shadow-sm me-2 text-dark" data-bs-toggle="modal" data-bs-target="#modalCombinedSubject">
+                                                    🔗 Manajemen Mapel Gabungan
+                                                </button>
+                                                <button type="submit" form="formPlotting" class="btn btn-success btn-sm font-weight-bold shadow-sm">
+                                                    💾 Simpan Plotting
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <form action="<?= base_url('admin/schedule/save-plotting') ?>" method="POST" id="formPlotting">
+                                            <?= csrf_field() ?>
+                                            <input type="hidden" name="ta" value="<?= $taId ?>">
+                                            <input type="hidden" name="v" value="<?= $verId ?>">
+
+                                            <div class="alert alert-info border-0 shadow-sm small py-2 mb-3">
+                                                <i class="bi bi-info-circle-fill me-1"></i> Data guru ditarik otomatis dari Rombel. Jika Anda membuat Mapel Gabungan, mapel aslinya akan disembunyikan.
+                                            </div>
+
+                                            <div class="accordion" id="accordionMapel">
+                                                
+                                                <?php foreach($combinedSubjects as $comb): 
+                                                    $cId = $comb['id']; $cName = $comb['combined_name'];
+                                                    $firstMapelId = $comb['detail_ids'][0] ?? null; 
+                                                ?>
+                                                <div class="accordion-item mb-2 border border-success rounded shadow-sm">
+                                                    <h2 class="accordion-header d-flex align-items-center bg-light" id="headingComb<?= $cId ?>">
+                                                        <div class="form-check form-switch ms-3 me-2" style="transform: scale(1.2);">
+                                                            <input class="form-check-input toggle-mapel" type="checkbox" name="combined_active[<?= $cId ?>]" value="1" data-target="collapseComb<?= $cId ?>" checked>
+                                                        </div>
+                                                        <button class="accordion-button bg-transparent fw-bold text-success border-0 shadow-none ps-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapseComb<?= $cId ?>" style="pointer-events: none;">
+                                                            🔗 <?= esc($cName) ?> <span class="badge bg-secondary ms-2 fw-normal" style="font-size:10px;">(<?= esc($comb['detail_names_string']) ?>)</span>
+                                                        </button>
+                                                    </h2>
+                                                    <div id="collapseComb<?= $cId ?>" class="accordion-collapse collapse show">
+                                                        <div class="accordion-body p-0">
+                                                            <table class="table table-sm table-hover mb-0" style="font-size: 13px;">
+                                                                <thead class="bg-success text-white">
+                                                                    <tr><th class="ps-3" width="30%">Kelas / Rombel</th><th width="45%">Guru Pengampu (Auto)</th><th width="25%" class="text-center">Target JP Gabungan</th></tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    <?php foreach($rombels as $rombel): 
+                                                                        $rId = $rombel['id'];
+                                                                        $tData = $plottingDataCombined[$cId][$rId] ?? null; 
+                                                                        $cstData = $assignedTeachers[$firstMapelId][$rId] ?? null;
+                                                                    ?>
+                                                                    <tr>
+                                                                        <td class="align-middle ps-3 fw-bold"><?= esc($rombel['class_name']) ?> - <?= esc($rombel['rombel_name']) ?></td>
+                                                                        <td class="align-middle pe-3">
+                                                                            <?php if($cstData): ?>
+                                                                                <span class="badge bg-success px-2 py-1 shadow-sm fs-6"><i class="bi bi-person-check-fill me-1"></i> <?= esc($cstData['teacher_name']) ?></span>
+                                                                                <input type="hidden" name="teacher_id_combined[<?= $cId ?>][<?= $rId ?>]" value="<?= $cstData['teacher_id'] ?>">
+                                                                            <?php else: ?>
+                                                                                <span class="badge bg-danger px-2 py-1 shadow-sm">Belum Diplot di Kelas</span>
+                                                                            <?php endif; ?>
+                                                                        </td>
+                                                                        <td class="align-middle px-3">
+                                                                            <div class="input-group input-group-sm">
+                                                                                <input type="number" name="target_jp_combined[<?= $cId ?>][<?= $rId ?>]" class="form-control text-center fw-bold text-success" value="<?= $tData['target_jp'] ?? 0 ?>" min="0" <?= empty($cstData) ? 'disabled' : '' ?>>
+                                                                                <span class="input-group-text bg-white">JP</span>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <?php endforeach; ?>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <?php endforeach; ?>
+
+                                                <?php foreach($subjects as $mapel): 
+                                                    $mId = $mapel['id'];
+                                                    if(in_array($mId, $combinedChildIds)) continue; 
+                                                    $mName = $mapel['subject_name'] ?? $mapel['nama_mapel'] ?? 'Mapel ID: '.$mId;
+                                                ?>
+                                                <div class="accordion-item mb-2 border rounded shadow-sm">
+                                                    <h2 class="accordion-header d-flex align-items-center bg-light" id="heading<?= $mId ?>">
+                                                        <div class="form-check form-switch ms-3 me-2" style="transform: scale(1.2);">
+                                                            <input class="form-check-input toggle-mapel" type="checkbox" name="mapel_active[<?= $mId ?>]" value="1" data-target="collapse<?= $mId ?>" checked>
+                                                        </div>
+                                                        <button class="accordion-button bg-transparent fw-bold text-dark border-0 shadow-none ps-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<?= $mId ?>" style="pointer-events: none;">
+                                                            📚 <?= esc($mName) ?>
+                                                        </button>
+                                                    </h2>
+                                                    <div id="collapse<?= $mId ?>" class="accordion-collapse collapse show">
+                                                        <div class="accordion-body p-0">
+                                                            <table class="table table-sm table-hover mb-0" style="font-size: 13px;">
+                                                                <thead class="bg-dark text-white">
+                                                                    <tr><th class="ps-3" width="30%">Kelas / Rombel</th><th width="45%">Guru Pengampu (Auto)</th><th width="25%" class="text-center">Target JP / Minggu</th></tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    <?php foreach($rombels as $rombel): 
+                                                                        $rId = $rombel['id'];
+                                                                        $tData = $plottingDataNormal[$mId][$rId] ?? null; 
+                                                                        $cstData = $assignedTeachers[$mId][$rId] ?? null;
+                                                                    ?>
+                                                                    <tr>
+                                                                        <td class="align-middle ps-3 fw-bold"><?= esc($rombel['class_name']) ?> - <?= esc($rombel['rombel_name']) ?></td>
+                                                                        <td class="align-middle pe-3">
+                                                                            <?php if($cstData): ?>
+                                                                                <span class="badge bg-success px-2 py-1 shadow-sm fs-6"><i class="bi bi-person-check-fill me-1"></i> <?= esc($cstData['teacher_name']) ?></span>
+                                                                                <input type="hidden" name="teacher_id[<?= $mId ?>][<?= $rId ?>]" value="<?= $cstData['teacher_id'] ?>">
+                                                                            <?php else: ?>
+                                                                                <span class="badge bg-danger px-2 py-1 shadow-sm">Belum Diplot di Kelas</span>
+                                                                            <?php endif; ?>
+                                                                        </td>
+                                                                        <td class="align-middle px-3">
+                                                                            <div class="input-group input-group-sm">
+                                                                                <input type="number" name="target_jp[<?= $mId ?>][<?= $rId ?>]" class="form-control text-center fw-bold text-primary" value="<?= $tData['target_jp'] ?? 0 ?>" min="0" <?= empty($cstData) ? 'disabled' : '' ?>>
+                                                                                <span class="input-group-text bg-white">JP</span>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                    <?php endforeach; ?>
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <?php endforeach; ?>
+                                            </div>
+
+                                            <div class="mt-3 text-end pb-3">
+                                                <button type="submit" class="btn btn-success font-weight-bold shadow-sm px-4">
+                                                    💾 Simpan Semua Plotting
+                                                </button>
+                                            </div>
+                                        </form>
+                                    <?php endif; ?>
+
                                     <?php if($activeTab == 'waktu'): ?>
                                         <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-3">
                                             <div>
@@ -135,17 +355,9 @@
                                             </div>
                                         <?php else: ?>
                                             <?php 
-                                            $groupedSlots = []; 
-                                            foreach ($timeSlots as $ts) {
-                                                $day = ucfirst(strtolower(trim($ts['day_name'])));
-                                                if (!isset($groupedSlots[$day])) $groupedSlots[$day] = [];
-                                                $groupedSlots[$day][] = $ts;
-                                            }
-                                            
+                                            $groupedSlots = []; foreach ($timeSlots as $ts) { $day = ucfirst(strtolower(trim($ts['day_name']))); if (!isset($groupedSlots[$day])) $groupedSlots[$day] = []; $groupedSlots[$day][] = $ts; }
                                             $urutanStandar = ['Senin'=>1, 'Selasa'=>2, 'Rabu'=>3, 'Kamis'=>4, 'Jumat'=>5, 'Sabtu'=>6, 'Minggu'=>7];
-                                            uksort($groupedSlots, function($a, $b) use ($urutanStandar) {
-                                                return ($urutanStandar[$a] ?? 99) <=> ($urutanStandar[$b] ?? 99);
-                                            });
+                                            uksort($groupedSlots, function($a, $b) use ($urutanStandar) { return ($urutanStandar[$a] ?? 99) <=> ($urutanStandar[$b] ?? 99); });
                                             ?>
                                             <div class="row g-3">
                                                 <?php foreach($groupedSlots as $dName => $slots): ?>
@@ -158,12 +370,7 @@
                                                             <div class="card-body p-0">
                                                                 <table class="table table-sm table-striped table-hover mb-0" style="font-size: 13px;">
                                                                     <thead class="bg-light">
-                                                                        <tr>
-                                                                            <th class="text-center">Ke-</th>
-                                                                            <th>Waktu</th>
-                                                                            <th>Label Slot</th>
-                                                                            <th class="text-center">Aksi</th>
-                                                                        </tr>
+                                                                        <tr><th class="text-center">Ke-</th><th>Waktu</th><th>Label Slot</th><th class="text-center">Aksi</th></tr>
                                                                     </thead>
                                                                     <tbody>
                                                                         <?php foreach($slots as $slot): 
@@ -171,16 +378,10 @@
                                                                         ?>
                                                                         <tr>
                                                                             <td class="text-center align-middle fw-bold"><?= $slot['slot_number'] ?></td>
-                                                                            <td class="align-middle">
-                                                                                <?= date('H:i', strtotime($slot['start_time'])) ?> - <?= date('H:i', strtotime($slot['end_time'])) ?>
-                                                                            </td>
-                                                                            <td class="align-middle">
-                                                                                <?= esc($slot['slot_label']) ?> 
-                                                                            </td>
+                                                                            <td class="align-middle"><?= date('H:i', strtotime($slot['start_time'])) ?> - <?= date('H:i', strtotime($slot['end_time'])) ?></td>
+                                                                            <td class="align-middle"><?= esc($slot['slot_label']) ?></td>
                                                                             <td class="text-center align-middle">
-                                                                                <button type="button" class="btn-emoji btn-edit-slot shadow-sm" title="Edit Baris & Durasi"
-                                                                                    data-id="<?= $slot['id'] ?>" data-label="<?= esc($slot['slot_label']) ?>"
-                                                                                    data-duration="<?= $durasi ?>">✏️</button>
+                                                                                <button type="button" class="btn-emoji btn-edit-slot shadow-sm" data-id="<?= $slot['id'] ?>" data-label="<?= esc($slot['slot_label']) ?>" data-duration="<?= $durasi ?>">✏️</button>
                                                                                 <a href="<?= base_url('admin/schedule/delete-slot-time/'.$slot['id'].'?'.$urlParam) ?>" class="btn-emoji shadow-sm" onclick="return confirm('Hapus baris ini saja?')">🗑️</a>
                                                                             </td>
                                                                         </tr>
@@ -204,7 +405,6 @@
         </main>
     </div>
 
-    <!-- MODAL POP UP AMAN -->
     <div class="modal fade" id="modalNewVersion" tabindex="-1">
         <div class="modal-dialog modal-sm">
             <div class="modal-content">
@@ -216,103 +416,165 @@
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body bg-light">
-                        <div class="mb-2">
-                            <label class="form-label font-weight-bold small">Kode / Versi (Misal: V1)</label>
-                            <input type="text" name="version_name" class="form-control form-control-sm" required>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label font-weight-bold small">Judul (Misal: Jadwal Ramadhan)</label>
-                            <input type="text" name="schedule_title" class="form-control form-control-sm" required>
-                        </div>
+                        <div class="mb-2"><label class="form-label font-weight-bold small">Kode / Versi (Misal: V1)</label><input type="text" name="version_name" class="form-control form-control-sm" required></div>
+                        <div class="mb-2"><label class="form-label font-weight-bold small">Judul (Misal: Jadwal Ramadhan)</label><input type="text" name="schedule_title" class="form-control form-control-sm" required></div>
                     </div>
-                    <div class="modal-footer py-1">
-                        <button type="submit" class="btn btn-success btn-sm w-100 fw-bold">💾 Simpan Versi</button>
-                    </div>
+                    <div class="modal-footer py-1"><button type="submit" class="btn btn-success btn-sm w-100 fw-bold">💾 Simpan Versi</button></div>
                 </form>
             </div>
         </div>
     </div>
 
-    <?php if($activeTab == 'waktu' && !empty($verId)): ?>
-    <!-- Modal Generate Waktu Otomatis -->
-    <div class="modal fade" id="modalGenerateWaktu" tabindex="-1">
+    <?php if($activeTab == 'plotting'): ?>
+    <div class="modal fade" id="modalCombinedSubject" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark py-2">
+                    <h6 class="modal-title font-weight-bold">🔗 Manajemen Mapel Gabungan</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <h6 class="fw-bold border-bottom pb-2">Daftar Mapel Gabungan Tersimpan</h6>
+                    <?php if(empty($combinedSubjects)): ?>
+                        <div class="alert alert-secondary small py-2 mb-4">Belum ada mapel gabungan yang dibuat.</div>
+                    <?php else: ?>
+                        <div class="table-responsive mb-4 shadow-sm border rounded">
+                            <table class="table table-sm table-hover mb-0 bg-white" style="font-size: 13px;">
+                                <thead class="table-dark"><tr><th class="ps-2" width="25%">Nama Gabungan</th><th width="60%">Mapel Yang Tergabung</th><th class="text-center" width="15%">Aksi</th></tr></thead>
+                                <tbody>
+                                    <?php foreach($combinedSubjects as $comb): ?>
+                                    <tr>
+                                        <td class="align-middle fw-bold ps-2 text-primary">🔗 <?= esc($comb['combined_name']) ?></td>
+                                        <td class="align-middle"><?= esc($comb['detail_names_string']) ?></td>
+                                        <td class="text-center align-middle">
+                                            <button type="button" class="btn-emoji shadow-sm btn-edit-combined" data-id="<?= $comb['id'] ?>" data-name="<?= esc($comb['combined_name']) ?>" data-ids="<?= $comb['detail_ids_string'] ?>" title="Edit Gabungan">✏️</button>
+                                            <a href="<?= base_url('admin/schedule/delete-combined/'.$comb['id'].'?'.$urlParam) ?>" class="btn-emoji shadow-sm" onclick="return confirm('Yakin ingin menghapus mapel gabungan ini?')" title="Hapus">🗑️</a>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php endif; ?>
+
+                    <form action="<?= base_url('admin/schedule/save-combined') ?>" method="POST" class="border p-3 rounded bg-white shadow-sm border-success">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="ta" value="<?= $taId ?>">
+                        <input type="hidden" name="v" value="<?= $verId ?>">
+                        <h6 class="fw-bold text-success border-bottom pb-2 mb-3">➕ Buat Mapel Gabungan Baru</h6>
+                        <div class="mb-3"><label class="form-label small fw-bold text-muted">Nama Singkatan / Gabungan (Cth: Diniyah 1)</label><input type="text" name="combined_name" class="form-control fw-bold" required></div>
+                        <label class="form-label small fw-bold text-muted">Centang Mapel Yang Akan Digabung:</label>
+                        <div class="row g-2">
+                            <?php foreach($subjects as $m): ?>
+                                <div class="col-md-6">
+                                    <div class="form-check border p-1 rounded bg-light">
+                                        <input class="form-check-input ms-1" type="checkbox" name="subject_ids[]" value="<?= $m['id'] ?>" id="chk_mapel_<?= $m['id'] ?>">
+                                        <label class="form-check-label fw-bold ms-2" style="font-size: 13px;" for="chk_mapel_<?= $m['id'] ?>"><?= esc($m['subject_name'] ?? $m['nama_mapel']) ?></label>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <div class="mt-4 text-end"><button type="submit" class="btn btn-success fw-bold shadow-sm px-4">💾 Simpan Mapel Gabungan</button></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalEditCombined" tabindex="-1" style="z-index: 1060;">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form action="<?= base_url('admin/schedule/generate-time') ?>" method="POST">
+                <form action="<?= base_url('admin/schedule/update-combined') ?>" method="POST">
                     <?= csrf_field() ?>
-                    <input type="hidden" name="ta" value="<?= $taId ?>">
-                    <input type="hidden" name="v" value="<?= $verId ?>">
-                    <div class="modal-header bg-primary text-white py-2">
-                        <h6 class="modal-title font-weight-bold">⚙️ Generator Slot Waktu Multi-Hari</h6>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    <input type="hidden" name="ta" value="<?= $taId ?>"><input type="hidden" name="v" value="<?= $verId ?>"><input type="hidden" name="id" id="edit_combined_id">
+                    <div class="modal-header bg-dark text-white py-2">
+                        <h6 class="modal-title font-weight-bold text-warning">✏️ Edit Mapel Gabungan</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body bg-light">
-                        <div class="mb-3">
-                            <label class="form-label font-weight-bold small text-primary border-bottom w-100 pb-1">1. Centang Hari Target:</label>
-                            <div class="d-flex flex-wrap gap-3">
-                                <?php foreach(['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'] as $h): ?>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="day_names[]" value="<?= $h ?>" id="chk_<?= $h ?>">
-                                        <label class="form-check-label fw-bold" for="chk_<?= $h ?>"><?= $h ?></label>
+                        <div class="mb-3"><label class="form-label font-weight-bold small">Nama Gabungan</label><input type="text" name="combined_name" id="edit_combined_name" class="form-control fw-bold" required></div>
+                        <label class="form-label font-weight-bold small">Ubah Centang Mapel:</label>
+                        <div class="row g-2" id="edit_checkbox_container">
+                            <?php foreach($subjects as $m): ?>
+                                <div class="col-md-6">
+                                    <div class="form-check border p-1 rounded bg-white shadow-sm">
+                                        <input class="form-check-input ms-1 edit-chk" type="checkbox" name="subject_ids[]" value="<?= $m['id'] ?>" id="editchk_<?= $m['id'] ?>">
+                                        <label class="form-check-label fw-bold ms-2" style="font-size: 13px;" for="editchk_<?= $m['id'] ?>"><?= esc($m['subject_name'] ?? $m['nama_mapel']) ?></label>
                                     </div>
-                                <?php endforeach; ?>
-                            </div>
-                        </div>
-                        <label class="form-label font-weight-bold small text-primary border-bottom w-100 pb-1">2. Pengaturan Jam:</label>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label font-weight-bold small">Jam Mulai Masuk</label>
-                                <input type="time" name="start_time" class="form-control form-control-sm" value="07:30" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label font-weight-bold small">Durasi 1 JP (Menit)</label>
-                                <input type="number" name="interval_minutes" class="form-control form-control-sm" value="30" required>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label font-weight-bold small">Jumlah Baris/Slot</label>
-                            <input type="number" name="total_slots" class="form-control form-control-sm" value="8" required>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
                     </div>
-                    <div class="modal-footer py-1">
-                        <button type="submit" class="btn btn-primary btn-sm w-100 font-weight-bold">⚙️ Mulai Generate</button>
-                    </div>
+                    <div class="modal-footer py-1"><button type="submit" class="btn btn-warning btn-sm w-100 font-weight-bold text-dark">💾 Simpan Perubahan</button></div>
                 </form>
             </div>
         </div>
     </div>
+    <?php endif; ?>
 
-    <!-- Modal Edit Slot Manual -->
-    <div class="modal fade" id="modalEditSlot" tabindex="-1">
+    <?php if($activeTab == 'waktu' && !empty($verId)): ?>
+    <div class="modal fade" id="modalGenerateWaktu" tabindex="-1"><div class="modal-dialog"><div class="modal-content"><form action="<?= base_url('admin/schedule/generate-time') ?>" method="POST"><?= csrf_field() ?><input type="hidden" name="ta" value="<?= $taId ?>"><input type="hidden" name="v" value="<?= $verId ?>"><div class="modal-header bg-primary text-white py-2"><h6 class="modal-title font-weight-bold">⚙️ Generator Slot Waktu</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body bg-light"><div class="mb-3"><label class="form-label font-weight-bold small text-primary border-bottom w-100 pb-1">1. Centang Hari Target:</label><div class="d-flex flex-wrap gap-3"><?php foreach(['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'] as $h): ?><div class="form-check"><input class="form-check-input" type="checkbox" name="day_names[]" value="<?= $h ?>" id="chk_<?= $h ?>"><label class="form-check-label fw-bold" for="chk_<?= $h ?>"><?= $h ?></label></div><?php endforeach; ?></div></div><label class="form-label font-weight-bold small text-primary border-bottom w-100 pb-1">2. Pengaturan Jam:</label><div class="row"><div class="col-md-6 mb-3"><label class="form-label font-weight-bold small">Jam Mulai Masuk</label><input type="time" name="start_time" class="form-control form-control-sm" value="07:00" required></div><div class="col-md-6 mb-3"><label class="form-label font-weight-bold small">Durasi 1 JP (Menit)</label><input type="number" name="interval_minutes" class="form-control form-control-sm" value="40" required></div></div><div class="mb-3"><label class="form-label font-weight-bold small">Jumlah Baris/Slot</label><input type="number" name="total_slots" class="form-control form-control-sm" value="8" required></div></div><div class="modal-footer py-1"><button type="submit" class="btn btn-primary btn-sm w-100 font-weight-bold">⚙️ Mulai Generate</button></div></form></div></div></div>
+    <div class="modal fade" id="modalEditSlot" tabindex="-1"><div class="modal-dialog modal-sm"><div class="modal-content"><form action="<?= base_url('admin/schedule/update-time') ?>" method="POST"><?= csrf_field() ?><input type="hidden" name="ta" value="<?= $taId ?>"><input type="hidden" name="v" value="<?= $verId ?>"><input type="hidden" name="id" id="edit_slot_id"><div class="modal-header bg-dark text-white py-2"><h6 class="modal-title font-weight-bold text-warning">✏️ Penyesuaian Slot Waktu</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body bg-light"><div class="mb-3"><label class="form-label font-weight-bold small text-muted">Label Waktu / Nama JP</label><input type="text" name="slot_label" id="edit_slot_label" class="form-control form-control-sm" required></div><div class="mb-3"><label class="form-label font-weight-bold small text-muted">Durasi Baru (Menit)</label><div class="input-group input-group-sm"><input type="number" name="duration_minutes" id="edit_duration_minutes" class="form-control font-weight-bold" required><span class="input-group-text bg-white">Menit</span></div></div></div><div class="modal-footer py-1"><button type="submit" class="btn btn-warning btn-sm w-100 font-weight-bold text-dark">💾 Simpan & Geser Waktu</button></div></form></div></div></div>
+    <?php endif; ?>
+
+    <?php if($activeTab == 'matriks'): ?>
+    <div class="modal fade" id="modalActivity" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white py-2">
+                    <h6 class="modal-title font-weight-bold">✨ Manajemen Kegiatan Umum</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body bg-light">
+                    <form action="<?= base_url('admin/schedule/save-activity') ?>" method="POST" class="mb-4 border p-3 rounded bg-white shadow-sm border-info">
+                        <?= csrf_field() ?>
+                        <input type="hidden" name="ta" value="<?= $taId ?>"><input type="hidden" name="v" value="<?= $verId ?>">
+                        <h6 class="fw-bold text-info border-bottom pb-2 mb-3">➕ Tambah Kegiatan Baru</h6>
+                        <div class="input-group input-group-sm">
+                            <input type="text" name="activity_name" class="form-control font-weight-bold" placeholder="Cth: Istirahat 1, Upacara, Shalat Dhuha..." required>
+                            <button class="btn btn-info text-white fw-bold px-3" type="submit">Simpan</button>
+                        </div>
+                    </form>
+
+                    <h6 class="fw-bold border-bottom pb-2">Daftar Kegiatan Tersimpan</h6>
+                    <div class="table-responsive shadow-sm border rounded">
+                        <table class="table table-sm table-hover mb-0 bg-white" style="font-size: 13px;">
+                            <thead class="table-dark"><tr><th class="ps-3">Nama Kegiatan</th><th class="text-center" width="25%">Aksi</th></tr></thead>
+                            <tbody>
+                                <?php if(empty($kegiatan)): ?>
+                                    <tr><td colspan="2" class="text-center text-muted fst-italic">Belum ada kegiatan.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach($kegiatan as $act): ?>
+                                    <tr>
+                                        <td class="align-middle fw-bold ps-3 text-dark">☕ <?= esc($act['activity_name']) ?></td>
+                                        <td class="text-center align-middle">
+                                            <button type="button" class="btn-emoji shadow-sm btn-edit-activity" data-id="<?= $act['id'] ?>" data-name="<?= esc($act['activity_name']) ?>" title="Edit">✏️</button>
+                                            <a href="<?= base_url('admin/schedule/delete-activity/'.$act['id'].'?'.$urlParam) ?>" class="btn-emoji shadow-sm" onclick="return confirm('Yakin ingin menghapus kegiatan ini?')" title="Hapus">🗑️</a>
+                                        </td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalEditActivity" tabindex="-1" style="z-index: 1060;">
         <div class="modal-dialog modal-sm">
             <div class="modal-content">
-                <form action="<?= base_url('admin/schedule/update-time') ?>" method="POST">
+                <form action="<?= base_url('admin/schedule/update-activity') ?>" method="POST">
                     <?= csrf_field() ?>
-                    <input type="hidden" name="ta" value="<?= $taId ?>">
-                    <input type="hidden" name="v" value="<?= $verId ?>">
-                    <input type="hidden" name="id" id="edit_slot_id">
-                    
+                    <input type="hidden" name="ta" value="<?= $taId ?>"><input type="hidden" name="v" value="<?= $verId ?>"><input type="hidden" name="id" id="edit_act_id">
                     <div class="modal-header bg-dark text-white py-2">
-                        <h6 class="modal-title font-weight-bold text-warning">✏️ Penyesuaian Slot Waktu</h6>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        <h6 class="modal-title font-weight-bold text-warning">✏️ Edit Kegiatan</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body bg-light">
-                        <div class="mb-3">
-                            <label class="form-label font-weight-bold small text-muted">Label Waktu / Nama JP</label>
-                            <input type="text" name="slot_label" id="edit_slot_label" class="form-control form-control-sm" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label font-weight-bold small text-muted">Durasi Baru (Menit)</label>
-                            <div class="input-group input-group-sm">
-                                <input type="number" name="duration_minutes" id="edit_duration_minutes" class="form-control font-weight-bold" required>
-                                <span class="input-group-text bg-white">Menit</span>
-                            </div>
-                            <div class="form-text text-primary" style="font-size: 10px;">*Jika menit diperpendek, baris di bawahnya otomatis bergeser maju.</div>
-                        </div>
+                        <label class="form-label font-weight-bold small">Nama Kegiatan</label>
+                        <input type="text" name="activity_name" id="edit_act_name" class="form-control form-control-sm fw-bold" required>
                     </div>
-                    <div class="modal-footer py-1">
-                        <button type="submit" class="btn btn-warning btn-sm w-100 font-weight-bold text-dark">💾 Simpan & Geser Waktu</button>
-                    </div>
+                    <div class="modal-footer py-1"><button type="submit" class="btn btn-warning btn-sm w-100 font-weight-bold text-dark">💾 Simpan Perubahan</button></div>
                 </form>
             </div>
         </div>
@@ -322,6 +584,34 @@
     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function() {
+            // Fix untuk onchange manual (Mengganti onchange di HTML)
+        const selectTa = document.getElementById('selectTa');
+        if(selectTa) selectTa.addEventListener('change', function() { this.form.submit(); });
+
+        const selectVersion = document.getElementById('selectVersion');
+        if(selectVersion) {
+            selectVersion.addEventListener('change', function() {
+                if(this.value === 'NEW') {
+                    new bootstrap.Modal(document.getElementById('modalNewVersion')).show();
+                    this.value = '<?= $verId ?>';
+                } else {
+                    this.form.submit();
+                }
+            });
+        }
+
+            // JS Untuk Toggle Mapel Plotting
+            document.querySelectorAll('.toggle-mapel').forEach(toggle => {
+                toggle.addEventListener('change', function() {
+                    let targetId = this.getAttribute('data-target');
+                    let collapseElement = document.getElementById(targetId);
+                    let bsCollapse = bootstrap.Collapse.getInstance(collapseElement);
+                    if (!bsCollapse) bsCollapse = new bootstrap.Collapse(collapseElement, {toggle: false});
+                    if (this.checked) { bsCollapse.show(); } else { bsCollapse.hide(); collapseElement.querySelectorAll('input[type="number"]').forEach(input => input.value = 0); }
+                });
+            });
+
+            // JS Untuk Edit Waktu Tab 3
             document.querySelectorAll('.btn-edit-slot').forEach(btn => {
                 btn.addEventListener('click', function() {
                     document.getElementById('edit_slot_id').value = this.getAttribute('data-id');
@@ -330,7 +620,40 @@
                     new bootstrap.Modal(document.getElementById('modalEditSlot')).show();
                 });
             });
+
+            // JS Untuk Edit Mapel Gabungan
+            document.querySelectorAll('.btn-edit-combined').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.getElementById('edit_combined_id').value = this.getAttribute('data-id');
+                    document.getElementById('edit_combined_name').value = this.getAttribute('data-name');
+                    document.querySelectorAll('.edit-chk').forEach(chk => chk.checked = false);
+                    let idsString = this.getAttribute('data-ids');
+                    if (idsString) {
+                        let idsArray = idsString.split(',');
+                        idsArray.forEach(id => {
+                            let chk = document.getElementById('editchk_' + id);
+                            if (chk) chk.checked = true;
+                        });
+                    }
+                    let modalList = bootstrap.Modal.getInstance(document.getElementById('modalCombinedSubject'));
+                    if(modalList) modalList.hide();
+                    new bootstrap.Modal(document.getElementById('modalEditCombined')).show();
+                });
+            });
         });
+
+        // JS Untuk Edit Kegiatan Umum
+            document.querySelectorAll('.btn-edit-activity').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.getElementById('edit_act_id').value = this.getAttribute('data-id');
+                    document.getElementById('edit_act_name').value = this.getAttribute('data-name');
+                    
+                    let modalList = bootstrap.Modal.getInstance(document.getElementById('modalActivity'));
+                    if(modalList) modalList.hide();
+                    
+                    new bootstrap.Modal(document.getElementById('modalEditActivity')).show();
+                });
+            });
     </script>
 </body>
 </html>
