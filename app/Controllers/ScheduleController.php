@@ -166,31 +166,69 @@ class ScheduleController extends BaseController
         $db = \Config\Database::connect();
         $ta = $this->request->getPost('ta');
         $v = $this->request->getPost('v');
-        $matrix = $this->request->getPost('matrix'); // matrix[slot_id][rombel_id] = value
+        $matrix = $this->request->getPost('matrix'); 
 
-        $db->table('class_schedules')->where(['version_id' => $v])->delete();
+        // 1. Kamus untuk pesan error
+        $slots = $db->table('schedule_time_slots')->where('version_id', $v)->get()->getResultArray();
+        $slotDict = []; foreach($slots as $s) { $slotDict[$s['id']] = $s['day_name'] . ' (Jam Ke-' . $s['slot_number'] . ')'; }
+        $teachers = $db->table('users')->get()->getResultArray(); 
+        $teacherDict = []; foreach($teachers as $t) { $teacherDict[$t['id']] = $t['username'] ?? 'Guru ID '.$t['id']; }
+        $rombels = $db->table('class_rombel cr')->select('cr.id, cr.rombel_name, mc.class_name')->join('master_classes mc', 'mc.id = cr.master_class_id')->get()->getResultArray();
+        $rombelDict = []; foreach($rombels as $r) { $rombelDict[$r['id']] = $r['class_name'] . '-' . $r['rombel_name']; }
 
-        if (!empty($matrix)) {
-            $insertData = [];
-            foreach ($matrix as $slotId => $rombels) {
-                foreach($rombels as $rombelId => $val) {
-                    if (empty($val)) continue;
+        // 2. PROSES VALIDASI
+        $insertData = [];
+        $teacherSlotCheck = []; // [slot_id][teacher_id] = rombel_id
+        $bentrokMessages = [];
 
-                    $slotData = $db->table('schedule_time_slots')->where('id', $slotId)->get()->getRowArray();
-                    if (!$slotData) continue;
-
-                    $row = [ 'academic_year_id' => $ta, 'version_id' => $v, 'rombel_id' => $rombelId, 'day_name' => $slotData['day_name'], 'slot_id' => $slotId ];
-                    
-                    if (strpos($val, 'ACT_') === 0) $row['activity_id'] = str_replace('ACT_', '', $val);
-                    elseif (strpos($val, 'SUB_') === 0) { $parts = explode('_', str_replace('SUB_', '', $val)); $row['subject_id'] = $parts[0]; $row['teacher_id'] = $parts[1] ?? null; }
-                    elseif (strpos($val, 'COM_') === 0) { $parts = explode('_', str_replace('COM_', '', $val)); $row['combined_subject_id'] = $parts[0]; $row['teacher_id'] = $parts[1] ?? null; }
-
-                    $insertData[] = $row;
+        foreach ($matrix as $slotId => $rombelsData) {
+            foreach($rombelsData as $rombelId => $val) {
+                if (empty($val)) continue;
+                
+                // Jika Kegiatan Umum -> Lanjut, tidak perlu dicek bentrok
+                if (strpos($val, 'ACT_') === 0) {
+                    $insertData[] = [ 'academic_year_id' => $ta, 'version_id' => $v, 'rombel_id' => $rombelId, 'slot_id' => $slotId, 'activity_id' => str_replace('ACT_', '', $val) ];
+                    continue;
                 }
+
+                // Jika Mapel/Gabungan -> Harus cek Guru
+                $teacherId = null;
+                $row = [ 'academic_year_id' => $ta, 'version_id' => $v, 'rombel_id' => $rombelId, 'slot_id' => $slotId ];
+
+                if (strpos($val, 'SUB_') === 0) {
+                    $parts = explode('_', str_replace('SUB_', '', $val));
+                    $row['subject_id'] = $parts[0];
+                    $teacherId = $parts[1] ?? null;
+                } elseif (strpos($val, 'COM_') === 0) {
+                    $parts = explode('_', str_replace('COM_', '', $val));
+                    $row['combined_subject_id'] = $parts[0];
+                    $teacherId = $parts[1] ?? null;
+                }
+                $row['teacher_id'] = $teacherId;
+
+                // VALIDASI: Cek apakah guru ini sudah mengajar di kelas lain pada jam (slot) yang sama
+                if (!empty($teacherId)) {
+                    if (isset($teacherSlotCheck[$slotId][$teacherId])) {
+                        $kelasAwal = $rombelDict[$teacherSlotCheck[$slotId][$teacherId]];
+                        $kelasTujuan = $rombelDict[$rombelId];
+                        $bentrokMessages[] = "<b>{$teacherDict[$teacherId]}</b> bentrok di {$slotDict[$slotId]} (Mengajar di {$kelasAwal} & {$kelasTujuan})";
+                        continue; 
+                    }
+                    $teacherSlotCheck[$slotId][$teacherId] = $rombelId;
+                }
+                $insertData[] = $row;
             }
-            if (!empty($insertData)) $db->table('class_schedules')->insertBatch($insertData);
         }
-        return redirect()->to(base_url("admin/schedule?tab=matriks&ta=$ta&v=$v"))->with('sukses', '✅ Matriks Jadwal berhasil disimpan!');
+
+        $db->transStart();
+        $db->table('class_schedules')->where(['version_id' => $v])->delete();
+        if (!empty($insertData)) $db->table('class_schedules')->insertBatch($insertData);
+        $db->transComplete();
+
+        if (!empty($bentrokMessages)) {
+            return redirect()->to(base_url("admin/schedule?tab=matriks&ta=$ta&v=$v"))->with('error', "⚠️ Bentrok terdeteksi:<br>".implode("<br>", array_unique($bentrokMessages)));
+        }
+        return redirect()->to(base_url("admin/schedule?tab=matriks&ta=$ta&v=$v"))->with('sukses', '✅ Matriks tersimpan!');
     }
 
     // ==========================================

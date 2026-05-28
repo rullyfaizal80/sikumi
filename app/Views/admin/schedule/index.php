@@ -115,7 +115,7 @@
                                                 <button type="button" class="btn btn-info btn-sm font-weight-bold shadow-sm me-2 text-white" data-bs-toggle="modal" data-bs-target="#modalActivity">
                                                     ✨ Manajemen Kegiatan
                                                 </button>
-                                                <button type="submit" form="formMatriks" class="btn btn-success btn-sm font-weight-bold shadow-sm">
+                                                <button type="submit" form="formMatriks" id="btnSaveMatriks" class="btn btn-success btn-sm font-weight-bold shadow-sm">
                                                     💾 Simpan Semua Perubahan
                                                 </button>
                                             </div>
@@ -654,6 +654,66 @@
                     new bootstrap.Modal(document.getElementById('modalEditActivity')).show();
                 });
             });
+
+        // ==========================================
+            // RADAR BENTROK JADWAL (LIVE JAVASCRIPT)
+            // ==========================================
+            function checkClashes() {
+                let hasGlobalClash = false;
+                
+                // Cek per baris waktu (TR)
+                document.querySelectorAll('tbody tr').forEach(tr => {
+                    let selects = tr.querySelectorAll('.matriks-select');
+                    let teacherMap = {}; // Simpan ID Guru yang sudah terpakai di baris ini
+
+                    selects.forEach(sel => {
+                        sel.classList.remove('bg-danger', 'text-white', 'border-danger');
+                        let val = sel.value;
+                        
+                        // HANYA VALIDASI JIKA BUKAN KEGIATAN UMUM (ACT_) DAN BUKAN KOSONG
+                        if (val && !val.startsWith('ACT_')) {
+                            let parts = val.split('_'); 
+                            if (parts.length >= 3) {
+                                let teacherId = parts[2]; // ID Guru
+                                if (!teacherMap[teacherId]) teacherMap[teacherId] = [];
+                                teacherMap[teacherId].push(sel);
+                            }
+                        }
+                    });
+
+                    // Tandai merah jika guru sama dipakai di dropdown berbeda
+                    for (let tId in teacherMap) {
+                        if (teacherMap[tId].length > 1) {
+                            hasGlobalClash = true;
+                            teacherMap[tId].forEach(sel => {
+                                sel.classList.add('bg-danger', 'text-white', 'border-danger');
+                            });
+                        }
+                    }
+                });
+
+                // Kunci Tombol Simpan Jika Ada yang Merah
+                let btnSave = document.getElementById('btnSaveMatriks');
+                if (btnSave) {
+                    if (hasGlobalClash) {
+                        btnSave.disabled = true;
+                        btnSave.innerHTML = '⚠️ Perbaiki Jadwal Bentrok (Merah)';
+                        btnSave.classList.replace('btn-success', 'btn-danger');
+                    } else {
+                        btnSave.disabled = false;
+                        btnSave.innerHTML = '💾 Simpan Semua Perubahan';
+                        btnSave.classList.replace('btn-danger', 'btn-success');
+                    }
+                }
+            }
+
+            // Pasang detektor pada semua kotak Matriks
+            document.querySelectorAll('.matriks-select').forEach(sel => {
+                sel.addEventListener('change', checkClashes);
+            });
+
+            // Jalankan detektor sekali saat halaman pertama kali dimuat
+            checkClashes();
     </script>
 </body>
 </html>
