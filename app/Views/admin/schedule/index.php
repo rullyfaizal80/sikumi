@@ -161,7 +161,7 @@
                                                                         <tr>
                                                                             <th class="text-center">Ke-</th>
                                                                             <th>Waktu</th>
-                                                                            <th>Label</th>
+                                                                            <th>Label Slot</th>
                                                                             <th class="text-center">Aksi</th>
                                                                         </tr>
                                                                     </thead>
@@ -169,18 +169,18 @@
                                                                         <?php foreach($slots as $slot): 
                                                                             $durasi = (strtotime($slot['end_time']) - strtotime($slot['start_time'])) / 60;
                                                                         ?>
-                                                                        <tr class="<?= $slot['is_break'] ? 'table-warning text-danger fw-bold' : '' ?>">
+                                                                        <tr>
                                                                             <td class="text-center align-middle fw-bold"><?= $slot['slot_number'] ?></td>
                                                                             <td class="align-middle">
                                                                                 <?= date('H:i', strtotime($slot['start_time'])) ?> - <?= date('H:i', strtotime($slot['end_time'])) ?>
                                                                             </td>
                                                                             <td class="align-middle">
-                                                                                <?= esc($slot['slot_label']) ?> <?= $slot['is_break'] ? '☕' : '' ?>
+                                                                                <?= esc($slot['slot_label']) ?> 
                                                                             </td>
                                                                             <td class="text-center align-middle">
                                                                                 <button type="button" class="btn-emoji btn-edit-slot shadow-sm" title="Edit Baris & Durasi"
                                                                                     data-id="<?= $slot['id'] ?>" data-label="<?= esc($slot['slot_label']) ?>"
-                                                                                    data-duration="<?= $durasi ?>" data-isbreak="<?= $slot['is_break'] ?>">✏️</button>
+                                                                                    data-duration="<?= $durasi ?>">✏️</button>
                                                                                 <a href="<?= base_url('admin/schedule/delete-slot-time/'.$slot['id'].'?'.$urlParam) ?>" class="btn-emoji shadow-sm" onclick="return confirm('Hapus baris ini saja?')">🗑️</a>
                                                                             </td>
                                                                         </tr>
@@ -270,9 +270,8 @@
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label font-weight-bold small">Jumlah Baris/Slot (Termasuk Istirahat)</label>
+                            <label class="form-label font-weight-bold small">Jumlah Baris/Slot</label>
                             <input type="number" name="total_slots" class="form-control form-control-sm" value="8" required>
-                            <div class="form-text" style="font-size: 11px;">Generate awal akan membuat durasi sama rata. Anda bisa klik tombol Edit ✏️ nanti untuk memperpendek durasi khusus Jam Istirahat.</div>
                         </div>
                     </div>
                     <div class="modal-footer py-1">
@@ -310,10 +309,6 @@
                             </div>
                             <div class="form-text text-primary" style="font-size: 10px;">*Jika menit diperpendek, baris di bawahnya otomatis bergeser maju.</div>
                         </div>
-                        <div class="form-check form-switch mt-3 border-top pt-3">
-                            <input class="form-check-input" type="checkbox" name="is_break" id="edit_is_break" value="1">
-                            <label class="form-check-label small font-weight-bold" for="edit_is_break">☕ Jadikan Waktu Istirahat / Bebas</label>
-                        </div>
                     </div>
                     <div class="modal-footer py-1">
                         <button type="submit" class="btn btn-warning btn-sm w-100 font-weight-bold text-dark">💾 Simpan & Geser Waktu</button>
@@ -332,8 +327,6 @@
                     document.getElementById('edit_slot_id').value = this.getAttribute('data-id');
                     document.getElementById('edit_slot_label').value = this.getAttribute('data-label');
                     document.getElementById('edit_duration_minutes').value = this.getAttribute('data-duration');
-                    const isBreak = this.getAttribute('data-isbreak') === '1';
-                    document.getElementById('edit_is_break').checked = isBreak;
                     new bootstrap.Modal(document.getElementById('modalEditSlot')).show();
                 });
             });

@@ -137,7 +137,7 @@ class ScheduleController extends BaseController
         $id = $this->request->getPost('id');
         $duration = (int)$this->request->getPost('duration_minutes');
         $label = $this->request->getPost('slot_label');
-        $isBreak = $this->request->getPost('is_break') ? 1 : 0;
+        
         $ta = $this->request->getPost('ta');
         $v = $this->request->getPost('v');
 
@@ -147,10 +147,10 @@ class ScheduleController extends BaseController
         $startTime = strtotime($slot['start_time']);
         $newEndTime = strtotime("+$duration minutes", $startTime);
 
+        // Update tanpa is_break
         $db->table('schedule_time_slots')->where('id', $id)->update([
             'slot_label' => $label,
-            'end_time'   => date('H:i', $newEndTime),
-            'is_break'   => $isBreak
+            'end_time'   => date('H:i', $newEndTime)
         ]);
 
         $subsequentSlots = (array) $db->table('schedule_time_slots')
