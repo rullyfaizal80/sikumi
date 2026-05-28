@@ -107,6 +107,8 @@ $routes->group('admin', static function ($routes) {
     $routes->post('rombel/siswa/add', 'RombelSiswaController::add');
     $routes->post('rombel/siswa/remove', 'RombelSiswaController::remove');
 
+    $routes->post('rombel/copy-plotting-to-other', '\App\Controllers\RombelController::copyPlottingToOtherClass');
+
    // --- MANAJEMEN JADWAL PELAJARAN ---
     $routes->get('schedule', '\App\Controllers\ScheduleController::index');
     $routes->post('schedule/create-version', '\App\Controllers\ScheduleController::createVersion');

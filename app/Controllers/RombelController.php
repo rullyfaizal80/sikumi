@@ -14,10 +14,8 @@ class RombelController extends BaseController
     {
         $db = \Config\Database::connect();
         
-        // 1. Ambil daftar Tahun Ajaran dari database
         $tahunAjaran = $db->table('academic_years')->orderBy('id', 'DESC')->get()->getResultArray();
         
-        // 2. Tangkap parameter Tahun Ajaran atau gunakan yang AKTIF
         $selectedTaId = $this->request->getGet('ta');
         if (empty($selectedTaId)) {
             $activeYear = $db->table('academic_years')->where('is_active', 1)->get()->getRow();
@@ -28,24 +26,12 @@ class RombelController extends BaseController
             }
         }
 
-        // 3. Ambil data Master
         $classModel = new MasterClassModel();
         $subjectModel = new MasterSubjectModel();
         
-        // 4. Ambil daftar Guru & Walas untuk Dropdown
-        $guruList = $db->table('users u')
-                       ->select('u.id, u.username') 
-                       ->join('auth_groups_users agu', 'agu.user_id = u.id')
-                       ->where('agu.group', 'guru') 
-                       ->get()->getResultArray();
+        $guruList = $db->table('users u')->select('u.id, u.username')->join('auth_groups_users agu', 'agu.user_id = u.id')->where('agu.group', 'guru')->get()->getResultArray();
+        $walasList = $db->table('users u')->select('u.id, u.username')->join('auth_groups_users agu', 'agu.user_id = u.id')->where('agu.group', 'walas')->get()->getResultArray();
 
-        $walasList = $db->table('users u')
-                       ->select('u.id, u.username') 
-                       ->join('auth_groups_users agu', 'agu.user_id = u.id')
-                       ->where('agu.group', 'walas') 
-                       ->get()->getResultArray();
-
-        // 5. Ambil data Rombel berdasarkan Tahun Ajaran yang terpilih
         $rombelModel = new ClassRombelModel();
         $rombels = $rombelModel->select('class_rombel.*, mc.class_name as tingkat, mc.level_type, u.username as nama_walas')
                                ->join('master_classes mc', 'mc.id = class_rombel.master_class_id')
@@ -55,26 +41,21 @@ class RombelController extends BaseController
                                ->orderBy('class_rombel.rombel_name', 'ASC')
                                ->findAll();
 
-        // 🌟 PROSES BARU: Hitung jumlah siswa yang masuk ke masing-masing rombel
         foreach ($rombels as &$rombel) {
-            $rombel['jumlah_siswa'] = $db->table('class_rombel_students')
-                                         ->where('rombel_id', $rombel['id'])
-                                         ->countAllResults();
+            $rombel['jumlah_siswa'] = $db->table('class_rombel_students')->where('rombel_id', $rombel['id'])->countAllResults();
+            $rombel['jumlah_mapel'] = $db->table('class_subject_teachers')->where('rombel_id', $rombel['id'])->countAllResults();
         }
-        unset($rombel); // Putuskan referensi penunjuk link perulangan
+        unset($rombel);
 
-        // 6. Ambil data Plotting Guru Mapel untuk setiap Rombel
         $plottingMapel = [];
         if (!empty($rombels)) {
             $rombelIds = array_column($rombels, 'id');
             $plottingModel = new ClassSubjectTeacherModel();
-            
             $plotData = $plottingModel->select('class_subject_teachers.*, ms.subject_name, ms.subject_group, u.username as nama_guru')
                                       ->join('master_subjects ms', 'ms.id = class_subject_teachers.master_subject_id')
                                       ->join('users u', 'u.id = class_subject_teachers.teacher_id')
                                       ->whereIn('class_subject_teachers.rombel_id', $rombelIds)
                                       ->findAll();
-            
             foreach ($plotData as $plot) {
                 $plottingMapel[$plot['rombel_id']][] = $plot;
             }
@@ -94,50 +75,36 @@ class RombelController extends BaseController
         return view('admin/rombel/index', $data);
     }
 
-    // ==========================================
-    // PROSES CRUD ROMBEL
-    // ==========================================
-
     public function store()
     {
         $rombelModel = new ClassRombelModel();
-        
         $rombelModel->insert([
             'academic_year_id'    => $this->request->getPost('academic_year_id'),
             'master_class_id'     => $this->request->getPost('master_class_id'),
             'rombel_name'         => $this->request->getPost('rombel_name'),
-            'homeroom_teacher_id' => $this->request->getPost('homeroom_teacher_id') ?: null, // opsional bisa null
+            'homeroom_teacher_id' => $this->request->getPost('homeroom_teacher_id') ?: null,
         ]);
-
         return redirect()->back()->with('sukses', '✔️ Rombongan Belajar baru berhasil diaktifkan.');
     }
 
     public function update($id)
     {
         $rombelModel = new ClassRombelModel();
-        
         $rombelModel->update($id, [
             'rombel_name'         => $this->request->getPost('rombel_name'),
-            'homeroom_teacher_id' => $this->request->getPost('homeroom_teacher_id') ?: null, // opsional bisa null
+            'homeroom_teacher_id' => $this->request->getPost('homeroom_teacher_id') ?: null,
         ]);
-
         return redirect()->back()->with('sukses', '📝 Data Rombel & Wali Kelas berhasil diperbarui.');
     }
-
-    // ==========================================
-    // PROSES PLOTTING GURU MAPEL
-    // ==========================================
 
     public function plotStore()
     {
         $plottingModel = new ClassSubjectTeacherModel();
-        
         $plottingModel->insert([
             'rombel_id'         => $this->request->getPost('rombel_id'),
             'master_subject_id' => $this->request->getPost('master_subject_id'),
             'teacher_id'        => $this->request->getPost('teacher_id'),
         ]);
-
         return redirect()->back()->with('sukses', '✔️ Plotting Guru Mata Pelajaran berhasil disimpan.');
     }
 
@@ -145,50 +112,79 @@ class RombelController extends BaseController
     {
         $plottingModel = new ClassSubjectTeacherModel();
         $plottingModel->delete($id);
-
         return redirect()->back()->with('sukses', '🗑️ Plotting Mapel berhasil dihapus dari kelas.');
     }
 
     // ==========================================
-    // FITUR UTAMA: SALIN DATA SEMESTER LALU
+    // FUNGSI BARU: COPY MAPEL & GURU ANTAR KELAS
     // ==========================================
+    public function copyPlottingToOtherClass()
+    {
+        $sourceRombelId = $this->request->getPost('source_rombel_id');
+        $targetRombelId = $this->request->getPost('target_rombel_id');
 
+        if ($sourceRombelId == $targetRombelId) return redirect()->back()->with('error', '❌ Kelas sumber dan target tidak boleh sama.');
+
+        $plottingModel = new ClassSubjectTeacherModel();
+        
+        // 1. Ambil semua mapel dari kelas sumber
+        $sourcePlots = $plottingModel->where('rombel_id', $sourceRombelId)->findAll();
+
+        if (empty($sourcePlots)) return redirect()->back()->with('error', '❌ Kelas sumber belum memiliki data guru & mapel untuk disalin.');
+
+        $db = \Config\Database::connect();
+        $db->transStart();
+
+        foreach ($sourcePlots as $plot) {
+            // Cek apakah mapel ini sudah ada di kelas target
+            $exists = $plottingModel->where([
+                'rombel_id'         => $targetRombelId,
+                'master_subject_id' => $plot['master_subject_id']
+            ])->first();
+
+            if (!$exists) {
+                // Jika belum ada, tambahkan baru
+                $plottingModel->insert([
+                    'rombel_id'         => $targetRombelId,
+                    'master_subject_id' => $plot['master_subject_id'],
+                    'teacher_id'        => $plot['teacher_id']
+                ]);
+            } else {
+                // Jika sudah ada, update/timpa nama gurunya saja agar sama
+                $plottingModel->update($exists['id'], [
+                    'teacher_id' => $plot['teacher_id']
+                ]);
+            }
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) return redirect()->back()->with('error', '❌ Terjadi kesalahan sistem saat menyalin plotting.');
+
+        return redirect()->back()->with('sukses', '♻️ Berhasil! Seluruh Mata Pelajaran beserta Gurunya sukses disalin ke kelas target.');
+    }
+
+    // ==========================================
+    // FUNGSI LAINNYA (TETAP SAMA)
+    // ==========================================
     public function copySemester()
     {
         $db = \Config\Database::connect();
         $targetTaId = $this->request->getPost('target_academic_year_id');
+        if (!$targetTaId) return redirect()->back()->with('error', '❌ Tahun ajaran target tidak valid.');
 
-        if (!$targetTaId) {
-            return redirect()->back()->with('error', '❌ Tahun ajaran target tidak valid.');
-        }
-
-        // Cari ID Semester Sebelumnya yang lebih kecil dari semester saat ini
-        $prevSemester = $db->table('academic_years')
-                           ->where('id <', $targetTaId)
-                           ->orderBy('id', 'DESC')
-                           ->get()->getRowArray();
-
-        if (!$prevSemester) {
-            return redirect()->back()->with('error', '❌ Sistem tidak menemukan data semester sebelumnya untuk disalin.');
-        }
+        $prevSemester = $db->table('academic_years')->where('id <', $targetTaId)->orderBy('id', 'DESC')->get()->getRowArray();
+        if (!$prevSemester) return redirect()->back()->with('error', '❌ Sistem tidak menemukan data semester sebelumnya untuk disalin.');
 
         $sourceTaId = $prevSemester['id'];
-
         $rombelModel = new ClassRombelModel();
         $plottingModel = new ClassSubjectTeacherModel();
 
-        // Ambil rombel dari semester lama
         $oldRombels = $rombelModel->where('academic_year_id', $sourceTaId)->findAll();
+        if (empty($oldRombels)) return redirect()->back()->with('error', '❌ Pembatalan: Semester sebelumnya ternyata belum memiliki data Rombel.');
 
-        if (empty($oldRombels)) {
-            return redirect()->back()->with('error', '❌ Pembatalan: Semester sebelumnya ternyata belum memiliki data Rombel.');
-        }
-
-        // Jalankan Transaction DB (Gagal satu, batalkan semua)
         $db->transStart();
-
         foreach ($oldRombels as $oldRombel) {
-            // Duplikasi Rombel ke Semester Baru (Wali Kelas dikosongkan dahulu sesuai instruksi)
             $newRombelId = $rombelModel->insert([
                 'academic_year_id'    => $targetTaId,
                 'master_class_id'     => $oldRombel['master_class_id'],
@@ -196,11 +192,8 @@ class RombelController extends BaseController
                 'homeroom_teacher_id' => null 
             ]);
 
-            // Ambil seluruh mapel yang nempel di rombel lama tersebut
             $oldPlots = $plottingModel->where('rombel_id', $oldRombel['id'])->findAll();
-
             foreach ($oldPlots as $oldPlot) {
-                // Masukkan plotting mapel dengan mengikatkan ID Rombel yang baru dibuat
                 $plottingModel->insert([
                     'rombel_id'         => $newRombelId,
                     'master_subject_id' => $oldPlot['master_subject_id'],
@@ -208,12 +201,9 @@ class RombelController extends BaseController
                 ]);
             }
         }
-
         $db->transComplete();
 
-        if ($db->transStatus() === false) {
-            return redirect()->back()->with('error', '❌ Terjadi kegagalan sistem saat menyalin data.');
-        }
+        if ($db->transStatus() === false) return redirect()->back()->with('error', '❌ Terjadi kegagalan sistem saat menyalin data.');
 
         return redirect()->to(base_url('admin/rombel?ta=' . $targetTaId))->with('sukses', '🪄 Alhamdulillah! Seluruh struktur kelas & beban mengajar guru dari semester lalu berhasil disalin.');
     }
@@ -222,66 +212,36 @@ class RombelController extends BaseController
     {
         $rombelModel = new ClassRombelModel();
         $plottingModel = new ClassSubjectTeacherModel();
-
-        // Aturan: Cek apakah rombel ini masih memiliki plot mata pelajaran
         $cekMapel = $plottingModel->where('rombel_id', $id)->countAllResults();
-
-        if ($cekMapel > 0) {
-            return redirect()->back()->with('error', '❌ Gagal menghapus kelas! Rombel ini masih memiliki data Guru Mata Pelajaran. Silakan hapus seluruh mapel di kelas ini terlebih dahulu.');
-        }
-
-        // Jika tidak ada mapel (aman), hapus rombel
+        if ($cekMapel > 0) return redirect()->back()->with('error', '❌ Gagal menghapus kelas! Rombel ini masih memiliki data Guru Mata Pelajaran. Silakan hapus seluruh mapel di kelas ini terlebih dahulu.');
         $rombelModel->delete($id);
-
         return redirect()->back()->with('sukses', '🗑️ Rombel berhasil dihapus.');
     }
 
     public function manageStudents($rombelId)
-{
-    $db = \Config\Database::connect();
-    
-    // 1. Siswa yang sudah di kelas ini
-    $assignedStudents = $db->table('class_student_members csm')
-                           ->select('u.id, u.username')
-                           ->join('users u', 'u.id = csm.student_id')
-                           ->where('csm.rombel_id', $rombelId)
-                           ->get()->getResultArray();
-
-    // 2. Siswa yang belum masuk kelas manapun (Siswa Bebas)
-    // Query: Ambil user 'siswa' yang ID-nya TIDAK ADA di tabel class_student_members
-    $availableStudents = $db->table('users u')
-                            ->join('auth_groups_users agu', 'agu.user_id = u.id')
-                            ->where('agu.group', 'siswa')
-                            ->whereNotIn('u.id', $db->table('class_student_members')->select('student_id'))
-                            ->get()->getResultArray();
-
-    return view('admin/rombel/manage_students', [
-        'rombelId' => $rombelId,
-        'assigned' => $assignedStudents,
-        'available' => $availableStudents
-    ]);
-}
-
-public function storeStudents()
-{
-    $rombelId = $this->request->getPost('rombel_id');
-    $studentIds = $this->request->getPost('student_ids'); // Array dari select box
-
-    if (!empty($studentIds)) {
+    {
         $db = \Config\Database::connect();
-        foreach ($studentIds as $sId) {
-            try {
-                $db->table('class_student_members')->insert([
-                    'rombel_id'  => $rombelId,
-                    'student_id' => $sId
-                ]);
-            } catch (\Exception $e) {
-                // Jika error (karena duplicate unique constraint), abaikan
-                continue;
+        $assignedStudents = $db->table('class_student_members csm')->select('u.id, u.username')->join('users u', 'u.id = csm.student_id')->where('csm.rombel_id', $rombelId)->get()->getResultArray();
+        $availableStudents = $db->table('users u')->join('auth_groups_users agu', 'agu.user_id = u.id')->where('agu.group', 'siswa')->whereNotIn('u.id', $db->table('class_student_members')->select('student_id'))->get()->getResultArray();
+
+        return view('admin/rombel/manage_students', [
+            'rombelId' => $rombelId,
+            'assigned' => $assignedStudents,
+            'available' => $availableStudents
+        ]);
+    }
+
+    public function storeStudents()
+    {
+        $rombelId = $this->request->getPost('rombel_id');
+        $studentIds = $this->request->getPost('student_ids'); 
+        if (!empty($studentIds)) {
+            $db = \Config\Database::connect();
+            foreach ($studentIds as $sId) {
+                try { $db->table('class_student_members')->insert(['rombel_id' => $rombelId, 'student_id' => $sId]); } 
+                catch (\Exception $e) { continue; }
             }
         }
+        return redirect()->back()->with('sukses', '✔️ Siswa berhasil ditambahkan ke kelas.');
     }
-    return redirect()->back()->with('sukses', '✔️ Siswa berhasil ditambahkan ke kelas.');
-}
-
 }

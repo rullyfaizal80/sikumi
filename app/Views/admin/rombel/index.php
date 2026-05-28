@@ -7,11 +7,7 @@
     <link rel="stylesheet" href="<?= base_url('assets/css/adminlte.min.css') ?>">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <style>
-        .accordion-button:not(.collapsed) {
-            background-color: #f8f9fa;
-            color: #212529;
-            box-shadow: inset 0 -1px 0 rgba(0,0,0,.125);
-        }
+        .accordion-button:not(.collapsed) { background-color: #f8f9fa; color: #212529; box-shadow: inset 0 -1px 0 rgba(0,0,0,.125); }
     </style>
 </head>
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">
@@ -89,14 +85,11 @@
                 </div>
 
                 <?php if(empty($tahunAjaran)): ?>
-                    <div class="alert alert-warning text-center shadow-sm">
-                        ⚠️ Data Tahun Ajaran kosong. Silakan atur Kalender Akademik/Tahun Ajaran terlebih dahulu.
-                    </div>
+                    <div class="alert alert-warning text-center shadow-sm">⚠️ Data Tahun Ajaran kosong. Silakan atur Kalender Akademik/Tahun Ajaran terlebih dahulu.</div>
                 <?php elseif(empty($rombels)): ?>
                     <div class="alert alert-info text-center shadow-sm py-5 bg-white border-0">
                         <h5 class="text-muted mb-3"><i class="bi bi-inbox fs-1"></i></h5>
-                        <strong>Belum ada Rombel di semester ini.</strong><br>
-                        Silakan buat rombel baru atau gunakan fitur "Salin dari Semester Lalu".
+                        <strong>Belum ada Rombel di semester ini.</strong><br>Silakan buat rombel baru atau gunakan fitur "Salin dari Semester Lalu".
                     </div>
                 <?php else: ?>
                     <div class="accordion shadow-sm" id="accordionRombel">
@@ -106,21 +99,15 @@
                                     <button class="accordion-button collapsed py-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapse<?= $r['id'] ?>" aria-expanded="false" aria-controls="collapse<?= $r['id'] ?>">
                                         <div class="d-flex w-100 justify-content-between align-items-center pe-3">
                                             <div>
-    <span class="badge bg-primary fs-6 me-2"><?= esc($r['rombel_name']) ?></span>      
-    <span class="text-muted small d-block d-md-inline-block mt-1 mt-md-0">
-        Tingkat <?= esc($r['tingkat']) ?> (<?= esc($r['level_type']) ?>)
-    </span>
-    <span class="badge bg-info text-dark me-2" style="font-size: 12px; vertical-align: middle;">
-        👥 <?= $r['jumlah_siswa'] ?> Siswa
-    </span>
-</div>
-
-<div class="text-end">
-    <span class="small text-muted d-block" style="font-size: 0.75rem;">Wali Kelas:</span>
-    <span class="font-weight-bold">
-        <i class="bi bi-person-badge"></i> <?= esc($r['nama_walas'] ?? 'Belum Diatur') ?>
-    </span>
-</div>
+                                                <span class="badge bg-primary fs-6 me-2"><?= esc($r['rombel_name']) ?></span>      
+                                                <span class="text-muted small d-block d-md-inline-block mt-1 mt-md-0">Tingkat <?= esc($r['tingkat']) ?> (<?= esc($r['level_type']) ?>)</span>
+                                                <span class="badge bg-info text-dark me-2 ms-2" style="font-size: 12px; vertical-align: middle;">👥 <?= $r['jumlah_siswa'] ?> Siswa</span>
+                                                <span class="badge bg-warning text-dark me-2" style="font-size: 12px; vertical-align: middle;">📚 <?= $r['jumlah_mapel'] ?> Mapel</span>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="small text-muted d-block" style="font-size: 0.75rem;">Wali Kelas:</span>
+                                                <span class="font-weight-bold"><i class="bi bi-person-badge"></i> <?= esc($r['nama_walas'] ?? 'Belum Diatur') ?></span>
+                                            </div>
                                         </div>
                                     </button>
                                 </h2>
@@ -131,6 +118,10 @@
                                             <h6 class="mb-0 font-weight-bold text-secondary"><i class="bi bi-book"></i> Guru Mata Pelajaran</h6>
                                             <div>
                                                 <button class="btn btn-sm btn-outline-secondary me-1" title="Edit Wali Kelas/Nama Rombel" data-bs-toggle="modal" data-bs-target="#modalEditRombel<?= $r['id'] ?>"><i class="bi bi-pencil-square"></i> Edit</button>
+
+                                                <button class="btn btn-sm btn-warning text-dark fw-bold me-1 shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCopyPlottingToClass<?= $r['id'] ?>" title="Salin Seluruh Mapel & Guru ke Kelas Lain">
+                                                    <i class="bi bi-copy"></i> Salin Mapel
+                                                </button>
 
                                                 <a href="<?= base_url('admin/rombel/siswa/' . $r['id']) ?>" class="btn btn-sm btn-info text-white shadow-sm me-1" title="Kelola Anggota Rombel">
                                                     <i class="bi bi-people-fill"></i> Kelola Siswa
@@ -147,19 +138,11 @@
                                         <div class="table-responsive bg-white rounded border">
                                             <table class="table table-hover table-sm mb-0 align-middle">
                                                 <thead class="table-light">
-                                                    <tr>
-                                                        <th class="ps-3" style="width: 50px;">No</th>
-                                                        <th>Mata Pelajaran</th>
-                                                        <th>Kelompok</th>
-                                                        <th>Guru Pengampu</th>
-                                                        <th class="text-center" style="width: 80px;">Aksi</th>
-                                                    </tr>
+                                                    <tr><th class="ps-3" style="width: 50px;">No</th><th>Mata Pelajaran</th><th>Kelompok</th><th>Guru Pengampu</th><th class="text-center" style="width: 80px;">Aksi</th></tr>
                                                 </thead>
                                                 <tbody>
                                                     <?php if(empty($plottingMapel[$r['id']])): ?>
-                                                        <tr>
-                                                            <td colspan="5" class="text-center text-muted py-3">Belum ada guru mata pelajaran yang di-plot di kelas ini.</td>
-                                                        </tr>
+                                                        <tr><td colspan="5" class="text-center text-muted py-3">Belum ada guru mata pelajaran yang di-plot di kelas ini.</td></tr>
                                                     <?php else: ?>
                                                         <?php $no = 1; foreach($plottingMapel[$r['id']] as $plot): ?>
                                                             <tr>
@@ -182,77 +165,43 @@
                                 </div>
                             </div>
 
-                            <div class="modal fade" id="modalEditRombel<?= $r['id'] ?>" tabindex="-1" aria-hidden="true">
-                                <div class="modal-dialog modal-dialog-centered">
+                            <!-- MODAL COPY PLOTTING ANTAR KELAS -->
+                            <div class="modal fade" id="modalCopyPlottingToClass<?= $r['id'] ?>" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered modal-sm">
                                     <div class="modal-content">
-                                        <div class="modal-header bg-secondary text-white">
-                                            <h6 class="modal-title font-weight-bold">📝 Edit Rombel & Wali Kelas</h6>
-                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        <div class="modal-header bg-warning text-dark">
+                                            <h6 class="modal-title font-weight-bold">♻️ Salin Mapel & Guru</h6>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                         </div>
-                                        <form action="<?= base_url('admin/rombel/update/' . $r['id']) ?>" method="POST">
+                                        <form action="<?= base_url('admin/rombel/copy-plotting-to-other') ?>" method="POST">
                                             <?= csrf_field() ?>
-                                            <div class="modal-body">
-                                                <div class="mb-3">
-                                                    <label class="small font-weight-bold mb-1">Nama Rombel</label>
-                                                    <input type="text" name="rombel_name" class="form-control" value="<?= esc($r['rombel_name']) ?>" required>
+                                            <input type="hidden" name="source_rombel_id" value="<?= $r['id'] ?>">
+                                            <div class="modal-body bg-light">
+                                                <div class="alert alert-info p-2 small mb-3 border-0 shadow-sm">
+                                                    Akan menyalin <strong>semua Mapel + Gurunya</strong> dari kelas <strong><?= esc($r['tingkat']) ?>-<?= esc($r['rombel_name']) ?></strong>.
                                                 </div>
                                                 <div class="mb-3">
-                                                    <label class="small font-weight-bold mb-1">Wali Kelas (Opsional)</label>
-                                                    <select name="homeroom_teacher_id" class="form-select">
-                                                        <option value="">-- Belum Ditentukan --</option>
-                                                        <?php foreach($walasList as $walas): ?>
-                                                            <option value="<?= $walas['id'] ?>" <?= ($r['homeroom_teacher_id'] == $walas['id']) ? 'selected' : '' ?>><?= esc($walas['username']) ?></option>
+                                                    <label class="small font-weight-bold mb-1">Pilih Kelas Tujuan:</label>
+                                                    <select name="target_rombel_id" class="form-select font-weight-bold border-warning" required>
+                                                        <option value="">-- Pilih Kelas --</option>
+                                                        <?php foreach($rombels as $target): ?>
+                                                            <?php if($target['id'] != $r['id']): ?>
+                                                                <option value="<?= $target['id'] ?>"><?= esc($target['tingkat']) ?> - <?= esc($target['rombel_name']) ?></option>
+                                                            <?php endif; ?>
                                                         <?php endforeach; ?>
                                                     </select>
                                                 </div>
                                             </div>
-                                            <div class="modal-footer bg-light">
-                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
-                                                <button type="submit" class="btn btn-primary btn-sm">💾 Simpan Perubahan</button>
+                                            <div class="modal-footer bg-light py-1">
+                                                <button type="submit" class="btn btn-warning btn-sm w-100 fw-bold text-dark" onclick="return confirm('Peringatan: Jika ada mapel yang sama di kelas tujuan, nama gurunya akan otomatis ditimpa/disesuaikan dengan kelas sumber. Lanjutkan?')">♻️ Eksekusi Salin</button>
                                             </div>
                                         </form>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="modal fade" id="modalTambahMapel<?= $r['id'] ?>" tabindex="-1" aria-hidden="true">
-                                <div class="modal-dialog modal-dialog-centered">
-                                    <div class="modal-content">
-                                        <div class="modal-header bg-success text-white">
-                                            <h6 class="modal-title font-weight-bold">➕ Plotting Guru Mapel (<?= esc($r['rombel_name']) ?>)</h6>
-                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <form action="<?= base_url('admin/rombel/plot-store') ?>" method="POST">
-                                            <?= csrf_field() ?>
-                                            <input type="hidden" name="rombel_id" value="<?= $r['id'] ?>">
-                                            <div class="modal-body">
-                                                <div class="mb-3">
-                                                    <label class="small font-weight-bold mb-1">Mata Pelajaran</label>
-                                                    <select name="master_subject_id" class="form-select" required>
-                                                        <option value="">-- Pilih Mata Pelajaran --</option>
-                                                        <?php foreach($masterSubjects as $ms): ?>
-                                                            <option value="<?= $ms['id'] ?>"><?= esc($ms['subject_name']) ?> (<?= esc($ms['subject_group']) ?>)</option>
-                                                        <?php endforeach; ?>
-                                                    </select>
-                                                </div>
-                                                <div class="mb-3">
-                                                    <label class="small font-weight-bold mb-1">Guru Pengampu</label>
-                                                    <select name="teacher_id" class="form-select" required>
-                                                        <option value="">-- Pilih Guru --</option>
-                                                        <?php foreach($guruList as $guru): ?>
-                                                            <option value="<?= $guru['id'] ?>"><?= esc($guru['username']) ?></option>
-                                                        <?php endforeach; ?>
-                                                    </select>
-                                                </div>
-                                            </div>
-                                            <div class="modal-footer bg-light">
-                                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
-                                                <button type="submit" class="btn btn-success btn-sm">💾 Simpan Plotting</button>
-                                            </div>
-                                        </form>
-                                    </div>
-                                </div>
-                            </div>
+                            <div class="modal fade" id="modalEditRombel<?= $r['id'] ?>" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-secondary text-white"><h6 class="modal-title font-weight-bold">📝 Edit Rombel & Wali Kelas</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><form action="<?= base_url('admin/rombel/update/' . $r['id']) ?>" method="POST"><?= csrf_field() ?><div class="modal-body"><div class="mb-3"><label class="small font-weight-bold mb-1">Nama Rombel</label><input type="text" name="rombel_name" class="form-control" value="<?= esc($r['rombel_name']) ?>" required></div><div class="mb-3"><label class="small font-weight-bold mb-1">Wali Kelas (Opsional)</label><select name="homeroom_teacher_id" class="form-select"><option value="">-- Belum Ditentukan --</option><?php foreach($walasList as $walas): ?><option value="<?= $walas['id'] ?>" <?= ($r['homeroom_teacher_id'] == $walas['id']) ? 'selected' : '' ?>><?= esc($walas['username']) ?></option><?php endforeach; ?></select></div></div><div class="modal-footer bg-light"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn btn-primary btn-sm">💾 Simpan Perubahan</button></div></form></div></div></div>
+                            <div class="modal fade" id="modalTambahMapel<?= $r['id'] ?>" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-success text-white"><h6 class="modal-title font-weight-bold">➕ Plotting Guru Mapel (<?= esc($r['rombel_name']) ?>)</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><form action="<?= base_url('admin/rombel/plot-store') ?>" method="POST"><?= csrf_field() ?><input type="hidden" name="rombel_id" value="<?= $r['id'] ?>"><div class="modal-body"><div class="mb-3"><label class="small font-weight-bold mb-1">Mata Pelajaran</label><select name="master_subject_id" class="form-select" required><option value="">-- Pilih Mata Pelajaran --</option><?php foreach($masterSubjects as $ms): ?><option value="<?= $ms['id'] ?>"><?= esc($ms['subject_name']) ?> (<?= esc($ms['subject_group']) ?>)</option><?php endforeach; ?></select></div><div class="mb-3"><label class="small font-weight-bold mb-1">Guru Pengampu</label><select name="teacher_id" class="form-select" required><option value="">-- Pilih Guru --</option><?php foreach($guruList as $guru): ?><option value="<?= $guru['id'] ?>"><?= esc($guru['username']) ?></option><?php endforeach; ?></select></div></div><div class="modal-footer bg-light"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn btn-success btn-sm">💾 Simpan Plotting</button></div></form></div></div></div>
 
                         <?php endforeach; ?>
                     </div>
@@ -262,75 +211,8 @@
         </main>
     </div>
 
-    <div class="modal fade" id="modalTambahRombel" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header bg-primary text-white">
-                    <h6 class="modal-title font-weight-bold">➕ Tambah Rombel Baru</h6>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form action="<?= base_url('admin/rombel/store') ?>" method="POST">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="academic_year_id" value="<?= esc($selectedTaId ?? '') ?>">
-                    
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="small font-weight-bold mb-1">Tingkat Kelas (Master)</label>
-                            <select name="master_class_id" class="form-select" required>
-                                <option value="">-- Pilih Tingkat --</option>
-                                <?php foreach($masterClasses as $mc): ?>
-                                    <option value="<?= $mc['id'] ?>">Tingkat <?= esc($mc['class_name']) ?> (<?= esc($mc['level_type']) ?>)</option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="small font-weight-bold mb-1">Nama Spesifik Rombel</label>
-                            <input type="text" name="rombel_name" class="form-control" required placeholder="Misal: 7A, 7-Al Farabi, X MIPA 1">
-                        </div>
-                        <div class="mb-3">
-                            <label class="small font-weight-bold mb-1">Wali Kelas (Opsional)</label>
-                            <select name="homeroom_teacher_id" class="form-select">
-                                <option value="">-- Belum Ditentukan --</option>
-                                <?php foreach($walasList as $walas): ?>
-                                    <option value="<?= $walas['id'] ?>"><?= esc($walas['username']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="modal-footer bg-light">
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary btn-sm">💾 Simpan Rombel</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="modalCopyRombel" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content text-start">
-                <div class="modal-header bg-primary text-white">
-                    <h6 class="modal-title font-weight-bold"><i class="bi bi-magic"></i> Salin Struktur Rombel & Mapel</h6>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form action="<?= base_url('admin/rombel/copy') ?>" method="POST">
-                    <?= csrf_field() ?>
-                    <input type="hidden" name="target_academic_year_id" value="<?= esc($selectedTaId ?? '') ?>">
-                    
-                    <div class="modal-body">
-                        <p class="mb-3">Apakah Anda yakin ingin menyalin seluruh data Rombongan Belajar (Kelas) beserta Plotting Guru Mata Pelajaran dari <strong>Semester Sebelumnya</strong> ke Semester ini?</p>
-                        <div class="alert alert-info small mb-0 py-2 border-0 shadow-sm">
-                            <i class="bi bi-info-circle-fill"></i> <strong>Sistem Otomatis:</strong> Sesuai instruksi kebijakan, data Wali Kelas pada semester baru ini akan otomatis dikosongkan terlebih dahulu agar Anda dapat memetakan penugasan barunya secara mandiri.
-                        </div>
-                    </div>
-                    <div class="modal-footer bg-light">
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary btn-sm font-weight-bold">🪄 Ya, Salin Sekarang</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    <div class="modal fade" id="modalTambahRombel" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header bg-primary text-white"><h6 class="modal-title font-weight-bold">➕ Tambah Rombel Baru</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><form action="<?= base_url('admin/rombel/store') ?>" method="POST"><?= csrf_field() ?><input type="hidden" name="academic_year_id" value="<?= esc($selectedTaId ?? '') ?>"><div class="modal-body"><div class="mb-3"><label class="small font-weight-bold mb-1">Tingkat Kelas (Master)</label><select name="master_class_id" class="form-select" required><option value="">-- Pilih Tingkat --</option><?php foreach($masterClasses as $mc): ?><option value="<?= $mc['id'] ?>">Tingkat <?= esc($mc['class_name']) ?> (<?= esc($mc['level_type']) ?>)</option><?php endforeach; ?></select></div><div class="mb-3"><label class="small font-weight-bold mb-1">Nama Spesifik Rombel</label><input type="text" name="rombel_name" class="form-control" required placeholder="Misal: 7A, 7-Al Farabi, X MIPA 1"></div><div class="mb-3"><label class="small font-weight-bold mb-1">Wali Kelas (Opsional)</label><select name="homeroom_teacher_id" class="form-select"><option value="">-- Belum Ditentukan --</option><?php foreach($walasList as $walas): ?><option value="<?= $walas['id'] ?>"><?= esc($walas['username']) ?></option><?php endforeach; ?></select></div></div><div class="modal-footer bg-light"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn btn-primary btn-sm">💾 Simpan Rombel</button></div></form></div></div></div>
+    <div class="modal fade" id="modalCopyRombel" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content text-start"><div class="modal-header bg-primary text-white"><h6 class="modal-title font-weight-bold"><i class="bi bi-magic"></i> Salin Struktur Rombel & Mapel</h6><button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button></div><form action="<?= base_url('admin/rombel/copy') ?>" method="POST"><?= csrf_field() ?><input type="hidden" name="target_academic_year_id" value="<?= esc($selectedTaId ?? '') ?>"><div class="modal-body"><p class="mb-3">Apakah Anda yakin ingin menyalin seluruh data Rombongan Belajar (Kelas) beserta Plotting Guru Mata Pelajaran dari <strong>Semester Sebelumnya</strong> ke Semester ini?</p><div class="alert alert-info small mb-0 py-2 border-0 shadow-sm"><i class="bi bi-info-circle-fill"></i> <strong>Sistem Otomatis:</strong> Sesuai instruksi kebijakan, data Wali Kelas pada semester baru ini akan otomatis dikosongkan terlebih dahulu agar Anda dapat memetakan penugasan barunya secara mandiri.</div></div><div class="modal-footer bg-light"><button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn btn-primary btn-sm font-weight-bold">🪄 Ya, Salin Sekarang</button></div></form></div></div></div>
 
     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
     <script src="<?= base_url('assets/js/adminlte.min.js') ?>"></script>
