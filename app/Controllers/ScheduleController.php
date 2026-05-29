@@ -834,4 +834,80 @@ class ScheduleController extends BaseController
         return false;
     }
 
+    // ==========================================
+    // FUNGSI SET JADWAL AKTIF & CETAK (PRINT)
+    // ==========================================
+    public function setActiveVersion($versionId)
+    {
+        $db = \Config\Database::connect();
+        $ta = $this->request->getGet('ta');
+
+        $version = $db->table('schedule_versions')->where('id', $versionId)->get()->getRowArray();
+        if (!$version) return redirect()->back()->with('error', 'Versi jadwal tidak ditemukan.');
+
+        $db->transStart();
+        // Nonaktifkan semua versi di semester ini
+        $db->table('schedule_versions')->where('academic_year_id', $version['academic_year_id'])->update(['is_active' => 0]);
+        // Aktifkan versi yang dipilih
+        $db->table('schedule_versions')->where('id', $versionId)->update(['is_active' => 1]);
+        $db->transComplete();
+
+        return redirect()->to(base_url("admin/schedule?ta=$ta&v=$versionId"))->with('sukses', '📢 Jadwal berhasil diaktifkan! Jadwal ini sekarang yang akan tampil di menu Guru dan Siswa.');
+    }
+
+    public function printSchedule($versionId)
+    {
+        $db = \Config\Database::connect();
+
+        $activeVersion = $db->table('schedule_versions')->where('id', $versionId)->get()->getRowArray();
+        if (!$activeVersion) return redirect()->back()->with('error', 'Versi jadwal tidak ditemukan.');
+
+        $tahunAktif = $db->table('academic_years')->where('id', $activeVersion['academic_year_id'])->get()->getRowArray();
+        
+        // Ambil Data Master
+        $rombels = $db->table('class_rombel')->where('academic_year_id', $tahunAktif['id'])->orderBy('master_class_id', 'ASC')->orderBy('rombel_name', 'ASC')->get()->getResultArray();
+        $timeSlots = $db->table('schedule_time_slots')->where('version_id', $versionId)->orderBy('day_name', 'ASC')->orderBy('slot_number', 'ASC')->get()->getResultArray();
+        $kegiatan = $db->table('master_activities')->get()->getResultArray();
+        $subjects = $db->tableExists('master_subjects') ? $db->table('master_subjects')->get()->getResultArray() : $db->table('subjects')->get()->getResultArray();
+        
+        $kegiatanDict = []; foreach($kegiatan as $k) { $kegiatanDict[$k['id']] = $k['activity_name']; }
+        $subjectDict = []; foreach($subjects as $s) { $subjectDict[$s['id']] = $s['subject_name'] ?? $s['nama_mapel']; }
+        
+        $combDict = [];
+        if ($db->tableExists('schedule_combined_subjects')) {
+            $combs = $db->table('schedule_combined_subjects')->where('academic_year_id', $tahunAktif['id'])->get()->getResultArray();
+            foreach($combs as $c) { $combDict[$c['id']] = $c['combined_name']; }
+        }
+
+        // Ambil Papan Matriks
+        $schedules = $db->table('class_schedules')->where('version_id', $versionId)->get()->getResultArray();
+        $classSchedules = [];
+        foreach($schedules as $sch) {
+            $text = '-';
+            $type = 'empty';
+            if (!empty($sch['activity_id'])) {
+                $text = $kegiatanDict[$sch['activity_id']] ?? 'Kegiatan';
+                $type = 'kegiatan';
+            } elseif (!empty($sch['subject_id'])) {
+                $text = $subjectDict[$sch['subject_id']] ?? 'Mapel';
+                $type = 'mapel';
+            } elseif (!empty($sch['combined_subject_id'])) {
+                $text = $combDict[$sch['combined_subject_id']] ?? 'Mapel Gabungan';
+                $type = 'mapel';
+            }
+            $classSchedules[$sch['slot_id']][$sch['rombel_id']] = ['text' => $text, 'type' => $type];
+        }
+
+        $matrixDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+
+        return view('admin/schedule/print', [
+            'tahunAktif' => $tahunAktif,
+            'activeVersion' => $activeVersion,
+            'rombels' => $rombels,
+            'timeSlots' => $timeSlots,
+            'classSchedules' => $classSchedules,
+            'matrixDays' => $matrixDays
+        ]);
+    }
+
 }

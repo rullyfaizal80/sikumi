@@ -132,6 +132,9 @@ $routes->group('admin', static function ($routes) {
     $routes->post('schedule/copy-version', '\App\Controllers\ScheduleController::copyVersion');
 
     $routes->post('schedule/auto-generate', '\App\Controllers\ScheduleController::autoGenerateMatrix');
+
+    $routes->get('schedule/set-active/(:num)', '\App\Controllers\ScheduleController::setActiveVersion/$1');
+    $routes->get('schedule/print/(:num)', '\App\Controllers\ScheduleController::printSchedule/$1');
 });
 
 $routes->group('guru', static function ($routes) {
