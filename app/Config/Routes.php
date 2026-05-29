@@ -135,6 +135,9 @@ $routes->group('admin', static function ($routes) {
 
     $routes->get('schedule/set-active/(:num)', '\App\Controllers\ScheduleController::setActiveVersion/$1');
     $routes->get('schedule/print/(:num)', '\App\Controllers\ScheduleController::printSchedule/$1');
+
+    $routes->get('analisis-heb', '\App\Controllers\AnalysisController::index');
+    
 });
 
 $routes->group('guru', static function ($routes) {
@@ -142,4 +145,6 @@ $routes->group('guru', static function ($routes) {
     $routes->get('kaldik/print', '\App\Controllers\KaldikController::guruPrint');
 
     $routes->get('schedule', '\App\Controllers\ScheduleController::guruView');
+
+    $routes->get('analisis-heb', '\App\Controllers\AnalysisController::index');
 });
