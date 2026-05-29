@@ -23,6 +23,12 @@
         .is-clash { background-color: #dc3545 !important; color: #ffffff !important; border-color: #dc3545 !important; }
         .is-overload { background-color: #ffc107 !important; color: #000000 !important; border-color: #ffc107 !important; }
         .is-preview { background-color: #0dcaf0 !important; color: #000 !important; border-color: #0dcaf0 !important; }
+        @media print {
+            body { 
+                -webkit-print-color-adjust: exact !important; 
+                print-color-adjust: exact !important; 
+            }
+        }
     </style>
 </head>
 <body class="layout-fixed sidebar-expand-lg">
@@ -127,6 +133,9 @@
                                                 </button>
                                                 <button type="button" class="btn btn-warning btn-sm font-weight-bold shadow-sm text-dark ms-1 me-1" id="btnGenerate" data-url="<?= base_url('admin/schedule/auto-generate') ?>" onclick="runSmartGenerator(this)">
     🤖 Auto-Generate (Preview)
+</button>
+<button type="button" class="btn btn-outline-secondary btn-sm font-weight-bold shadow-sm ms-1 me-1" id="btnToggleColor" onclick="toggleColorMode()" title="Aktifkan warna berbeda untuk setiap Mapel/Kegiatan">
+    🎨 Mode Warna
 </button>
                                             </div>
                                         </div>
@@ -881,6 +890,88 @@
                     alert('Gagal menghubungi server. Periksa koneksi atau console (F12).');
                 });
             }
+
+            // ==========================================
+            // FITUR WARNA-WARNI MAPEL (COLOR MODE)
+            // ==========================================
+            let isColorMode = false;
+            // Palet warna khusus yang nyaman di mata & kontras dengan teks putih
+            const colorPalette = [
+                '#007bff', '#6610f2', '#6f42c1', '#e83e8c', '#fd7e14', 
+                '#28a745', '#20c997', '#17a2b8', '#343a40', '#001f3f', 
+                '#3D9970', '#85144b', '#F012BE', '#B10DC9', '#0074D9', '#d81b60'
+            ];
+            let subjectColorMap = {};
+            let colorIndex = 0;
+
+            window.toggleColorMode = function(forceState = null) {
+                if (forceState !== null) {
+                    isColorMode = forceState;
+                } else {
+                    isColorMode = !isColorMode;
+                }
+                
+                // Simpan ke memori browser agar tidak hilang saat di-refresh/save
+                localStorage.setItem('sikumi_color_mode', isColorMode);
+                
+                let btn = document.getElementById('btnToggleColor');
+                if(btn) {
+                    if (isColorMode) {
+                        btn.innerHTML = '🎨 Matikan Warna';
+                        btn.className = 'btn btn-secondary btn-sm font-weight-bold shadow-sm text-white ms-1 me-1';
+                        applyColors();
+                    } else {
+                        btn.innerHTML = '🎨 Mode Warna';
+                        btn.className = 'btn btn-outline-secondary btn-sm font-weight-bold shadow-sm ms-1 me-1';
+                        removeColors();
+                    }
+                }
+            }
+
+            window.applyColors = function() {
+                document.querySelectorAll('.matriks-select').forEach(sel => {
+                    // Hanya warnai yang ada isinya (sudah tersave) dan TIDAK sedang bentrok (merah/kuning/biru)
+                    if (sel.value && !sel.classList.contains('is-clash') && !sel.classList.contains('is-preview') && !sel.classList.contains('is-overload')) {
+                        let optText = sel.options[sel.selectedIndex].text;
+                        // Hapus emoji bawaan (☕ / 🔗) untuk penamaan warna murni
+                        let cleanText = optText.replace(/^(☕ |🔗 )/, '').trim();
+                        
+                        // Jika mapel ini belum punya warna, ambil dari palet
+                        if (!subjectColorMap[cleanText]) {
+                            subjectColorMap[cleanText] = colorPalette[colorIndex % colorPalette.length];
+                            colorIndex++;
+                        }
+                        
+                        let hexColor = subjectColorMap[cleanText];
+                        sel.style.setProperty('background-color', hexColor, 'important');
+                        sel.style.setProperty('border-color', hexColor, 'important');
+                    }
+                });
+            }
+
+            window.removeColors = function() {
+                document.querySelectorAll('.matriks-select').forEach(sel => {
+                    sel.style.removeProperty('background-color');
+                    sel.style.removeProperty('border-color');
+                });
+            }
+
+            // Memicu pewarnaan ulang saat jadwal diganti manual
+            document.querySelectorAll('.matriks-select').forEach(sel => {
+                sel.addEventListener('change', function() {
+                    sel.style.removeProperty('background-color');
+                    sel.style.removeProperty('border-color');
+                    if(typeof checkClashes === 'function') checkClashes();
+                    if(isColorMode) applyColors();
+                });
+            });
+
+            // Jalankan otomatis saat halaman dimuat (jika sebelumnya sudah diaktifkan)
+            document.addEventListener('DOMContentLoaded', function() {
+                if(localStorage.getItem('sikumi_color_mode') === 'true') {
+                    toggleColorMode(true);
+                }
+            });
     </script>
 </body>
 </html>
