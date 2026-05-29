@@ -846,13 +846,14 @@ class ScheduleController extends BaseController
         if (!$version) return redirect()->back()->with('error', 'Versi jadwal tidak ditemukan.');
 
         $db->transStart();
-        // Nonaktifkan semua versi di semester ini
-        $db->table('schedule_versions')->where('academic_year_id', $version['academic_year_id'])->update(['is_active' => 0]);
-        // Aktifkan versi yang dipilih
-        $db->table('schedule_versions')->where('id', $versionId)->update(['is_active' => 1]);
+        // 1. PAKSA MATIKAN semua jadwal di Tahun Ajaran/Semester ini
+        $db->query("UPDATE schedule_versions SET is_active = 0 WHERE academic_year_id = ?", [$version['academic_year_id']]);
+        
+        // 2. AKTIFKAN HANYA jadwal yang sedang dipilih
+        $db->query("UPDATE schedule_versions SET is_active = 1 WHERE id = ?", [$versionId]);
         $db->transComplete();
 
-        return redirect()->to(base_url("admin/schedule?ta=$ta&v=$versionId"))->with('sukses', '📢 Jadwal berhasil diaktifkan! Jadwal ini sekarang yang akan tampil di menu Guru dan Siswa.');
+        return redirect()->to(base_url("admin/schedule?ta=$ta&v=$versionId"))->with('sukses', '📢 Jadwal berhasil diaktifkan secara eksklusif! Jadwal lainnya otomatis dinonaktifkan.');
     }
 
     public function printSchedule($versionId)

@@ -86,30 +86,36 @@
                                     <?php endforeach; ?>
                                 </select>
                                 
-                                <span class="small font-weight-bold text-muted ms-2">Versi Jadwal:</span>
-                                <select name="v" id="selectVersion" class="form-select form-select-sm border-0 font-weight-bold bg-light text-primary" style="width: auto; min-width:250px;">
-                                    <?php if(empty($versions)): ?><option value="" disabled selected>Belum Ada Versi</option><?php endif; ?>
-                                    <?php foreach ($versions as $ver) : ?>
-                                        <option value="<?= $ver['id'] ?>" <?= ($verId == $ver['id']) ? 'selected' : '' ?>>📄 <?= esc($ver['version_name']) ?> <?= $ver['is_active'] ? '🌟 (AKTIF)' : '' ?></option>
-                                    <?php endforeach; ?>
-                                    <option value="NEW" class="fw-bold text-success">➕ Buat Versi Baru...</option>
-                                </select>
-                                
-                                <?php if(!empty($activeVersion)): ?>
-                                    <!-- TOMBOL SET AKTIF -->
-                                    <?php if($activeVersion['is_active'] == 1): ?>
-                                        <span class="badge bg-success ms-2 shadow-sm"><i class="bi bi-check-circle-fill"></i> Jadwal Aktif Dipakai</span>
-                                    <?php else: ?>
-                                        <a href="<?= base_url('admin/schedule/set-active/'.$activeVersion['id'].'?ta='.$taId) ?>" class="btn btn-sm btn-outline-success font-weight-bold ms-2 shadow-sm" onclick="return confirm('Jadikan versi ini sebagai Jadwal Aktif yang akan dilihat oleh seluruh Guru dan Siswa?')">🌟 Jadikan Jadwal Aktif</a>
-                                    <?php endif; ?>
+                               <span class="small font-weight-bold text-muted ms-2">Versi Jadwal:</span>
+<select name="v" id="selectVersion" class="form-select form-select-sm border-0 font-weight-bold bg-light text-primary" style="width: auto; min-width:250px;" data-url="<?= base_url('admin/schedule?ta='.$taId.'&v=') ?>" onchange="window.location.href = this.getAttribute('data-url') + this.value">
+    <?php if(empty($versions)): ?><option value="" disabled selected>Belum Ada Versi</option><?php endif; ?>
+    <?php foreach ($versions as $ver) : ?>
+        <option value="<?= $ver['id'] ?>" <?= ($verId == $ver['id']) ? 'selected' : '' ?>>📄 <?= esc($ver['version_name']) ?> <?= ($ver['is_active'] == 1) ? '🌟 (AKTIF)' : '' ?></option>
+    <?php endforeach; ?>
+    <option value="NEW" class="fw-bold text-success">➕ Buat Versi Baru...</option>
+</select>
 
-                                    <!-- TOMBOL PRINT -->
-                                    <a href="<?= base_url('admin/schedule/print/'.$activeVersion['id']) ?>" target="_blank" class="btn btn-sm btn-dark text-white font-weight-bold shadow-sm ms-2" title="Cetak Jadwal">🖨️ Cetak PDF</a>
+<?php 
+if(!empty($activeVersion)): 
+    // Pindahkan logika IF PHP ke atas agar HTML di bawah bersih dari error VS Code
+    $isActive = ($activeVersion['is_active'] == 1);
+    $btnClass = $isActive ? 'btn-success' : 'btn-outline-success';
+    $confirmMsg = $isActive ? 'Jadwal ini sudah aktif. Ingin me-refresh status untuk mematikan jadwal ganda jika ada?' : 'Jadikan versi ini sebagai SATU-SATUNYA Jadwal Aktif di semester ini?';
+    $btnText = $isActive ? '<i class="bi bi-check-circle-fill"></i> JADWAL AKTIF DIPUBLIKASI' : '🌟 Jadikan Jadwal Aktif';
+?>
+    <a href="<?= base_url('admin/schedule/set-active/'.$activeVersion['id'].'?ta='.$taId) ?>" 
+       class="btn btn-sm <?= $btnClass ?> font-weight-bold ms-2 shadow-sm" 
+       data-msg="<?= $confirmMsg ?>" 
+       onclick="return confirm(this.getAttribute('data-msg'))">
+        <?= $btnText ?>
+    </a>
 
-                                    <button type="button" class="btn btn-sm btn-info text-white shadow-sm font-weight-bold ms-1" data-bs-toggle="modal" data-bs-target="#modalCopyVersion" title="Salin Jadwal Lintas Semester">♻️ Copy</button>
-                                    
-                                    <a href="<?= base_url('admin/schedule/delete-version/'.$activeVersion['id'].'?ta='.$taId) ?>" class="btn btn-sm btn-outline-danger shadow-sm ms-1 px-2" onclick="return confirm('⚠️ YAKIN HAPUS PERMANEN?')" title="Hapus Versi Jadwal">🗑️</a>
-                                <?php endif; ?>
+    <a href="<?= base_url('admin/schedule/print/'.$activeVersion['id']) ?>" target="_blank" class="btn btn-sm btn-dark text-white font-weight-bold shadow-sm ms-2" title="Cetak Jadwal">🖨️ Cetak PDF</a>
+
+    <button type="button" class="btn btn-sm btn-info text-white shadow-sm font-weight-bold ms-1" data-bs-toggle="modal" data-bs-target="#modalCopyVersion" title="Salin Jadwal Lintas Semester">♻️ Copy</button>
+    
+    <a href="<?= base_url('admin/schedule/delete-version/'.$activeVersion['id'].'?ta='.$taId) ?>" class="btn btn-sm btn-outline-danger shadow-sm ms-1 px-2" onclick="return confirm('⚠️ YAKIN HAPUS PERMANEN?')" title="Hapus Versi Jadwal">🗑️</a>
+<?php endif; ?>
                             </form>
                         </div>
                         
