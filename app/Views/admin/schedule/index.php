@@ -17,6 +17,11 @@
         .btn-emoji { font-size: 14px; text-decoration: none; padding: 3px 8px; border-radius: 4px; border: 1px solid #ccc; background: #fff; cursor: pointer; display: inline-block; }
         .btn-emoji:hover { background: #f0f0f0; }
         .matriks-select { font-size: 11px; cursor: pointer; }
+        .matriks-select { font-size: 11px; cursor: pointer; }
+        .matriks-select.bg-success { color: #ffffff !important; }
+        .matriks-select option { background-color: #ffffff !important; color: #000000 !important; }
+        .is-clash { background-color: #dc3545 !important; color: #ffffff !important; border-color: #dc3545 !important; }
+        .is-overload { background-color: #ffc107 !important; color: #000000 !important; border-color: #ffc107 !important; }
     </style>
 </head>
 <body class="layout-fixed sidebar-expand-lg">
@@ -157,31 +162,33 @@
                                                                         $sch = $classSchedules[$slot['id']][$r['id']] ?? null;
                                                                     ?>
                                                                     <td class="align-middle">
-                                                                        <select name="matrix[<?= $slot['id'] ?>][<?= $r['id'] ?>]" class="form-select form-select-sm matriks-select <?= $sch ? 'bg-success text-white fw-bold' : '' ?>" style="font-size: 11px; cursor: pointer;">
-                                                                            <option value="">-</option>
-                                                                            
-                                                                            <optgroup label="✨ KEGIATAN UMUM">
-                                                                                <?php foreach($kegiatan as $act): ?>
-                                                                                    <option value="ACT_<?= $act['id'] ?>" <?= ($sch && $sch['activity_id'] == $act['id']) ? 'selected' : '' ?>>☕ <?= esc($act['activity_name']) ?></option>
-                                                                                <?php endforeach; ?>
-                                                                            </optgroup>
-                                                                            
-                                                                            <optgroup label="🔗 MAPEL GABUNGAN">
-                                                                                <?php foreach($combinedSubjects as $cs): 
-                                                                                    if(!isset($plottingDataCombined[$cs['id']][$r['id']])) continue;
-                                                                                ?>
-                                                                                    <option value="COM_<?= $cs['id'] ?>_<?= $plottingDataCombined[$cs['id']][$r['id']]['teacher_id'] ?>" <?= ($sch && $sch['combined_subject_id'] == $cs['id']) ? 'selected' : '' ?>>🔗 <?= esc($cs['combined_name']) ?></option>
-                                                                                <?php endforeach; ?>
-                                                                            </optgroup>
-                                                                            
-                                                                            <optgroup label="📚 MATA PELAJARAN">
-                                                                                <?php foreach($subjects as $sub): 
-                                                                                    if(in_array($sub['id'], $combinedChildIds) || !isset($plottingDataNormal[$sub['id']][$r['id']])) continue;
-                                                                                ?>
-                                                                                    <option value="SUB_<?= $sub['id'] ?>_<?= $plottingDataNormal[$sub['id']][$r['id']]['teacher_id'] ?>" <?= ($sch && $sch['subject_id'] == $sub['id']) ? 'selected' : '' ?>><?= esc($sub['subject_name'] ?? $sub['nama_mapel']) ?></option>
-                                                                                <?php endforeach; ?>
-                                                                            </optgroup>
-                                                                        </select>
+                                                                        <select name="matrix[<?= $slot['id'] ?>][<?= $r['id'] ?>]" data-rombel="<?= $r['id'] ?>" class="form-select form-select-sm matriks-select <?= $sch ? 'bg-success text-white fw-bold border-success' : '' ?>" style="font-size: 11px; cursor: pointer;">
+    <option value="">-</option>
+    
+    <optgroup label="✨ KEGIATAN UMUM">
+        <?php foreach($kegiatan as $act): ?>
+            <option value="ACT_<?= $act['id'] ?>" <?= ($sch && $sch['activity_id'] == $act['id']) ? 'selected' : '' ?>>☕ <?= esc($act['activity_name']) ?></option>
+        <?php endforeach; ?>
+    </optgroup>
+    
+    <optgroup label="🔗 MAPEL GABUNGAN">
+        <?php foreach($combinedSubjects as $cs): 
+            if(!isset($plottingDataCombined[$cs['id']][$r['id']])) continue;
+            $target = $plottingDataCombined[$cs['id']][$r['id']]['target_jp'];
+        ?>
+            <option value="COM_<?= $cs['id'] ?>_<?= $plottingDataCombined[$cs['id']][$r['id']]['teacher_id'] ?>" data-target-jp="<?= $target ?>" <?= ($sch && $sch['combined_subject_id'] == $cs['id']) ? 'selected' : '' ?>>🔗 <?= esc($cs['combined_name']) ?></option>
+        <?php endforeach; ?>
+    </optgroup>
+    
+    <optgroup label="📚 MATA PELAJARAN">
+        <?php foreach($subjects as $sub): 
+            if(in_array($sub['id'], $combinedChildIds) || !isset($plottingDataNormal[$sub['id']][$r['id']])) continue;
+            $target = $plottingDataNormal[$sub['id']][$r['id']]['target_jp'];
+        ?>
+            <option value="SUB_<?= $sub['id'] ?>_<?= $plottingDataNormal[$sub['id']][$r['id']]['teacher_id'] ?>" data-target-jp="<?= $target ?>" <?= ($sch && $sch['subject_id'] == $sub['id']) ? 'selected' : '' ?>><?= esc($sub['subject_name'] ?? $sub['nama_mapel']) ?></option>
+        <?php endforeach; ?>
+    </optgroup>
+</select>
                                                                     </td>
                                                                     <?php endforeach; ?>
                                                                 </tr>
@@ -656,64 +663,106 @@
             });
 
         // ==========================================
-            // RADAR BENTROK JADWAL (LIVE JAVASCRIPT)
+            // RADAR BENTROK & OVERLOAD (LIVE JAVASCRIPT)
             // ==========================================
             function checkClashes() {
                 let hasGlobalClash = false;
-                
-                // Cek per baris waktu (TR)
+                let hasOverload = false;
+
+                // 0. Bersihkan semua peringatan sebelumnya
+                document.querySelectorAll('.matriks-select').forEach(sel => {
+                    sel.classList.remove('is-clash', 'is-overload');
+                });
+
+                // 1. CEK GURU BENTROK (Per Baris Waktu / TR)
                 document.querySelectorAll('tbody tr').forEach(tr => {
                     let selects = tr.querySelectorAll('.matriks-select');
-                    let teacherMap = {}; // Simpan ID Guru yang sudah terpakai di baris ini
+                    let teacherMap = {};
 
                     selects.forEach(sel => {
-                        sel.classList.remove('bg-danger', 'text-white', 'border-danger');
                         let val = sel.value;
-                        
-                        // HANYA VALIDASI JIKA BUKAN KEGIATAN UMUM (ACT_) DAN BUKAN KOSONG
                         if (val && !val.startsWith('ACT_')) {
-                            let parts = val.split('_'); 
+                            let parts = val.split('_');
                             if (parts.length >= 3) {
-                                let teacherId = parts[2]; // ID Guru
+                                let teacherId = parts[2];
                                 if (!teacherMap[teacherId]) teacherMap[teacherId] = [];
                                 teacherMap[teacherId].push(sel);
                             }
                         }
                     });
 
-                    // Tandai merah jika guru sama dipakai di dropdown berbeda
+                    // Nyalakan Merah jika Guru dipakai > 1
                     for (let tId in teacherMap) {
                         if (teacherMap[tId].length > 1) {
                             hasGlobalClash = true;
-                            teacherMap[tId].forEach(sel => {
-                                sel.classList.add('bg-danger', 'text-white', 'border-danger');
-                            });
+                            teacherMap[tId].forEach(sel => sel.classList.add('is-clash'));
                         }
                     }
                 });
 
-                // Kunci Tombol Simpan Jika Ada yang Merah
+                // 2. CEK BEBAN JP BERLEBIH (Per Kolom Rombel)
+                let subjectCountMap = {}; // Format: { rombelId: { subjectCode: { count: X, target: Y, elements: [] } } }
+
+                document.querySelectorAll('.matriks-select').forEach(sel => {
+                    let val = sel.value;
+                    if (val && !val.startsWith('ACT_')) {
+                        let rombelId = sel.getAttribute('data-rombel');
+                        let parts = val.split('_');
+                        let subjectCode = parts[0] + '_' + parts[1]; // Misal: SUB_14
+                        
+                        let opt = sel.options[sel.selectedIndex];
+                        let targetJp = parseInt(opt.getAttribute('data-target-jp')) || 0;
+
+                        if (!subjectCountMap[rombelId]) subjectCountMap[rombelId] = {};
+                        if (!subjectCountMap[rombelId][subjectCode]) {
+                            subjectCountMap[rombelId][subjectCode] = { count: 0, target: targetJp, elements: [] };
+                        }
+
+                        subjectCountMap[rombelId][subjectCode].count++;
+                        subjectCountMap[rombelId][subjectCode].elements.push(sel);
+                    }
+                });
+
+                // Nyalakan Kuning jika JP melebihi target
+                for (let rId in subjectCountMap) {
+                    for (let subCode in subjectCountMap[rId]) {
+                        let data = subjectCountMap[rId][subCode];
+                        if (data.count > data.target) {
+                            hasOverload = true;
+                            data.elements.forEach(sel => {
+                                // Jika tidak sedang bentrok merah, beri warna kuning
+                                if (!sel.classList.contains('is-clash')) {
+                                    sel.classList.add('is-overload');
+                                }
+                            });
+                        }
+                    }
+                }
+
+                // 3. KUNCI TOMBOL SIMPAN
                 let btnSave = document.getElementById('btnSaveMatriks');
                 if (btnSave) {
-                    if (hasGlobalClash) {
+                    if (hasGlobalClash || hasOverload) {
                         btnSave.disabled = true;
-                        btnSave.innerHTML = '⚠️ Perbaiki Jadwal Bentrok (Merah)';
-                        btnSave.classList.replace('btn-success', 'btn-danger');
+                        if (hasGlobalClash) {
+                            btnSave.innerHTML = '⛔ Perbaiki Guru Bentrok (Merah)';
+                            btnSave.className = 'btn btn-danger btn-sm font-weight-bold shadow-sm';
+                        } else {
+                            btnSave.innerHTML = '⚠️ Perbaiki JP Berlebih (Kuning)';
+                            btnSave.className = 'btn btn-warning btn-sm font-weight-bold shadow-sm text-dark';
+                        }
                     } else {
                         btnSave.disabled = false;
                         btnSave.innerHTML = '💾 Simpan Semua Perubahan';
-                        btnSave.classList.replace('btn-danger', 'btn-success');
+                        btnSave.className = 'btn btn-success btn-sm font-weight-bold shadow-sm';
                     }
                 }
             }
 
-            // Pasang detektor pada semua kotak Matriks
             document.querySelectorAll('.matriks-select').forEach(sel => {
                 sel.addEventListener('change', checkClashes);
             });
-
-            // Jalankan detektor sekali saat halaman pertama kali dimuat
-            checkClashes();
+            checkClashes(); // Panggil saat awal load
     </script>
 </body>
 </html>
