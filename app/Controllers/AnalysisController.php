@@ -11,7 +11,7 @@ class AnalysisController extends BaseController
         $db = \Config\Database::connect();
         
         // =====================================================================
-        // 🚦 1. DETEKSI HAK AKSES CERDAS
+        // 🚦 1. DETEKSI HAK AKSES
         // =====================================================================
         $uri = $this->request->getUri();
         $segment = $uri->getSegment(1); 
@@ -51,7 +51,7 @@ class AnalysisController extends BaseController
         }
 
         // =====================================================================
-        // 🚀 3. PROSES DATA JADWAL & HEB
+        // 🚀 3. PROSES DATA JADWAL
         // =====================================================================
         $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
         if (!$tahunAktif) return redirect()->back()->with('error', 'Tidak ada Tahun Ajaran aktif.');
@@ -69,138 +69,146 @@ class AnalysisController extends BaseController
                           ->get()->getResultArray();
 
         foreach($rawTeachers as $t) {
-            $teachers[] = [
-                'id' => $t['id'],
-                'nama_guru' => $t['nama_guru'] ?? 'Guru (ID: '.$t['id'].')'
-            ];
+            $teachers[] = ['id' => $t['id'], 'nama_guru' => $t['nama_guru'] ?? 'Guru (ID: '.$t['id'].')'];
         }
 
         $selectedTeacherId = $this->request->getGet('teacher_id');
         if ($isGuru) { $selectedTeacherId = $userId; } 
         elseif (empty($selectedTeacherId) && !empty($teachers)) { $selectedTeacherId = $teachers[0]['id']; }
 
-        $rombelOptions = []; 
         $subjectOptions = [];
-        $selectedRombelId = $this->request->getGet('rombel_id');
         $selectedSubjectId = $this->request->getGet('subject_id');
 
         if ($selectedTeacherId) {
-            // PERBAIKAN: Join ke tabel master_subjects DAN schedule_combined_subjects
             $teacherTargets = $db->table('class_schedules cs')
-                                 ->select("cs.rombel_id, cs.{$kolomSubjectId}, cs.combined_subject_id, r.rombel_name, r.master_class_id, s.{$kolomNamaMapel} as subject_name, c.combined_name")
-                                 ->join('class_rombel r', 'r.id = cs.rombel_id')
+                                 ->select("cs.{$kolomSubjectId}, cs.combined_subject_id, s.{$kolomNamaMapel} as subject_name, c.combined_name")
                                  ->join("{$tabelMapel} s", "s.id = cs.{$kolomSubjectId}", 'left')
-                                 ->join('schedule_combined_subjects c', 'c.id = cs.combined_subject_id', 'left') // <- Tarik nama mapel gabungan
+                                 ->join('schedule_combined_subjects c', 'c.id = cs.combined_subject_id', 'left')
                                  ->where('cs.version_id', $jadwalAktif['id'])
                                  ->where("cs.{$kolomIdGuruDiJadwal}", $selectedTeacherId)
                                  ->groupStart()
                                     ->where("cs.{$kolomSubjectId} IS NOT NULL")
                                     ->orWhere('cs.combined_subject_id IS NOT NULL')
                                  ->groupEnd()
-                                 ->groupBy("cs.rombel_id, cs.{$kolomSubjectId}, cs.combined_subject_id")
+                                 ->groupBy("cs.{$kolomSubjectId}, cs.combined_subject_id")
                                  ->get()->getResultArray();
 
             foreach ($teacherTargets as $tgt) {
-                $rombelOptions[$tgt['rombel_id']] = [
-                    'rombel_name' => $tgt['rombel_name'],
-                    'master_class_id' => $tgt['master_class_id']
-                ];
-                
-                if ($selectedRombelId && $tgt['rombel_id'] == $selectedRombelId) {
-                    // PERBAIKAN: Beri prefix agar ID mapel biasa & gabungan tidak bentrok
-                    if (!empty($tgt['combined_subject_id'])) {
-                        $optId = 'C_' . $tgt['combined_subject_id']; // C = Combined
-                        $subjectOptions[$optId] = ['subject_name' => $tgt['combined_name'] ?? 'Mapel Gabungan'];
-                    } elseif (!empty($tgt[$kolomSubjectId])) {
-                        $optId = 'S_' . $tgt[$kolomSubjectId]; // S = Subject Biasa
-                        $subjectOptions[$optId] = ['subject_name' => $tgt['subject_name'] ?? 'Mapel Tidak Diketahui'];
-                    }
+                if (!empty($tgt['combined_subject_id'])) {
+                    $optId = 'C_' . $tgt['combined_subject_id'];
+                    $subjectOptions[$optId] = ['subject_name' => $tgt['combined_name'] ?? 'Mapel Gabungan'];
+                } elseif (!empty($tgt[$kolomSubjectId])) {
+                    $optId = 'S_' . $tgt[$kolomSubjectId];
+                    $subjectOptions[$optId] = ['subject_name' => $tgt['subject_name'] ?? 'Mapel Tidak Diketahui'];
                 }
             }
         }
 
-        if (empty($selectedRombelId) && !empty($rombelOptions)) $selectedRombelId = array_key_first($rombelOptions);
-        if (empty($selectedSubjectId) && !empty($subjectOptions)) $selectedSubjectId = array_key_first($subjectOptions);
+        // PERBAIKAN 1: Cegah tabel kosong. Jika mapel sebelumnya tidak diajarkan oleh guru baru, reset pilihannya.
+        if ($selectedSubjectId && !array_key_exists($selectedSubjectId, $subjectOptions)) {
+            $selectedSubjectId = null; 
+        }
+        if (empty($selectedSubjectId) && !empty($subjectOptions)) { 
+            $selectedSubjectId = array_key_first($subjectOptions); 
+        }
 
-        $analysisData = [];
-        $grandTotalJp = 0;
-        $hariMengajar = [];
+        // =====================================================================
+        // 📊 4. KALKULASI HEB UNTUK SEMUA ROMBEL SEKALIGUS
+        // =====================================================================
+        $allAnalysisData = [];
 
-        if ($selectedRombelId && $selectedSubjectId) {
-            
-            // PERBAIKAN: Deteksi apakah yang dipilih itu Mapel Gabungan atau Biasa
+        if ($selectedTeacherId && $selectedSubjectId) {
             $isCombined = (strpos($selectedSubjectId, 'C_') === 0);
             $realSubjectId = str_replace(['S_', 'C_'], '', $selectedSubjectId);
 
-            $builder = $db->table('class_schedules cs')
-                            ->join('schedule_time_slots ts', 'ts.id = cs.slot_id')
-                            ->where('cs.version_id', $jadwalAktif['id'])
-                            ->where('cs.rombel_id', $selectedRombelId)
-                            ->where("cs.{$kolomIdGuruDiJadwal}", $selectedTeacherId);
-
-            // Filter sesuai jenis mapelnya
-            if ($isCombined) {
-                $builder->where('cs.combined_subject_id', $realSubjectId);
-            } else {
-                $builder->where("cs.{$kolomSubjectId}", $realSubjectId);
-            }
-
-            $schedules = $builder->get()->getResultArray();
-
-            $jpPerHari = ['Senin' => 0, 'Selasa' => 0, 'Rabu' => 0, 'Kamis' => 0, 'Jumat' => 0];
-            foreach ($schedules as $sch) {
-                if (isset($jpPerHari[$sch['day_name']])) {
-                    $jpPerHari[$sch['day_name']] += 1;
-                    $hariMengajar[$sch['day_name']] = true;
-                }
-            }
+            // 1. Cari Semua Rombel (Kelas) yang diajar untuk mapel ini
+            $builderRombel = $db->table('class_schedules cs')
+                                ->select('cs.rombel_id, r.rombel_name, r.master_class_id')
+                                ->join('class_rombel r', 'r.id = cs.rombel_id')
+                                ->where('cs.version_id', $jadwalAktif['id'])
+                                ->where("cs.{$kolomIdGuruDiJadwal}", $selectedTeacherId);
+            
+            if ($isCombined) { $builderRombel->where('cs.combined_subject_id', $realSubjectId); } 
+            else { $builderRombel->where("cs.{$kolomSubjectId}", $realSubjectId); }
+            
+            // PERBAIKAN 2: Mengurutkan tabel berdasarkan Tingkat Kelas lalu Abjad (7A, 7B, 8, 9A, dst)
+            $daftarRombel = $builderRombel->groupBy('cs.rombel_id')
+                                          ->orderBy('r.master_class_id', 'ASC')
+                                          ->orderBy('r.rombel_name', 'ASC')
+                                          ->get()->getResultArray();
 
             $tahunSplit = explode('/', $tahunAktif['academic_year']);
             $tahunStart = (int)trim($tahunSplit[0]);
             $tahunEnd = isset($tahunSplit[1]) ? (int)trim($tahunSplit[1]) : $tahunStart + 1;
-
             $isGanjil = strtolower($tahunAktif['semester']) == 'ganjil';
             $bulanList = $isGanjil ? [7, 8, 9, 10, 11, 12] : [1, 2, 3, 4, 5, 6];
             $namaBulanIndo = [1=>'Januari',2=>'Februari',3=>'Maret',4=>'April',5=>'Mei',6=>'Juni',7=>'Juli',8=>'Agustus',9=>'September',10=>'Oktober',11=>'Nopember',12=>'Desember'];
-
-            $masterClassId = $rombelOptions[$selectedRombelId]['master_class_id'] ?? 1;
-            $kaldikEvents = $db->tableExists('academic_calendars') ? $db->table('academic_calendars')->where('academic_year_id', $tahunAktif['id'])->where('class_id', $masterClassId)->get()->getResultArray() : [];
-
             $hariNamesNumeric = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat'];
 
-            foreach ($bulanList as $bln) {
-                $tahunTerkait = ($isGanjil) ? $tahunStart : $tahunEnd;
-                $jmlHariBulan = cal_days_in_month(CAL_GREGORIAN, $bln, $tahunTerkait);
-                $hebBulanIni = ['Senin' => 0, 'Selasa' => 0, 'Rabu' => 0, 'Kamis' => 0, 'Jumat' => 0];
+            // 2. Lakukan Looping Perhitungan per Kelas
+            foreach ($daftarRombel as $rombel) {
+                
+                // Ambil Jadwal Khusus Kelas Ini
+                $builderSch = $db->table('class_schedules cs')
+                                 ->join('schedule_time_slots ts', 'ts.id = cs.slot_id')
+                                 ->where('cs.version_id', $jadwalAktif['id'])
+                                 ->where('cs.rombel_id', $rombel['rombel_id'])
+                                 ->where("cs.{$kolomIdGuruDiJadwal}", $selectedTeacherId);
+                if ($isCombined) { $builderSch->where('cs.combined_subject_id', $realSubjectId); } 
+                else { $builderSch->where("cs.{$kolomSubjectId}", $realSubjectId); }
+                $schedules = $builderSch->get()->getResultArray();
 
-                for ($d = 1; $d <= $jmlHariBulan; $d++) {
-                    $dateStr = sprintf("%04d-%02d-%02d", $tahunTerkait, $bln, $d);
-                    $dayOfWeek = date('N', strtotime($dateStr)); 
-                    
-                    if ($dayOfWeek <= 5) {
-                        $namaHari = $hariNamesNumeric[$dayOfWeek];
-                        $isLibur = false;
-                        foreach ($kaldikEvents as $ev) {
-                            if ($dateStr >= $ev['start_date'] && $dateStr <= $ev['end_date']) {
-                                $isLibur = true; break;
-                            }
-                        }
-                        if (!$isLibur) $hebBulanIni[$namaHari]++;
+                $jpPerHari = ['Senin' => 0, 'Selasa' => 0, 'Rabu' => 0, 'Kamis' => 0, 'Jumat' => 0];
+                $hariMengajar = [];
+                foreach ($schedules as $sch) {
+                    if (isset($jpPerHari[$sch['day_name']])) {
+                        $jpPerHari[$sch['day_name']] += 1;
+                        $hariMengajar[$sch['day_name']] = true;
                     }
                 }
 
-                $totalJpBulan = 0;
-                $detailHari = [];
-                foreach (['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'] as $hari) {
-                    $heb = $hebBulanIni[$hari];
-                    $jp = $jpPerHari[$hari];
-                    $jumlah = $heb * $jp;
-                    $totalJpBulan += $jumlah;
-                    $detailHari[] = ['hari' => $hari, 'heb' => $heb, 'jp' => $jp > 0 ? $jp : '', 'jumlah' => $jumlah];
+                $kaldikEvents = $db->tableExists('academic_calendars') ? $db->table('academic_calendars')->where('academic_year_id', $tahunAktif['id'])->where('class_id', $rombel['master_class_id'])->get()->getResultArray() : [];
+                $analysisData = [];
+                $grandTotalJp = 0;
+
+                foreach ($bulanList as $bln) {
+                    $tahunTerkait = ($isGanjil) ? $tahunStart : $tahunEnd;
+                    $jmlHariBulan = cal_days_in_month(CAL_GREGORIAN, $bln, $tahunTerkait);
+                    $hebBulanIni = ['Senin' => 0, 'Selasa' => 0, 'Rabu' => 0, 'Kamis' => 0, 'Jumat' => 0];
+
+                    for ($d = 1; $d <= $jmlHariBulan; $d++) {
+                        $dateStr = sprintf("%04d-%02d-%02d", $tahunTerkait, $bln, $d);
+                        $dayOfWeek = date('N', strtotime($dateStr)); 
+                        if ($dayOfWeek <= 5) {
+                            $namaHari = $hariNamesNumeric[$dayOfWeek];
+                            $isLibur = false;
+                            foreach ($kaldikEvents as $ev) {
+                                if ($dateStr >= $ev['start_date'] && $dateStr <= $ev['end_date']) { $isLibur = true; break; }
+                            }
+                            if (!$isLibur) $hebBulanIni[$namaHari]++;
+                        }
+                    }
+
+                    $totalJpBulan = 0;
+                    $detailHari = [];
+                    foreach (['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'] as $hari) {
+                        $heb = $hebBulanIni[$hari];
+                        $jp = $jpPerHari[$hari];
+                        $jumlah = $heb * $jp;
+                        $totalJpBulan += $jumlah;
+                        $detailHari[] = ['hari' => $hari, 'heb' => $heb, 'jp' => $jp > 0 ? $jp : '', 'jumlah' => $jumlah];
+                    }
+                    $analysisData[] = ['nama_bulan' => $namaBulanIndo[$bln], 'detail' => $detailHari, 'total_jp_bulan' => $totalJpBulan];
+                    $grandTotalJp += $totalJpBulan;
                 }
 
-                $analysisData[] = ['nama_bulan' => $namaBulanIndo[$bln], 'detail' => $detailHari, 'total_jp_bulan' => $totalJpBulan];
-                $grandTotalJp += $totalJpBulan;
+                // 3. Simpan Hasil Tiap Kelas ke Array Utama
+                $allAnalysisData[] = [
+                    'rombel_name' => $rombel['rombel_name'],
+                    'hari_mengajar' => !empty($hariMengajar) ? implode(', ', array_keys($hariMengajar)) : '-',
+                    'analysisData' => $analysisData,
+                    'grandTotalJp' => $grandTotalJp
+                ];
             }
         }
 
@@ -210,13 +218,9 @@ class AnalysisController extends BaseController
             'tahunAktif' => $tahunAktif,
             'teachers' => $teachers,
             'selectedTeacherId' => $selectedTeacherId,
-            'rombelOptions' => $rombelOptions,
-            'selectedRombelId' => $selectedRombelId,
             'subjectOptions' => $subjectOptions,
             'selectedSubjectId' => $selectedSubjectId,
-            'analysisData' => $analysisData,
-            'grandTotalJp' => $grandTotalJp,
-            'hariMengajarText' => !empty($hariMengajar) ? implode(', ', array_keys($hariMengajar)) : '-'
+            'allAnalysisData' => $allAnalysisData 
         ];
 
         return view('admin/schedule/heb_analysis', $data);
