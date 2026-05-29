@@ -129,6 +129,14 @@ class ScheduleController extends BaseController
             }
         }
 
+        // Ambil semua versi dari seluruh semester untuk fitur Copy Lintas Semester
+        $allVersions = $db->table('schedule_versions sv')
+                          ->select('sv.*, ay.academic_year, ay.semester')
+                          ->join('academic_years ay', 'ay.id = sv.academic_year_id')
+                          ->orderBy('ay.id', 'DESC')
+                          ->orderBy('sv.id', 'ASC')
+                          ->get()->getResultArray();
+
         $data = [
             'title'                => 'Manajemen Jadwal - SiKuMi',
             'daftarTahun'          => $daftarTahun,
@@ -146,13 +154,15 @@ class ScheduleController extends BaseController
             'assignedTeachers'     => $assignedTeachers,
             'combinedSubjects'     => $combinedSubjects,
             'combinedChildIds'     => $combinedChildIds,
-            // Variabel Khusus Tab 1
+            // Variabel Khusus Tab 1 Matriks
             'classSchedules'       => $classSchedules,
             'usedJpNormal'         => $usedJpNormal,
             'usedJpCombined'       => $usedJpCombined,
             'slotGrid'             => $slotGrid,
             'maxSlot'              => $maxSlot,
-            'matrixDays'           => $matrixDays
+            'matrixDays'           => $matrixDays,
+            // Variabel Khusus Copy Lintas Semester (Ini yang terlewat!)
+            'allVersions'          => $allVersions 
         ];
 
         return view('admin/schedule/index', $data);
@@ -553,6 +563,114 @@ class ScheduleController extends BaseController
         }
         
         return redirect()->to(base_url("admin/schedule?tab=matriks&ta=$ta&v=$v"))->with('sukses', '🗑️ Kegiatan Umum berhasil dihapus!');
+    }
+
+    // ==========================================
+    // FUNGSI HAPUS & COPY VERSI (LINTAS SEMESTER)
+    // ==========================================
+    public function deleteVersion($id)
+    {
+        $db = \Config\Database::connect();
+        $ta = $this->request->getGet('ta');
+
+        $db->transStart();
+        $db->table('class_schedules')->where('version_id', $id)->delete();
+        $db->table('schedule_jp_targets')->where('version_id', $id)->delete();
+        $db->table('schedule_time_slots')->where('version_id', $id)->delete();
+        $db->table('schedule_versions')->where('id', $id)->delete();
+        $db->transComplete();
+
+        if ($db->transStatus() === false) return redirect()->back()->with('error', 'Gagal menghapus versi jadwal.');
+        return redirect()->to(base_url("admin/schedule?ta=$ta"))->with('sukses', '🗑️ Versi jadwal beserta seluruh isinya berhasil dihapus permanen.');
+    }
+
+    public function copyVersion()
+    {
+        $db = \Config\Database::connect();
+        $sourceVersionId = $this->request->getPost('source_version_id');
+        $targetTaId = $this->request->getPost('target_ta_id'); 
+        $newVersionName = $this->request->getPost('new_version_name');
+        $newScheduleTitle = $this->request->getPost('new_schedule_title');
+
+        if (empty($sourceVersionId) || empty($targetTaId) || empty($newVersionName)) {
+            return redirect()->back()->with('error', 'Data tidak lengkap untuk melakukan copy.');
+        }
+
+        $sourceVersion = $db->table('schedule_versions')->where('id', $sourceVersionId)->get()->getRowArray();
+        if (!$sourceVersion) return redirect()->back()->with('error', 'Versi sumber tidak ditemukan.');
+
+        $sourceTaId = $sourceVersion['academic_year_id'];
+        $db->transStart();
+
+        // 1. Buat Versi Baru di Semester Target
+        $db->table('schedule_versions')->insert([ 'academic_year_id' => $targetTaId, 'version_name' => $newVersionName, 'schedule_title' => $newScheduleTitle, 'is_active' => 1 ]);
+        $newVersionId = $db->insertID();
+
+        // 2. Duplikasi Slot Waktu (Jam Ke-)
+        $timeSlots = $db->table('schedule_time_slots')->where('version_id', $sourceVersionId)->get()->getResultArray();
+        $slotMapping = []; // Menyimpan ID Slot Lama => ID Slot Baru
+        foreach ($timeSlots as $ts) {
+            $db->table('schedule_time_slots')->insert([ 'version_id' => $newVersionId, 'day_name' => $ts['day_name'], 'slot_number' => $ts['slot_number'], 'slot_label' => $ts['slot_label'], 'start_time' => $ts['start_time'], 'end_time' => $ts['end_time'] ]);
+            $slotMapping[$ts['id']] = $db->insertID();
+        }
+
+        // --- MAPPING PINTAR LINTAS SEMESTER (ROMBEL & MAPEL GABUNGAN) ---
+        $rombelMapping = [];
+        $combMapping = [];
+        
+        if ($sourceTaId != $targetTaId) {
+            // Pencocokan Rombel (Berdasarkan Nama)
+            $oldRombels = $db->table('class_rombel')->where('academic_year_id', $sourceTaId)->get()->getResultArray();
+            $newRombels = $db->table('class_rombel')->where('academic_year_id', $targetTaId)->get()->getResultArray();
+            foreach ($oldRombels as $old) { foreach ($newRombels as $new) { if ($old['rombel_name'] == $new['rombel_name']) { $rombelMapping[$old['id']] = $new['id']; break; } } }
+
+            // Pencocokan Mapel Gabungan
+            if ($db->tableExists('schedule_combined_subjects')) {
+                $oldCombs = $db->table('schedule_combined_subjects')->where('academic_year_id', $sourceTaId)->get()->getResultArray();
+                $newCombs = $db->table('schedule_combined_subjects')->where('academic_year_id', $targetTaId)->get()->getResultArray();
+                foreach ($oldCombs as $old) {
+                    $found = false;
+                    foreach ($newCombs as $new) { if (strtolower($old['combined_name']) == strtolower($new['combined_name'])) { $combMapping[$old['id']] = $new['id']; $found = true; break; } }
+                    if (!$found) {
+                        $db->table('schedule_combined_subjects')->insert(['academic_year_id' => $targetTaId, 'combined_name' => $old['combined_name']]);
+                        $newCombId = $db->insertID();
+                        $combMapping[$old['id']] = $newCombId;
+                        $details = $db->table('schedule_combined_details')->where('combined_subject_id', $old['id'])->get()->getResultArray();
+                        $newDetails = []; foreach ($details as $d) { $newDetails[] = ['combined_subject_id' => $newCombId, 'master_subject_id' => $d['master_subject_id']]; }
+                        if(!empty($newDetails)) $db->table('schedule_combined_details')->insertBatch($newDetails);
+                    }
+                }
+            }
+        } else {
+            // Jika Semester Sama, ID tetap
+            $oldRombels = $db->table('class_rombel')->where('academic_year_id', $sourceTaId)->get()->getResultArray(); foreach ($oldRombels as $old) { $rombelMapping[$old['id']] = $old['id']; }
+            if ($db->tableExists('schedule_combined_subjects')) { $oldCombs = $db->table('schedule_combined_subjects')->where('academic_year_id', $sourceTaId)->get()->getResultArray(); foreach ($oldCombs as $old) { $combMapping[$old['id']] = $old['id']; } }
+        }
+
+        // 3. Duplikasi Plotting Beban JP Target
+        $targets = $db->table('schedule_jp_targets')->where('version_id', $sourceVersionId)->get()->getResultArray();
+        $newTargets = [];
+        foreach ($targets as $t) {
+            if (!isset($rombelMapping[$t['rombel_id']])) continue;
+            $newCombId = !empty($t['combined_subject_id']) && isset($combMapping[$t['combined_subject_id']]) ? $combMapping[$t['combined_subject_id']] : null;
+            $newTargets[] = [ 'academic_year_id' => $targetTaId, 'version_id' => $newVersionId, 'rombel_id' => $rombelMapping[$t['rombel_id']], 'subject_id' => $t['subject_id'], 'combined_subject_id' => $newCombId, 'teacher_id' => $t['teacher_id'], 'target_jp' => $t['target_jp'] ];
+        }
+        if (!empty($newTargets)) $db->table('schedule_jp_targets')->insertBatch($newTargets);
+
+        // 4. Duplikasi Papan Catur Matriks
+        $schedules = $db->table('class_schedules')->where('version_id', $sourceVersionId)->get()->getResultArray();
+        $newSchedules = [];
+        foreach ($schedules as $sch) {
+            if (!isset($rombelMapping[$sch['rombel_id']]) || !isset($slotMapping[$sch['slot_id']])) continue;
+            $newCombId = !empty($sch['combined_subject_id']) && isset($combMapping[$sch['combined_subject_id']]) ? $combMapping[$sch['combined_subject_id']] : null;
+            $newSchedules[] = [ 'academic_year_id' => $targetTaId, 'version_id' => $newVersionId, 'rombel_id' => $rombelMapping[$sch['rombel_id']], 'day_name' => $sch['day_name'], 'slot_id' => $slotMapping[$sch['slot_id']], 'subject_id' => $sch['subject_id'], 'combined_subject_id' => $newCombId, 'teacher_id' => $sch['teacher_id'], 'activity_id' => $sch['activity_id'] ];
+        }
+        if (!empty($newSchedules)) $db->table('class_schedules')->insertBatch($newSchedules);
+
+        $db->transComplete();
+
+        if ($db->transStatus() === false) return redirect()->back()->with('error', 'Gagal menyalin jadwal.');
+        return redirect()->to(base_url("admin/schedule?ta=$targetTaId&v=$newVersionId"))->with('sukses', '♻️ Ajaib! Seluruh Waktu, Plotting, dan Matriks Kelas berhasil di-copy ke semester/versi ini.');
     }
 
 }

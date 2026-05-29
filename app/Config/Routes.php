@@ -127,6 +127,9 @@ $routes->group('admin', static function ($routes) {
     $routes->post('schedule/save-activity', '\App\Controllers\ScheduleController::saveActivity');
     $routes->post('schedule/update-activity', '\App\Controllers\ScheduleController::updateActivity');
     $routes->get('schedule/delete-activity/(:num)', '\App\Controllers\ScheduleController::deleteActivity/$1');
+
+    $routes->get('schedule/delete-version/(:num)', '\App\Controllers\ScheduleController::deleteVersion/$1');
+    $routes->post('schedule/copy-version', '\App\Controllers\ScheduleController::copyVersion');
 });
 
 $routes->group('guru', static function ($routes) {

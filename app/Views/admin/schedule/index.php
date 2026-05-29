@@ -80,18 +80,19 @@
                                 </select>
 
                                 <span class="small font-weight-bold text-muted ms-2">Versi Jadwal:</span>
+                                <span class="small font-weight-bold text-muted ms-2">Versi Jadwal:</span>
                                 <select name="v" id="selectVersion" class="form-select form-select-sm border-0 font-weight-bold bg-light text-primary" style="width: auto; min-width:250px;">
-                                    <?php if(empty($versions)): ?>
-                                        <option value="" disabled selected>Belum Ada Versi</option>
-                                    <?php endif; ?>
+                                    <?php if(empty($versions)): ?><option value="" disabled selected>Belum Ada Versi</option><?php endif; ?>
                                     <?php foreach ($versions as $ver) : ?>
-                                        <?php $judul = !empty($ver['schedule_title']) ? ' - ' . esc($ver['schedule_title']) : ''; ?>
-                                        <option value="<?= $ver['id'] ?>" <?= ($verId == $ver['id']) ? 'selected' : '' ?>>
-                                            📄 <?= esc($ver['version_name']) ?><?= $judul ?>
-                                        </option>
+                                        <option value="<?= $ver['id'] ?>" <?= ($verId == $ver['id']) ? 'selected' : '' ?>>📄 <?= esc($ver['version_name']) ?><?= !empty($ver['schedule_title']) ? ' - ' . esc($ver['schedule_title']) : '' ?></option>
                                     <?php endforeach; ?>
                                     <option value="NEW" class="fw-bold text-success">➕ Buat Versi Baru...</option>
                                 </select>
+                                
+                                <?php if(!empty($activeVersion)): ?>
+                                    <a href="<?= base_url('admin/schedule/delete-version/'.$activeVersion['id'].'?ta='.$taId) ?>" class="btn btn-sm btn-outline-danger shadow-sm ms-1 px-2" onclick="return confirm('⚠️ YAKIN HAPUS PERMANEN? Seluruh struktur matriks, waktu, dan plotting versi ini akan hilang selamanya!')" title="Hapus Versi Jadwal">🗑️</a>
+                                <?php endif; ?>
+                                <button type="button" class="btn btn-sm btn-info text-white shadow-sm font-weight-bold ms-1" data-bs-toggle="modal" data-bs-target="#modalCopyVersion" title="Salin Jadwal Lintas Semester">♻️ Copy</button>
                             </form>
                         </div>
                         
@@ -587,6 +588,53 @@
         </div>
     </div>
     <?php endif; ?>
+
+    <div class="modal fade" id="modalCopyVersion" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="<?= base_url('admin/schedule/copy-version') ?>" method="POST">
+                    <?= csrf_field() ?>
+                    <input type="hidden" name="target_ta_id" value="<?= $taId ?>">
+                    
+                    <div class="modal-header bg-info text-white py-2">
+                        <h6 class="modal-title font-weight-bold">♻️ Salin Jadwal (Lintas Semester)</h6>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body bg-light">
+                        <div class="alert alert-warning p-2 small mb-3 border-0 shadow-sm">
+                            <i class="bi bi-info-circle-fill"></i> Sistem akan menduplikasi <strong>Slot Waktu, Beban Target JP, dan Formasi Matriks</strong> secara utuh. Jika menyalin beda semester, nama rombel akan dicocokkan secara otomatis!
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label font-weight-bold small text-muted">Pilih Jadwal Sumber (Yang mau disalin):</label>
+                            <select name="source_version_id" class="form-select form-select-sm font-weight-bold border-info shadow-sm" required>
+                                <option value="">-- Pilih Jadwal Sumber --</option>
+                                <?php foreach($allVersions ?? [] as $ver): ?>
+                                    <option value="<?= $ver['id'] ?>">SMT <?= $ver['semester'] ?> (<?= $ver['academic_year'] ?>) - <?= esc($ver['version_name']) ?> <?= !empty($ver['schedule_title']) ? '('.esc($ver['schedule_title']).')' : '' ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-2">
+                            <label class="form-label font-weight-bold small text-success">Nama Kode Versi Baru:</label>
+                            <input type="text" name="new_version_name" class="form-control form-control-sm border-success fw-bold shadow-sm" placeholder="Contoh: V2 atau Copy V1" required>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label font-weight-bold small text-success">Judul Jadwal Baru:</label>
+                            <input type="text" name="new_schedule_title" class="form-control form-control-sm border-success fw-bold shadow-sm" placeholder="Contoh: Jadwal Normal Genap" required>
+                        </div>
+                        
+                        <div class="text-muted mt-3" style="font-size: 11px; line-height: 1.2;">
+                            *Jadwal baru akan diterbitkan di Tahun Ajaran / Semester yang sedang Anda buka saat ini (Target: <strong>Semester aktif di layar</strong>).
+                        </div>
+                    </div>
+                    <div class="modal-footer py-1">
+                        <button type="submit" class="btn btn-info btn-sm w-100 font-weight-bold text-white shadow-sm">♻️ Eksekusi Salin Master Jadwal</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
 
     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
     <script>
