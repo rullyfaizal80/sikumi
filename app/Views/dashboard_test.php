@@ -300,6 +300,17 @@
             // Perintahkan browser untuk memperbarui fungsi waktu setiap 1000 milidetik (1 detik)
             setInterval(perbaruiWaktu, 1000);
         });
+
+       
+    document.addEventListener("DOMContentLoaded", function() {
+        // Mencari otomatis link menu yang mengarah ke guru/schedule
+        let scheduleLink = document.querySelector('a[href*="guru/schedule"]');
+        
+        // Jika linknya ketemu, paksa buka di tab baru
+        if(scheduleLink) {
+            scheduleLink.setAttribute('target', '_blank');
+        }
+    });
     </script>
 </body>
 </html>

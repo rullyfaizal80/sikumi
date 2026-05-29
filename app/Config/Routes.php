@@ -138,7 +138,8 @@ $routes->group('admin', static function ($routes) {
 });
 
 $routes->group('guru', static function ($routes) {
-    // Rute Kaldik Read-Only untuk Guru
     $routes->get('kaldik', '\App\Controllers\KaldikController::guruIndex');
     $routes->get('kaldik/print', '\App\Controllers\KaldikController::guruPrint');
+
+    $routes->get('schedule', '\App\Controllers\ScheduleController::guruView');
 });

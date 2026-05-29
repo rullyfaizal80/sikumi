@@ -925,4 +925,85 @@ class ScheduleController extends BaseController
         ]);
     }
 
+    // ==========================================
+    // KHUSUS AKSES GURU & SISWA (READ-ONLY)
+    // ==========================================
+    public function guruView()
+    {
+        $db = \Config\Database::connect();
+
+        // 1. Cari Tahun Ajaran Aktif (Tahun yang sedang berjalan)
+        $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+        if (!$tahunAktif) {
+            return "<h2>Mohon Maaf, belum ada Tahun Ajaran yang diaktifkan oleh Admin.</h2>";
+        }
+
+        // 2. Cari Jadwal yang berstatus "AKTIF" di semester tersebut
+        $activeVersion = $db->table('schedule_versions')
+                            ->where('academic_year_id', $tahunAktif['id'])
+                            ->where('is_active', 1)
+                            ->get()->getRowArray();
+
+        if (!$activeVersion) {
+            return "<div style='text-align:center; padding: 50px; font-family:sans-serif;'>
+                        <h2 style='color: #d84315;'>Jadwal Belum Tersedia</h2>
+                        <p>Jadwal pelajaran untuk semester ini belum dipublikasikan oleh Bagian Kurikulum.</p>
+                    </div>";
+        }
+
+        // 3. Tarik Master Data (Sama persis seperti Print)
+        $rombels = $db->table('class_rombel')->where('academic_year_id', $tahunAktif['id'])->orderBy('master_class_id', 'ASC')->orderBy('rombel_name', 'ASC')->get()->getResultArray();
+        $timeSlots = $db->table('schedule_time_slots')->where('version_id', $activeVersion['id'])->orderBy('day_name', 'ASC')->orderBy('slot_number', 'ASC')->get()->getResultArray();
+        $kegiatan = $db->table('master_activities')->get()->getResultArray();
+        $subjects = $db->tableExists('master_subjects') ? $db->table('master_subjects')->get()->getResultArray() : $db->table('subjects')->get()->getResultArray();
+        
+        $kegiatanDict = []; foreach($kegiatan as $k) { $kegiatanDict[$k['id']] = $k['activity_name']; }
+        $subjectDict = []; foreach($subjects as $s) { $subjectDict[$s['id']] = $s['subject_name'] ?? $s['nama_mapel']; }
+        
+        $combDict = [];
+        if ($db->tableExists('schedule_combined_subjects')) {
+            $combs = $db->table('schedule_combined_subjects')->where('academic_year_id', $tahunAktif['id'])->get()->getResultArray();
+            foreach($combs as $c) { $combDict[$c['id']] = $c['combined_name']; }
+        }
+
+        // 4. Susun Matriks Jadwal
+        $schedules = $db->table('class_schedules')->where('version_id', $activeVersion['id'])->get()->getResultArray();
+        $classSchedules = [];
+        foreach($schedules as $sch) {
+            $text = '-';
+            $type = 'empty';
+            if (!empty($sch['activity_id'])) {
+                $text = $kegiatanDict[$sch['activity_id']] ?? 'Kegiatan'; $type = 'kegiatan';
+            } elseif (!empty($sch['subject_id'])) {
+                $text = $subjectDict[$sch['subject_id']] ?? 'Mapel'; $type = 'mapel';
+            } elseif (!empty($sch['combined_subject_id'])) {
+                $text = $combDict[$sch['combined_subject_id']] ?? 'Mapel Gabungan'; $type = 'mapel';
+            }
+            $classSchedules[$sch['slot_id']][$sch['rombel_id']] = ['text' => $text, 'type' => $type];
+        }
+
+        $matrixDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+
+        // 5. Tarik TTD dari Database Settings (Persis seperti Kaldik)
+        $namaMadrasah = $db->tableExists('settings') ? $db->table('settings')->where('key', 'nama_madrasah')->get()->getRowArray() : null;
+        $titiMangsa = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_titi_mangsa')->get()->getRowArray() : null;
+        $kepalaSekolah = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_nama')->get()->getRowArray() : null;
+        $npkKepala = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_npk')->get()->getRowArray() : null;
+
+        // 6. LEMPAR KE HALAMAN PRINT
+        return view('admin/schedule/print', [
+            'tahunAktif'     => $tahunAktif,
+            'activeVersion'  => $activeVersion,
+            'rombels'        => $rombels,
+            'timeSlots'      => $timeSlots,
+            'classSchedules' => $classSchedules,
+            'matrixDays'     => $matrixDays,
+            
+            'namaMadrasah'   => $namaMadrasah ? $namaMadrasah['value'] : 'MIMHa Tsanawiyah Informatika',
+            'titiMangsa'     => $titiMangsa ? $titiMangsa['value'] : 'Bandung, ' . date('d F Y'),
+            'kepalaNama'     => $kepalaSekolah ? $kepalaSekolah['value'] : 'Rully Faizal, S.T.',
+            'kepalaNpk'      => $npkKepala ? $npkKepala['value'] : '-'
+        ]);
+    }
+
 }
