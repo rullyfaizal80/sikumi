@@ -22,6 +22,7 @@
         .matriks-select option { background-color: #ffffff !important; color: #000000 !important; }
         .is-clash { background-color: #dc3545 !important; color: #ffffff !important; border-color: #dc3545 !important; }
         .is-overload { background-color: #ffc107 !important; color: #000000 !important; border-color: #ffc107 !important; }
+        .is-preview { background-color: #0dcaf0 !important; color: #000 !important; border-color: #0dcaf0 !important; }
     </style>
 </head>
 <body class="layout-fixed sidebar-expand-lg">
@@ -124,6 +125,9 @@
                                                 <button type="submit" form="formMatriks" id="btnSaveMatriks" class="btn btn-success btn-sm font-weight-bold shadow-sm">
                                                     💾 Simpan Semua Perubahan
                                                 </button>
+                                                <button type="button" class="btn btn-warning btn-sm font-weight-bold shadow-sm text-dark ms-1 me-1" id="btnGenerate" onclick="runSmartGenerator()">
+    🤖 Auto-Generate (Preview)
+</button>
                                             </div>
                                         </div>
 
@@ -811,6 +815,58 @@
                 sel.addEventListener('change', checkClashes);
             });
             checkClashes(); // Panggil saat awal load
+
+            // ==========================================
+            // FUNGSI AUTO-GENERATE (PREVIEW DI LAYAR)
+            // ==========================================
+            window.runSmartGenerator = function() {
+                if (!confirm('Sistem Cerdas akan membaca jadwal Kegiatan Umum yang sudah Anda atur di layar, lalu memetakan sisa Pelajaran ke slot kosong sebagai PREVIEW.\n\nPastikan kegiatan Upacara/Istirahat sudah Anda atur.\n\nLanjutkan?')) return;
+                
+                let btn = document.getElementById('btnGenerate');
+                let originalText = btn.innerHTML;
+                btn.innerHTML = '⏳ Sedang Berpikir...';
+                btn.disabled = true;
+
+                // Ambil data yang ADA DI LAYAR SAAT INI
+                let formData = new FormData(document.getElementById('formMatriks'));
+
+                fetch('<?= base_url('admin/schedule/auto-generate') ?>', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(res => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+
+                    if (res.status === 'success') {
+                        let fillCount = 0;
+                        
+                        // Eksekusi Pemasangan Data ke Layar
+                        res.data.forEach(item => {
+                            let select = document.querySelector(`select[name="matrix[${item.slot_id}][${item.rombel_id}]"]`);
+                            if (select && select.value === '') {
+                                select.value = item.value;
+                                select.classList.add('is-preview', 'fw-bold'); // Warna Biru Muda
+                                fillCount++;
+                            }
+                        });
+
+                        // Panggil detektor bentrok agar mengecek ulang hasil generate
+                        checkClashes();
+
+                        alert(`🤖 Ajaib! Berhasil memetakan ${fillCount} jam pelajaran ke slot kosong.\n\nSilakan tinjau jadwal yang berwarna BIRU MUDA (Preview). Jika sudah sesuai keinginan, jangan lupa klik "Simpan Semua Perubahan". Jika tidak suka, silakan refresh halaman ini.`);
+                    } else {
+                        alert('Terjadi kesalahan saat menyusun jadwal otomatis.');
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                    alert('Gagal menghubungi otak sistem (Server).');
+                });
+            }
     </script>
 </body>
 </html>

@@ -673,4 +673,167 @@ class ScheduleController extends BaseController
         return redirect()->to(base_url("admin/schedule?ta=$targetTaId&v=$newVersionId"))->with('sukses', '♻️ Ajaib! Seluruh Waktu, Plotting, dan Matriks Kelas berhasil di-copy ke semester/versi ini.');
     }
 
+    // ==========================================
+    // FUNGSI AUTO-GENERATE CERDAS (PREVIEW LAYAR)
+    // ==========================================
+    public function autoGenerateMatrix()
+    {
+        $ta = $this->request->getPost('ta');
+        $v = $this->request->getPost('v');
+        $matrix = $this->request->getPost('matrix'); // BACA DARI LAYAR SAAT INI (Bukan DB)
+        $db = \Config\Database::connect();
+
+        $slots = $db->table('schedule_time_slots')->where('version_id', $v)->orderBy('slot_number', 'ASC')->get()->getResultArray();
+        $slotsByDay = []; 
+        foreach ($slots as $s) { $slotsByDay[$s['day_name']][] = $s; }
+
+        $teacherSlots = []; $rombelSlots = []; $teacherDaily = []; $rombelDailySubject = [];
+        $usedJpDict = [];
+
+        // 1. PETAKAN JADWAL YANG SEDANG ADA DI LAYAR (Termasuk Kegiatan Umum yg belum disave)
+        if (!empty($matrix)) {
+            foreach ($matrix as $slotId => $rombelsData) {
+                foreach ($rombelsData as $rombelId => $val) {
+                    if (empty($val)) continue;
+                    
+                    $dayName = '';
+                    foreach($slots as $s) { if($s['id'] == $slotId) { $dayName = $s['day_name']; break; } }
+                    
+                    // Kunci slot ini agar tidak diisi mapel lain
+                    $rombelSlots[$slotId][$rombelId] = true;
+
+                    if (strpos($val, 'SUB_') === 0 || strpos($val, 'COM_') === 0) {
+                        $parts = explode('_', $val);
+                        $type = $parts[0]; $subjectId = $parts[1]; $teacherId = $parts[2] ?? null;
+                        
+                        $key = $type . '_' . $subjectId;
+                        $usedJpDict[$rombelId][$key] = ($usedJpDict[$rombelId][$key] ?? 0) + 1;
+                        $rombelDailySubject[$dayName][$rombelId][$key] = true;
+                        
+                        if (!empty($teacherId)) {
+                            $teacherSlots[$slotId][$teacherId] = $rombelId;
+                            $teacherDaily[$dayName][$teacherId] = ($teacherDaily[$dayName][$teacherId] ?? 0) + 1;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. HITUNG SISA TARGET JP YANG BELUM MASUK KE LAYAR
+        $targets = $db->table('schedule_jp_targets')->where('version_id', $v)->get()->getResultArray();
+        $remainingTargets = [];
+        foreach ($targets as $t) {
+            $key = !empty($t['subject_id']) ? 'SUB_' . $t['subject_id'] : 'COM_' . $t['combined_subject_id'];
+            $used = $usedJpDict[$t['rombel_id']][$key] ?? 0;
+            $sisa = $t['target_jp'] - $used;
+            if ($sisa > 0) {
+                $remainingTargets[] = [
+                    'rombel_id' => $t['rombel_id'], 'type' => !empty($t['subject_id']) ? 'SUB' : 'COM',
+                    'subject_id' => !empty($t['subject_id']) ? $t['subject_id'] : $t['combined_subject_id'],
+                    'teacher_id' => $t['teacher_id'], 'sisa' => $sisa
+                ];
+            }
+        }
+
+        // Urutkan mapel dengan sisa JP terbesar agar diproses duluan
+        usort($remainingTargets, function($a, $b) { return $b['sisa'] <=> $a['sisa']; });
+
+        $generatedData = [];
+
+        // 3. EKSEKUSI PENCARIAN SLOT KOSONG
+        foreach ($remainingTargets as $rt) {
+            $sisa = $rt['sisa'];
+            $blocks = [];
+            
+            if ($sisa == 4) $blocks = [2, 2];
+            elseif ($sisa == 3) $blocks = [3];
+            elseif ($sisa == 5) $blocks = [3, 2];
+            elseif ($sisa == 6) $blocks = [2, 2, 2];
+            else {
+                while ($sisa >= 3) { $blocks[] = 3; $sisa -= 3; }
+                if ($sisa == 2) { $blocks[] = 2; $sisa -= 2; }
+                if ($sisa == 1) { $blocks[] = 1; $sisa -= 1; }
+            }
+
+            foreach ($blocks as $blockSize) {
+                $this->placeBlock($blockSize, $rt['subject_id'], $rt['teacher_id'], $rt['rombel_id'], $rt['type'], 
+                                  $teacherSlots, $rombelSlots, $teacherDaily, $rombelDailySubject, $slotsByDay, $generatedData);
+            }
+        }
+
+        // 4. KEMBALIKAN DATA KE LAYAR SEBAGAI JSON (TIDAK MASUK DATABASE!)
+        return $this->response->setJSON(['status' => 'success', 'data' => $generatedData]);
+    }
+
+    private function placeBlock($blockSize, $subjectId, $teacherId, $rombelId, $type, &$teacherSlots, &$rombelSlots, &$teacherDaily, &$rombelDailySubject, $slotsByDay, &$generatedData) 
+    {
+        $primaryDays = ['Senin', 'Selasa', 'Rabu', 'Kamis']; 
+        $allDays = array_keys($slotsByDay);
+
+        $placed = $this->findAndBookSlot($primaryDays, $blockSize, $subjectId, $teacherId, $rombelId, $type, $teacherSlots, $rombelSlots, $teacherDaily, $rombelDailySubject, $slotsByDay, $generatedData, true);
+        if (!$placed) $placed = $this->findAndBookSlot($allDays, $blockSize, $subjectId, $teacherId, $rombelId, $type, $teacherSlots, $rombelSlots, $teacherDaily, $rombelDailySubject, $slotsByDay, $generatedData, true);
+        if (!$placed) $placed = $this->findAndBookSlot($allDays, $blockSize, $subjectId, $teacherId, $rombelId, $type, $teacherSlots, $rombelSlots, $teacherDaily, $rombelDailySubject, $slotsByDay, $generatedData, false);
+        
+        // Pecah paksa jika slot penuh
+        if (!$placed && $blockSize > 1) {
+            $this->placeBlock($blockSize - 1, $subjectId, $teacherId, $rombelId, $type, $teacherSlots, $rombelSlots, $teacherDaily, $rombelDailySubject, $slotsByDay, $generatedData);
+            $this->placeBlock(1, $subjectId, $teacherId, $rombelId, $type, $teacherSlots, $rombelSlots, $teacherDaily, $rombelDailySubject, $slotsByDay, $generatedData);
+            return true; 
+        }
+        return $placed;
+    }
+
+    private function findAndBookSlot($days, $blockSize, $subjectId, $teacherId, $rombelId, $type, &$teacherSlots, &$rombelSlots, &$teacherDaily, &$rombelDailySubject, $slotsByDay, &$generatedData, $strictDifferentDay)
+    {
+        $bestDay = null; $bestStartIndex = -1; $minTeacherLoad = 999;
+        $subjectKey = $type . '_' . $subjectId;
+
+        foreach ($days as $day) {
+            if (!isset($slotsByDay[$day])) continue;
+            if ($strictDifferentDay && isset($rombelDailySubject[$day][$rombelId][$subjectKey])) continue;
+
+            $daySlots = $slotsByDay[$day];
+            $teacherLoad = $teacherDaily[$day][$teacherId] ?? 0;
+            
+            for ($i = 0; $i <= count($daySlots) - $blockSize; $i++) {
+                $canFit = true;
+                for ($j = 0; $j < $blockSize; $j++) {
+                    $s = $daySlots[$i + $j];
+                    if (isset($rombelSlots[$s['id']][$rombelId])) { $canFit = false; break; }
+                    if (!empty($teacherId) && isset($teacherSlots[$s['id']][$teacherId])) { $canFit = false; break; }
+                }
+
+                if ($canFit && $teacherLoad < $minTeacherLoad) {
+                    $minTeacherLoad = $teacherLoad;
+                    $bestDay = $day;
+                    $bestStartIndex = $i;
+                }
+            }
+        }
+
+        if ($bestDay !== null) {
+            $daySlots = $slotsByDay[$bestDay];
+            $val = $type . '_' . $subjectId . '_' . $teacherId;
+
+            for ($j = 0; $j < $blockSize; $j++) {
+                $s = $daySlots[$bestStartIndex + $j];
+                
+                $rombelSlots[$s['id']][$rombelId] = true;
+                if (!empty($teacherId)) {
+                    $teacherSlots[$s['id']][$teacherId] = $rombelId;
+                    $teacherDaily[$bestDay][$teacherId] = ($teacherDaily[$bestDay][$teacherId] ?? 0) + 1;
+                }
+                $rombelDailySubject[$bestDay][$rombelId][$subjectKey] = true;
+                
+                $generatedData[] = [
+                    'slot_id' => $s['id'],
+                    'rombel_id' => $rombelId,
+                    'value' => $val
+                ];
+            }
+            return true;
+        }
+        return false;
+    }
+
 }

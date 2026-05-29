@@ -130,6 +130,8 @@ $routes->group('admin', static function ($routes) {
 
     $routes->get('schedule/delete-version/(:num)', '\App\Controllers\ScheduleController::deleteVersion/$1');
     $routes->post('schedule/copy-version', '\App\Controllers\ScheduleController::copyVersion');
+
+    $routes->post('schedule/auto-generate', '\App\Controllers\ScheduleController::autoGenerateMatrix');
 });
 
 $routes->group('guru', static function ($routes) {
