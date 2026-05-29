@@ -125,7 +125,7 @@
                                                 <button type="submit" form="formMatriks" id="btnSaveMatriks" class="btn btn-success btn-sm font-weight-bold shadow-sm">
                                                     💾 Simpan Semua Perubahan
                                                 </button>
-                                                <button type="button" class="btn btn-warning btn-sm font-weight-bold shadow-sm text-dark ms-1 me-1" id="btnGenerate" onclick="runSmartGenerator()">
+                                                <button type="button" class="btn btn-warning btn-sm font-weight-bold shadow-sm text-dark ms-1 me-1" id="btnGenerate" data-url="<?= base_url('admin/schedule/auto-generate') ?>" onclick="runSmartGenerator(this)">
     🤖 Auto-Generate (Preview)
 </button>
                                             </div>
@@ -819,20 +819,21 @@
             // ==========================================
             // FUNGSI AUTO-GENERATE (PREVIEW DI LAYAR)
             // ==========================================
-            window.runSmartGenerator = function() {
+            window.runSmartGenerator = function(btn) {
                 if (!confirm('Sistem Cerdas akan membaca jadwal Kegiatan Umum yang sudah Anda atur di layar, lalu memetakan sisa Pelajaran ke slot kosong sebagai PREVIEW.\n\nPastikan kegiatan Upacara/Istirahat sudah Anda atur.\n\nLanjutkan?')) return;
                 
-                let btn = document.getElementById('btnGenerate');
                 let originalText = btn.innerHTML;
+                let url = btn.getAttribute('data-url'); // Mengambil URL (Bebas dari Error VS Code)
                 btn.innerHTML = '⏳ Sedang Berpikir...';
                 btn.disabled = true;
 
-                // Ambil data yang ADA DI LAYAR SAAT INI
-                let formData = new FormData(document.getElementById('formMatriks'));
+                let form = document.getElementById('formMatriks');
+                let formData = new FormData(form);
 
-                fetch('<?= base_url('admin/schedule/auto-generate') ?>', {
+                fetch(url, {
                     method: 'POST',
-                    body: formData
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
                 })
                 .then(response => response.json())
                 .then(res => {
@@ -840,31 +841,44 @@
                     btn.disabled = false;
 
                     if (res.status === 'success') {
+                        // Perbarui token keamanan (CSRF) agar form tidak error jika disave
+                        let csrfField = form.querySelector('input[type="hidden"][name*="csrf"]');
+                        if (csrfField && res.csrf) {
+                            csrfField.value = res.csrf;
+                        }
+
                         let fillCount = 0;
                         
                         // Eksekusi Pemasangan Data ke Layar
                         res.data.forEach(item => {
-                            let select = document.querySelector(`select[name="matrix[${item.slot_id}][${item.rombel_id}]"]`);
+                            let select = form.querySelector(`select[name="matrix[${item.slot_id}][${item.rombel_id}]"]`);
                             if (select && select.value === '') {
-                                select.value = item.value;
-                                select.classList.add('is-preview', 'fw-bold'); // Warna Biru Muda
-                                fillCount++;
+                                // Pastikan opsi benar-benar ada di dropdown
+                                let optionExists = Array.from(select.options).some(opt => opt.value === item.value);
+                                if (optionExists) {
+                                    select.value = item.value;
+                                    select.classList.add('is-preview', 'fw-bold'); 
+                                    fillCount++;
+                                }
                             }
                         });
 
-                        // Panggil detektor bentrok agar mengecek ulang hasil generate
                         checkClashes();
 
-                        alert(`🤖 Ajaib! Berhasil memetakan ${fillCount} jam pelajaran ke slot kosong.\n\nSilakan tinjau jadwal yang berwarna BIRU MUDA (Preview). Jika sudah sesuai keinginan, jangan lupa klik "Simpan Semua Perubahan". Jika tidak suka, silakan refresh halaman ini.`);
+                        if (fillCount > 0) {
+                            alert(`🤖 Ajaib! Berhasil memetakan ${fillCount} jam pelajaran ke slot kosong.\n\nJadwal baru berwarna BIRU MUDA (Preview). Silakan klik "Simpan Semua Perubahan" jika sudah pas!`);
+                        } else {
+                            alert(`🤖 Selesai! Namun tidak ada jam pelajaran yang ditambahkan.\n\nKemungkinan penyebab:\n1. Target JP di Tab Plotting belum diisi.\n2. Jadwal sudah terisi penuh sesuai target JP.\n3. Tidak ada lagi slot kosong yang tersedia.`);
+                        }
                     } else {
-                        alert('Terjadi kesalahan saat menyusun jadwal otomatis.');
+                        alert('Terjadi kesalahan data saat menyusun jadwal otomatis.');
                     }
                 })
                 .catch(err => {
-                    console.error(err);
+                    console.error("Error Detail:", err);
                     btn.innerHTML = originalText;
                     btn.disabled = false;
-                    alert('Gagal menghubungi otak sistem (Server).');
+                    alert('Gagal menghubungi server. Periksa koneksi atau console (F12).');
                 });
             }
     </script>

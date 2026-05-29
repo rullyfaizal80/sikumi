@@ -676,32 +676,31 @@ class ScheduleController extends BaseController
     // ==========================================
     // FUNGSI AUTO-GENERATE CERDAS (PREVIEW LAYAR)
     // ==========================================
+    // ==========================================
+    // FUNGSI AUTO-GENERATE CERDAS (PREVIEW LAYAR)
+    // ==========================================
     public function autoGenerateMatrix()
     {
         $ta = $this->request->getPost('ta');
         $v = $this->request->getPost('v');
-        $matrix = $this->request->getPost('matrix'); // BACA DARI LAYAR SAAT INI (Bukan DB)
+        $matrix = $this->request->getPost('matrix'); // BACA DARI LAYAR
         $db = \Config\Database::connect();
 
         $slots = $db->table('schedule_time_slots')->where('version_id', $v)->orderBy('slot_number', 'ASC')->get()->getResultArray();
-        $slotsByDay = []; 
-        foreach ($slots as $s) { $slotsByDay[$s['day_name']][] = $s; }
+        $slotsByDay = []; foreach ($slots as $s) { $slotsByDay[$s['day_name']][] = $s; }
 
         $teacherSlots = []; $rombelSlots = []; $teacherDaily = []; $rombelDailySubject = [];
         $usedJpDict = [];
 
-        // 1. PETAKAN JADWAL YANG SEDANG ADA DI LAYAR (Termasuk Kegiatan Umum yg belum disave)
+        // 1. Petakan Jadwal Layar (Termasuk Kegiatan Umum)
         if (!empty($matrix)) {
             foreach ($matrix as $slotId => $rombelsData) {
                 foreach ($rombelsData as $rombelId => $val) {
                     if (empty($val)) continue;
-                    
                     $dayName = '';
                     foreach($slots as $s) { if($s['id'] == $slotId) { $dayName = $s['day_name']; break; } }
                     
-                    // Kunci slot ini agar tidak diisi mapel lain
                     $rombelSlots[$slotId][$rombelId] = true;
-
                     if (strpos($val, 'SUB_') === 0 || strpos($val, 'COM_') === 0) {
                         $parts = explode('_', $val);
                         $type = $parts[0]; $subjectId = $parts[1]; $teacherId = $parts[2] ?? null;
@@ -719,7 +718,7 @@ class ScheduleController extends BaseController
             }
         }
 
-        // 2. HITUNG SISA TARGET JP YANG BELUM MASUK KE LAYAR
+        // 2. Hitung Sisa Target JP 
         $targets = $db->table('schedule_jp_targets')->where('version_id', $v)->get()->getResultArray();
         $remainingTargets = [];
         foreach ($targets as $t) {
@@ -735,20 +734,15 @@ class ScheduleController extends BaseController
             }
         }
 
-        // Urutkan mapel dengan sisa JP terbesar agar diproses duluan
         usort($remainingTargets, function($a, $b) { return $b['sisa'] <=> $a['sisa']; });
-
         $generatedData = [];
 
-        // 3. EKSEKUSI PENCARIAN SLOT KOSONG
+        // 3. Cari Slot Kosong
         foreach ($remainingTargets as $rt) {
             $sisa = $rt['sisa'];
             $blocks = [];
-            
-            if ($sisa == 4) $blocks = [2, 2];
-            elseif ($sisa == 3) $blocks = [3];
-            elseif ($sisa == 5) $blocks = [3, 2];
-            elseif ($sisa == 6) $blocks = [2, 2, 2];
+            if ($sisa == 4) $blocks = [2, 2]; elseif ($sisa == 3) $blocks = [3];
+            elseif ($sisa == 5) $blocks = [3, 2]; elseif ($sisa == 6) $blocks = [2, 2, 2];
             else {
                 while ($sisa >= 3) { $blocks[] = 3; $sisa -= 3; }
                 if ($sisa == 2) { $blocks[] = 2; $sisa -= 2; }
@@ -761,8 +755,12 @@ class ScheduleController extends BaseController
             }
         }
 
-        // 4. KEMBALIKAN DATA KE LAYAR SEBAGAI JSON (TIDAK MASUK DATABASE!)
-        return $this->response->setJSON(['status' => 'success', 'data' => $generatedData]);
+        // 4. KEMBALIKAN KE LAYAR + TOKEN CSRF BARU
+        return $this->response->setJSON([
+            'status' => 'success', 
+            'data' => $generatedData,
+            'csrf' => csrf_hash() // Mengirim token keamanan baru
+        ]);
     }
 
     private function placeBlock($blockSize, $subjectId, $teacherId, $rombelId, $type, &$teacherSlots, &$rombelSlots, &$teacherDaily, &$rombelDailySubject, $slotsByDay, &$generatedData) 
