@@ -901,13 +901,27 @@ class ScheduleController extends BaseController
 
         $matrixDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
 
+        // ==============================================================
+        // MENGAMBIL DATA DINAMIS DARI TABEL SETTINGS (SAMA SEPERTI KALDIK)
+        // ==============================================================
+        $namaMadrasah = $db->tableExists('settings') ? $db->table('settings')->where('key', 'nama_madrasah')->get()->getRowArray() : null;
+        $titiMangsa = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_titi_mangsa')->get()->getRowArray() : null;
+        $kepalaSekolah = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_nama')->get()->getRowArray() : null;
+        $npkKepala = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_npk')->get()->getRowArray() : null;
+
         return view('admin/schedule/print', [
-            'tahunAktif' => $tahunAktif,
-            'activeVersion' => $activeVersion,
-            'rombels' => $rombels,
-            'timeSlots' => $timeSlots,
+            'tahunAktif'     => $tahunAktif,
+            'activeVersion'  => $activeVersion,
+            'rombels'        => $rombels,
+            'timeSlots'      => $timeSlots,
             'classSchedules' => $classSchedules,
-            'matrixDays' => $matrixDays
+            'matrixDays'     => $matrixDays,
+            
+            // Variabel Dinamis untuk View
+            'namaMadrasah'   => $namaMadrasah ? $namaMadrasah['value'] : 'MIMHa Tsanawiyah Informatika',
+            'titiMangsa'     => $titiMangsa ? $titiMangsa['value'] : 'Bandung, ' . date('d F Y'),
+            'kepalaNama'     => $kepalaSekolah ? $kepalaSekolah['value'] : 'Rully Faizal, S.T.',
+            'kepalaNpk'      => $npkKepala ? $npkKepala['value'] : '-'
         ]);
     }
 

@@ -278,7 +278,7 @@
             
             <img src="<?= base_url('assets/img/ttd_kamad.png') ?>" alt="TTD Kamad" style="height: 110px; width: auto; object-fit: contain; margin-top: -30px; margin-bottom: -28px; position: relative; z-index: 2; mix-blend-mode: multiply; transform: scale(0.85); left: -30px;">
             
-            <p class="font-weight-bold mb-0 border-bottom border-dark d-inline-block" style="font-weight: 800; text-decoration: underline; position: relative; z-index: 3;"><?= esc($kepalaNama) ?></p>
+            <p class="font-weight-bold mb-0 d-inline-block" style="font-weight: 800; position: relative; z-index: 3;"><?= esc($kepalaNama) ?></p>
             <p class="text-muted small mb-0" style="font-size: 9px; position: relative; z-index: 3;">NPK. <?= esc($kepalaNpk) ?></p>
         </div>
     </div>
