@@ -34,20 +34,26 @@
 </head>
 <body class="bg-body-tertiary">
 
-    <nav class="navbar navbar-expand-lg bg-dark navbar-dark mb-4 shadow-sm no-print">
-        <div class="container-fluid px-4">
-            <a class="navbar-brand font-weight-bold" href="#">
-                <span class="text-primary-mimha fw-bold" style="font-size: 22px;">SmartKurikulum</span> 
-                <span class="text-accent-mimha fw-bold" style="font-size: 22px;">MIMHa</span>
-            </a>
-            <span class="navbar-text text-white badge bg-secondary ms-auto">
-                Modul Analisis HEB (Akses: <?= esc($displayRole) ?>)
-            </span>
-        </div>
-    </nav>
-
+    <nav class="app-header navbar navbar-expand bg-body shadow-sm no-print">
+            <div class="container-fluid">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <h4 class="navbar-text my-0 ps-2" style="color: #FF9F00; font-weight: 700;">
+                            📊 Analisis HEB <span style="color: #FFC107;">SiKuMi</span>
+                        </h4>
+                    </li>
+                </ul>
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item ps-2">
+                        <a href="<?= base_url('/') ?>" class="btn btn-sm btn-outline-secondary font-weight-bold">
+                            🏠 Dashboard
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
     <div class="container-fluid px-4 pb-5">
-        
+        <br>
         <div class="card shadow-sm border-primary-mimha border-2 mb-4 no-print">
             <div class="card-header bg-dark text-white py-3">
                 <h6 class="fw-bold mb-0"><i class="bi bi-funnel-fill text-accent-mimha me-2"></i> Filter Analisis Hari Efektif Belajar</h6>
@@ -166,6 +172,7 @@
         <?php endif; ?>
 
     </div>
-    <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
+     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
+    <script src="<?= base_url('assets/js/adminlte.min.js') ?>"></script>
 </body>
 </html>

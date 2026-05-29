@@ -11,41 +11,35 @@ class AnalysisController extends BaseController
         $db = \Config\Database::connect();
         
         // =====================================================================
-        // 🚦 1. DETEKSI HAK AKSES CERDAS (Berdasarkan URL)
-        // Jika URL yang diakses adalah /guru/analisis-heb, maka mutlak sebagai GURU.
-        // Jika URL adalah /admin/analisis-heb, maka mutlak sebagai ADMIN.
+        // 🚦 1. DETEKSI HAK AKSES CERDAS
         // =====================================================================
         $uri = $this->request->getUri();
         $segment = $uri->getSegment(1); 
         $isGuru = (strtolower($segment) === 'guru');
         $displayRole = $isGuru ? 'GURU' : 'ADMIN/WAKA';
 
-        // Deteksi ID Akun yang sedang login (Support Shield / MythAuth)
         $userId = null;
         if (function_exists('user_id')) { $userId = user_id(); }
         elseif (session()->has('user_id')) { $userId = session()->get('user_id'); }
         elseif (session()->has('id')) { $userId = session()->get('id'); }
 
         // =====================================================================
-        // 🕵️‍♂️ 2. AUTO-DETEKSI TABEL & KOLOM DATABASE (Anti-Error)
+        // 🕵️‍♂️ 2. AUTO-DETEKSI TABEL & KOLOM DATABASE
         // =====================================================================
         $csFields = $db->getFieldNames('class_schedules');
         $kolomIdGuruDiJadwal = in_array('teacher_id', $csFields) ? 'teacher_id' : (in_array('guru_id', $csFields) ? 'guru_id' : 'user_id');
         $kolomSubjectId = in_array('subject_id', $csFields) ? 'subject_id' : 'mapel_id';
 
-        // Mencari Tabel Guru
-        $tabelGuru = 'users'; // Default jika tabel spesifik tidak ada
+        $tabelGuru = 'users'; 
         if ($db->tableExists('master_teachers')) $tabelGuru = 'master_teachers';
         elseif ($db->tableExists('guru')) $tabelGuru = 'guru';
         
-        // Mencari Kolom Nama Guru
         $guruFields = $db->getFieldNames($tabelGuru);
         $kolomNamaGuru = 'username';
         foreach (['nama_guru', 'nama', 'fullname', 'name', 'nama_lengkap'] as $f) {
             if (in_array($f, $guruFields)) { $kolomNamaGuru = $f; break; }
         }
 
-        // Mencari Tabel Mapel
         $tabelMapel = 'master_subjects';
         if (!$db->tableExists($tabelMapel)) {
             $tabelMapel = $db->tableExists('subjects') ? 'subjects' : 'mata_pelajaran';
@@ -65,7 +59,6 @@ class AnalysisController extends BaseController
         $jadwalAktif = $db->table('schedule_versions')->where('academic_year_id', $tahunAktif['id'])->where('is_active', 1)->get()->getRowArray();
         if (!$jadwalAktif) return redirect()->back()->with('error', 'Belum ada Jadwal Pelajaran yang diaktifkan.');
 
-        // Tarik Guru HANYA yang ada di jadwal aktif (Menghindari Dropdown Kosong)
         $teachers = [];
         $rawTeachers = $db->table('class_schedules cs')
                           ->select("cs.{$kolomIdGuruDiJadwal} as id, g.{$kolomNamaGuru} as nama_guru")
@@ -83,47 +76,48 @@ class AnalysisController extends BaseController
         }
 
         $selectedTeacherId = $this->request->getGet('teacher_id');
-        
-        // Paksa ID ke User yang Login jika ia mengakses menu Guru
-        if ($isGuru) {
-            $selectedTeacherId = $userId; 
-        } elseif (empty($selectedTeacherId) && !empty($teachers)) {
-            $selectedTeacherId = $teachers[0]['id']; 
-        }
+        if ($isGuru) { $selectedTeacherId = $userId; } 
+        elseif (empty($selectedTeacherId) && !empty($teachers)) { $selectedTeacherId = $teachers[0]['id']; }
 
         $rombelOptions = []; 
         $subjectOptions = [];
         $selectedRombelId = $this->request->getGet('rombel_id');
         $selectedSubjectId = $this->request->getGet('subject_id');
 
-       if ($selectedTeacherId) {
-    // Kita tarik data dari class_schedules, namun kita pastikan mengambil mapel yang unik 
-    // agar mapel yang digabung/memiliki referensi yang sama tetap terbaca sebagai satu kesatuan
-    $teacherTargets = $db->table('class_schedules cs')
-                         ->select("cs.rombel_id, cs.{$kolomSubjectId}, s.{$kolomNamaMapel} as subject_name, r.rombel_name, r.master_class_id")
-                         ->join('class_rombel r', 'r.id = cs.rombel_id')
-                         ->join("{$tabelMapel} s", "s.id = cs.{$kolomSubjectId}", 'left')
-                         ->where('cs.version_id', $jadwalAktif['id'])
-                         ->where("cs.{$kolomIdGuruDiJadwal}", $selectedTeacherId)
-                         ->where("cs.{$kolomSubjectId} IS NOT NULL")
-                         ->groupBy("cs.rombel_id, cs.{$kolomSubjectId}") 
-                         ->get()->getResultArray();
+        if ($selectedTeacherId) {
+            // PERBAIKAN: Join ke tabel master_subjects DAN schedule_combined_subjects
+            $teacherTargets = $db->table('class_schedules cs')
+                                 ->select("cs.rombel_id, cs.{$kolomSubjectId}, cs.combined_subject_id, r.rombel_name, r.master_class_id, s.{$kolomNamaMapel} as subject_name, c.combined_name")
+                                 ->join('class_rombel r', 'r.id = cs.rombel_id')
+                                 ->join("{$tabelMapel} s", "s.id = cs.{$kolomSubjectId}", 'left')
+                                 ->join('schedule_combined_subjects c', 'c.id = cs.combined_subject_id', 'left') // <- Tarik nama mapel gabungan
+                                 ->where('cs.version_id', $jadwalAktif['id'])
+                                 ->where("cs.{$kolomIdGuruDiJadwal}", $selectedTeacherId)
+                                 ->groupStart()
+                                    ->where("cs.{$kolomSubjectId} IS NOT NULL")
+                                    ->orWhere('cs.combined_subject_id IS NOT NULL')
+                                 ->groupEnd()
+                                 ->groupBy("cs.rombel_id, cs.{$kolomSubjectId}, cs.combined_subject_id")
+                                 ->get()->getResultArray();
 
-    foreach ($teacherTargets as $tgt) {
-        $rombelOptions[$tgt['rombel_id']] = [
-            'rombel_name' => $tgt['rombel_name'],
-            'master_class_id' => $tgt['master_class_id']
-        ];
-        
-        // Logika kunci: Jika rombel cocok, masukkan mapel ke dropdown
-        if ($selectedRombelId && $tgt['rombel_id'] == $selectedRombelId) {
-            // Memastikan nama mapel tidak null
-            $subjectOptions[$tgt[$kolomSubjectId]] = [
-                'subject_name' => $tgt['subject_name'] ?? 'Mapel (ID: '.$tgt[$kolomSubjectId].')'
-            ];
+            foreach ($teacherTargets as $tgt) {
+                $rombelOptions[$tgt['rombel_id']] = [
+                    'rombel_name' => $tgt['rombel_name'],
+                    'master_class_id' => $tgt['master_class_id']
+                ];
+                
+                if ($selectedRombelId && $tgt['rombel_id'] == $selectedRombelId) {
+                    // PERBAIKAN: Beri prefix agar ID mapel biasa & gabungan tidak bentrok
+                    if (!empty($tgt['combined_subject_id'])) {
+                        $optId = 'C_' . $tgt['combined_subject_id']; // C = Combined
+                        $subjectOptions[$optId] = ['subject_name' => $tgt['combined_name'] ?? 'Mapel Gabungan'];
+                    } elseif (!empty($tgt[$kolomSubjectId])) {
+                        $optId = 'S_' . $tgt[$kolomSubjectId]; // S = Subject Biasa
+                        $subjectOptions[$optId] = ['subject_name' => $tgt['subject_name'] ?? 'Mapel Tidak Diketahui'];
+                    }
+                }
+            }
         }
-    }
-}
 
         if (empty($selectedRombelId) && !empty($rombelOptions)) $selectedRombelId = array_key_first($rombelOptions);
         if (empty($selectedSubjectId) && !empty($subjectOptions)) $selectedSubjectId = array_key_first($subjectOptions);
@@ -133,13 +127,25 @@ class AnalysisController extends BaseController
         $hariMengajar = [];
 
         if ($selectedRombelId && $selectedSubjectId) {
-            $schedules = $db->table('class_schedules cs')
+            
+            // PERBAIKAN: Deteksi apakah yang dipilih itu Mapel Gabungan atau Biasa
+            $isCombined = (strpos($selectedSubjectId, 'C_') === 0);
+            $realSubjectId = str_replace(['S_', 'C_'], '', $selectedSubjectId);
+
+            $builder = $db->table('class_schedules cs')
                             ->join('schedule_time_slots ts', 'ts.id = cs.slot_id')
                             ->where('cs.version_id', $jadwalAktif['id'])
                             ->where('cs.rombel_id', $selectedRombelId)
-                            ->where("cs.{$kolomSubjectId}", $selectedSubjectId)
-                            ->where("cs.{$kolomIdGuruDiJadwal}", $selectedTeacherId)
-                            ->get()->getResultArray();
+                            ->where("cs.{$kolomIdGuruDiJadwal}", $selectedTeacherId);
+
+            // Filter sesuai jenis mapelnya
+            if ($isCombined) {
+                $builder->where('cs.combined_subject_id', $realSubjectId);
+            } else {
+                $builder->where("cs.{$kolomSubjectId}", $realSubjectId);
+            }
+
+            $schedules = $builder->get()->getResultArray();
 
             $jpPerHari = ['Senin' => 0, 'Selasa' => 0, 'Rabu' => 0, 'Kamis' => 0, 'Jumat' => 0];
             foreach ($schedules as $sch) {
