@@ -13,6 +13,7 @@
         @media print {
             body { background: #fff; padding: 0; }
             .a4-paper { width: 100%; min-height: auto; margin: 0; padding: 0; box-shadow: none; }
+            /* Panel Aksi dan Kontrol disembunyikan saat dicetak */
             .print-actions-wrapper { display: none !important; }
         }
 
@@ -29,8 +30,8 @@
 
         /* HEADER */
         .header-container { display: flex; justify-content: center; align-items: center; border-bottom: 2px solid #000; padding-bottom: 6px; margin-bottom: 8px; width: 100%; }
-        .header-content { display: flex; align-items: center; justify-content: center; gap: 30px; width: 100%; }
-        .header-content img { height: 65px; width: auto; object-fit: contain; }
+        .header-content { display: flex; align-items: center; justify-content: center; gap: 15px; width: 100%; }
+        .header-content img { height: 60px; width: auto; object-fit: contain; }
         .header-text { text-align: center; margin: 0; line-height: 1.1; }
         .header-text h5 { margin: 0 0 2px 0; font-weight: 800; color: #002060; font-size: 13px; letter-spacing: 0.5px; }
         .header-text h6 { margin: 2px 0; font-weight: 700; font-size: 10px; }
@@ -48,28 +49,51 @@
         th { background-color: #f4f4f4 !important; font-weight: bold; padding: 3px 2px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         tfoot td { font-size: 10px !important; padding: 2px; }
         
-        /* TOMBOL AKSI */
-        .print-actions-wrapper { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; gap: 10px; }
-        .btn-print { background: #002060; color: #fff; padding: 8px 16px; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .btn-close { background: #6c757d; color: #fff; padding: 8px 16px; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        
         /* GRID 2 KOLOM */
         .print-row { display: flex; flex-wrap: wrap; margin: 0 -5px; }
         .print-col-6 { width: 50%; padding: 0 5px; margin-bottom: 0; }
         
         /* TANDA TANGAN SECTION */
-        .signature-section { font-size: 11px; margin-top: 15px; padding: 0 20px; page-break-inside: avoid; }
+        .signature-section { font-size: 11px; margin-top: 15px; padding: 0 10px; page-break-inside: avoid; }
+
+        /* --- STYLING PANEL KONTROL MELAYANG --- */
+        .print-actions-wrapper { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+        .btn-group-top { display: flex; gap: 10px; }
+        .btn-print { background: #002060; color: #fff; padding: 8px 16px; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .btn-close { background: #6c757d; color: #fff; padding: 8px 16px; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        
+        .control-panel { background: #fff; padding: 12px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid #ddd; text-align: center; width: 140px; }
+        .control-panel p { margin: 0 0 8px 0; font-size: 11px; font-weight: bold; color: #333; }
+        .d-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; justify-items: center; }
+        .btn-dpad { background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; width: 30px; height: 30px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+        .btn-dpad:hover { background: #dee2e6; }
+        .btn-reset { margin-top: 8px; background: #dc3545; color: white; border: none; border-radius: 4px; font-size: 10px; padding: 4px; width: 100%; cursor: pointer; }
     </style>
 </head>
 <body>
 
     <div class="print-actions-wrapper">
-        <button class="btn-print" onclick="window.print()">🖨️ Cetak PDF (CTRL+P)</button>
-        <button class="btn-close" onclick="window.close()">❌ Tutup Tab</button>
+        <div class="btn-group-top">
+            <button class="btn-print" onclick="window.print()">🖨️ Cetak PDF</button>
+            <button class="btn-close" onclick="window.close()">❌ Tutup</button>
+        </div>
+        
+        <div class="control-panel">
+            <p>Atur Posisi TTD Guru</p>
+            <div class="d-pad">
+                <div></div>
+                <button class="btn-dpad" onclick="moveTtd(0, -3)" title="Naik">⬆️</button>
+                <div></div>
+                
+                <button class="btn-dpad" onclick="moveTtd(-3, 0)" title="Kiri">⬅️</button>
+                <button class="btn-dpad" onclick="moveTtd(0, 3)" title="Turun">⬇️</button>
+                <button class="btn-dpad" onclick="moveTtd(3, 0)" title="Kanan">➡️</button>
+            </div>
+            <button class="btn-reset" onclick="resetTtd()">🔄 Reset Posisi</button>
+        </div>
     </div>
 
     <div class="a4-paper">
-        <!-- HEADER -->
         <div class="header-container">
             <div class="header-content">
                 <img src="<?= base_url('assets/img/logo_kaldik1.png') ?>" alt="Logo Yayasan">
@@ -95,7 +119,6 @@
         }
         ?>
 
-        <!-- INFO GURU & MAPEL -->
         <table class="info-table">
             <tr>
                 <td width="90">Mata Pelajaran</td>
@@ -109,7 +132,6 @@
             </tr>
         </table>
 
-        <!-- LOOPING TABEL KELAS -->
         <div class="print-row">
             <?php foreach($allAnalysisData as $dataKelas): ?>
             <div class="print-col-6">
@@ -152,8 +174,7 @@
                         </tbody>
                         <tfoot>
                             <tr style="background-color: #f4f4f4; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
-                                <!-- PERBAIKAN: Tulisan total membentang 4 kolom, value jatuh pas di kolom JML -->
-                                <td colspan="5" class="text-right" style="font-weight: bold; padding-right: 10px;">TOTAL (JP)</td>
+                                <td colspan="4" class="text-right" style="font-weight: bold; padding-right: 10px;">TOTAL (JP)</td>
                                 <td style="font-weight: bold; font-size: 10.5px;"><?= $dataKelas['grandTotalJp'] ?></td>
                                 <td></td>
                             </tr>
@@ -164,7 +185,6 @@
             <?php endforeach; ?>
         </div>
 
-       <!-- PENGESAHAN MENGGUNAKAN METODE MARGIN NEGATIF BERTUMPUK -->
         <div class="d-flex justify-content-between signature-section">
             
             <!-- KIRI: KEPALA MADRASAH -->
@@ -182,21 +202,51 @@
             </div>
 
             <div class="text-center" style="width: 250px; line-height: 1;">
-    <p class="mb-0"><?= esc($titiMangsa ?? 'Bandung, ....................................') ?></p>
-    <p class="font-weight-bold" style="font-weight: 700; margin-top: 3px; margin-bottom: -15px; position: relative; z-index: 1;">Guru Mata Pelajaran,</p>
-    
-    <div style="width: 100%; position: relative; z-index: 2;">
-        <img src="<?= base_url('assets/img/ttd_' . esc($selectedTeacherId) . '.png') ?>" alt="TTD Guru" 
-             style="height: 78px; width: auto; object-fit: contain; margin-top: 3px; margin-bottom: -30px; position: relative; mix-blend-mode: multiply; transform: scale(0.85); left: 0px;" 
-             onerror="this.style.opacity='0'">
-    </div>
-    
-    <p class="font-weight-bold mb-0 d-inline-block" style="font-weight: 800; position: relative; z-index: 3;"><?= esc($namaGuruCetak) ?></p>
-    <p class="text-muted small mb-0" style="font-size: 9px; position: relative; z-index: 3; margin-top: 2px;">NPK. <?= esc($guruNpk) ?></p>
-</div>
+                <p class="mb-0"><?= esc($titiMangsa ?? 'Bandung, ....................................') ?></p>
+                <p class="font-weight-bold" style="font-weight: 700; margin-top: 3px; margin-bottom: -15px; position: relative; z-index: 1;">Guru Mata Pelajaran,</p>
+                
+                <div style="width: 100%; position: relative; z-index: 2;">
+                    <img id="ttd-guru" src="<?= base_url('assets/img/ttd_' . esc($selectedTeacherId) . '.png') ?>" alt="TTD Guru" 
+                         style="height: 78px; width: auto; object-fit: contain; top: 0px; margin-top: 3px; margin-bottom: -28px; position: relative; mix-blend-mode: multiply; transform: scale(0.85); left: 0px;" 
+                         onerror="this.style.opacity='0'">
+                </div>
+                
+                <p class="font-weight-bold mb-0 d-inline-block" style="font-weight: 800; position: relative; z-index: 3;"><?= esc($namaGuruCetak) ?></p>
+                <p class="text-muted small mb-0" style="font-size: 9px; position: relative; z-index: 3; margin-top: 2px;">NPK. <?= esc($guruNpk) ?></p>
+            </div>
 
         </div>
 
     </div>
+
+    <script>
+        // Nilai awal posisi TTD (Sesuai dengan style inline 'left: 50px' dan 'top: 0px' bawaan)
+        let ttdPosX = 0; 
+        let ttdPosY = 0;
+        
+        const imgTtdGuru = document.getElementById('ttd-guru');
+
+        function moveTtd(x, y) {
+            // Menambah/mengurangi nilai posisi sebesar 3px setiap klik
+            ttdPosX += x;
+            ttdPosY += y;
+            
+            // Menerapkan perubahan ke elemen gambar
+            if(imgTtdGuru) {
+                imgTtdGuru.style.left = ttdPosX + 'px';
+                imgTtdGuru.style.top = ttdPosY + 'px';
+            }
+        }
+
+        function resetTtd() {
+            // Mengembalikan ke posisi semula
+            ttdPosX = 0;
+            ttdPosY = 0;
+            if(imgTtdGuru) {
+                imgTtdGuru.style.left = ttdPosX + 'px';
+                imgTtdGuru.style.top = ttdPosY + 'px';
+            }
+        }
+    </script>
 </body>
 </html>
