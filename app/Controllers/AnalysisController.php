@@ -104,13 +104,8 @@ class AnalysisController extends BaseController
             }
         }
 
-        // PERBAIKAN 1: Cegah tabel kosong. Jika mapel sebelumnya tidak diajarkan oleh guru baru, reset pilihannya.
-        if ($selectedSubjectId && !array_key_exists($selectedSubjectId, $subjectOptions)) {
-            $selectedSubjectId = null; 
-        }
-        if (empty($selectedSubjectId) && !empty($subjectOptions)) { 
-            $selectedSubjectId = array_key_first($subjectOptions); 
-        }
+        if ($selectedSubjectId && !array_key_exists($selectedSubjectId, $subjectOptions)) { $selectedSubjectId = null; }
+        if (empty($selectedSubjectId) && !empty($subjectOptions)) { $selectedSubjectId = array_key_first($subjectOptions); }
 
         // =====================================================================
         // 📊 4. KALKULASI HEB UNTUK SEMUA ROMBEL SEKALIGUS
@@ -121,7 +116,6 @@ class AnalysisController extends BaseController
             $isCombined = (strpos($selectedSubjectId, 'C_') === 0);
             $realSubjectId = str_replace(['S_', 'C_'], '', $selectedSubjectId);
 
-            // 1. Cari Semua Rombel (Kelas) yang diajar untuk mapel ini
             $builderRombel = $db->table('class_schedules cs')
                                 ->select('cs.rombel_id, r.rombel_name, r.master_class_id')
                                 ->join('class_rombel r', 'r.id = cs.rombel_id')
@@ -131,11 +125,7 @@ class AnalysisController extends BaseController
             if ($isCombined) { $builderRombel->where('cs.combined_subject_id', $realSubjectId); } 
             else { $builderRombel->where("cs.{$kolomSubjectId}", $realSubjectId); }
             
-            // PERBAIKAN 2: Mengurutkan tabel berdasarkan Tingkat Kelas lalu Abjad (7A, 7B, 8, 9A, dst)
-            $daftarRombel = $builderRombel->groupBy('cs.rombel_id')
-                                          ->orderBy('r.master_class_id', 'ASC')
-                                          ->orderBy('r.rombel_name', 'ASC')
-                                          ->get()->getResultArray();
+            $daftarRombel = $builderRombel->groupBy('cs.rombel_id')->orderBy('r.master_class_id', 'ASC')->orderBy('r.rombel_name', 'ASC')->get()->getResultArray();
 
             $tahunSplit = explode('/', $tahunAktif['academic_year']);
             $tahunStart = (int)trim($tahunSplit[0]);
@@ -145,10 +135,7 @@ class AnalysisController extends BaseController
             $namaBulanIndo = [1=>'Januari',2=>'Februari',3=>'Maret',4=>'April',5=>'Mei',6=>'Juni',7=>'Juli',8=>'Agustus',9=>'September',10=>'Oktober',11=>'Nopember',12=>'Desember'];
             $hariNamesNumeric = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat'];
 
-            // 2. Lakukan Looping Perhitungan per Kelas
             foreach ($daftarRombel as $rombel) {
-                
-                // Ambil Jadwal Khusus Kelas Ini
                 $builderSch = $db->table('class_schedules cs')
                                  ->join('schedule_time_slots ts', 'ts.id = cs.slot_id')
                                  ->where('cs.version_id', $jadwalAktif['id'])
@@ -202,13 +189,29 @@ class AnalysisController extends BaseController
                     $grandTotalJp += $totalJpBulan;
                 }
 
-                // 3. Simpan Hasil Tiap Kelas ke Array Utama
                 $allAnalysisData[] = [
                     'rombel_name' => $rombel['rombel_name'],
                     'hari_mengajar' => !empty($hariMengajar) ? implode(', ', array_keys($hariMengajar)) : '-',
                     'analysisData' => $analysisData,
                     'grandTotalJp' => $grandTotalJp
                 ];
+            }
+        }
+
+        // ==============================================================
+        // 📥 5. AMBIL PENGATURAN MADRASAH & TTD DARI TABEL SETTINGS
+        // ==============================================================
+        $namaMadrasah = $db->tableExists('settings') ? $db->table('settings')->where('key', 'nama_madrasah')->get()->getRowArray() : null;
+        $titiMangsa = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_titi_mangsa')->get()->getRowArray() : null;
+        $kepalaSekolah = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_nama')->get()->getRowArray() : null;
+        $npkKepala = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_npk')->get()->getRowArray() : null;
+
+        // NEW: Ambil NPK Guru dari tabel teacher_profile
+        $guruNpk = '.....................................'; // Default jika kosong
+        if ($db->tableExists('teacher_profiles')) { // <-- Sudah ditambah huruf 's'
+            $guruProfile = $db->table('teacher_profiles')->where('user_id', $selectedTeacherId)->get()->getRowArray();
+            if ($guruProfile && !empty($guruProfile['nip'])) {
+                $guruNpk = $guruProfile['nip'];
             }
         }
 
@@ -220,8 +223,19 @@ class AnalysisController extends BaseController
             'selectedTeacherId' => $selectedTeacherId,
             'subjectOptions' => $subjectOptions,
             'selectedSubjectId' => $selectedSubjectId,
-            'allAnalysisData' => $allAnalysisData 
+            'allAnalysisData' => $allAnalysisData,
+            
+            'namaMadrasah' => $namaMadrasah ? $namaMadrasah['value'] : 'MIMHa Tsanawiyah Informatika',
+            'titiMangsa'   => $titiMangsa ? $titiMangsa['value'] : 'Bandung, ' . date('d F Y'),
+            'kepalaNama'   => $kepalaSekolah ? $kepalaSekolah['value'] : 'Rully Faizal, S.T.', // Mengambil nilai dari DB
+            'kepalaNpk'    => $npkKepala ? $npkKepala['value'] : '-',
+            'guruNpk'      => $guruNpk
         ];
+
+        // 🖨️ CEK JIKA USER MEMINTA HALAMAN PRINT PREVIEW
+        if ($this->request->getGet('print') == '1') {
+            return view('admin/schedule/print_heb_analysis', $data);
+        }
 
         return view('admin/schedule/heb_analysis', $data);
     }

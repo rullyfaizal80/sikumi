@@ -85,13 +85,13 @@
                     </div>
 
                     <div class="col-md-auto ms-auto d-flex gap-2">
-                        <a href="<?= base_url($isGuru ? 'guru' : 'admin') ?>" class="btn btn-secondary shadow-sm px-4">
-                            <i class="bi bi-arrow-left me-1"></i> Kembali
+                        <a href="<?= base_url('/') ?>" class="btn btn-sm btn-outline-secondary">
+                            ⬅️ Kembali ke Dashboard
                         </a>
                         
                         <?php if(!empty($allAnalysisData)): ?>
-                        <button type="button" onclick="window.print()" class="btn btn-primary-mimha shadow-sm px-4">
-                            <i class="bi bi-printer-fill me-1"></i> Cetak PDF
+                        <button type="button" onclick="window.open('<?= current_url() ?>?teacher_id=<?= $selectedTeacherId ?>&subject_id=<?= $selectedSubjectId ?>&print=1', '_blank')" class="btn btn-primary-mimha shadow-sm px-4">
+                            📄 Preview Cetak
                         </button>
                         <?php endif; ?>
                     </div>
