@@ -154,3 +154,23 @@ $routes->group('guru', static function ($routes) {
 // =====================================================================
 $routes->get('sikumi-ai', 'AiController::index');
 $routes->post('sikumi-ai/send', 'AiController::sendMessage');
+
+// ====================================================================
+// MODUL PERANGKAT AJAR & AI SIKUMI
+// ====================================================================
+
+// 1. Rute untuk menampilkan halaman "Form Analisis CP" (View yang baru kita buat)
+$routes->get('guru/analisis-cp', 'PerangkatController::analisis_cp');
+
+// 2. Rute untuk memproses permintaan (Prompt) ke sistem Groq/OpenRouter (AJAX)
+// Pastikan nama method-nya sesuai dengan yang ada di AiController Bapak (misal: send atau sendMessage)
+// $routes->post('ai/send', 'AiController::sendMessage'); 
+
+// 3. Rute untuk menyimpan data tabel TP hasil AI ke Database (AJAX)
+// $routes->post('perangkat/save_cp', 'PerangkatController::save_cp');
+
+// 4. Rute halaman daftar Perangkat Ajar (Halaman tujuan setelah berhasil klik Simpan)
+// $routes->get('guru/perangkat-ajar', 'PerangkatController::index');
+
+$routes->post('perangkat/save_draft', 'PerangkatController::save_draft_elemen');
+$routes->post('perangkat/delete_draft/(:num)', 'PerangkatController::delete_draft_elemen/$1');
