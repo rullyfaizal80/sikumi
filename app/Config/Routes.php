@@ -163,3 +163,5 @@ $routes->get('guru/analisis-cp', 'PerangkatController::analisis_cp');
 
 $routes->post('perangkat/save_draft', 'PerangkatController::save_draft_elemen');
 $routes->get('perangkat/delete_draft/(:num)', 'PerangkatController::delete_draft_elemen/$1');
+
+$routes->post('ai/analyze_cp', 'AiController::analyzeCp');

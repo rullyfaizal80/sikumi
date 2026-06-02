@@ -81,15 +81,23 @@
                             <tr><td colspan="4" class="text-center text-muted py-3">Belum ada elemen yang ditambahkan. Silakan klik tombol "Tambah Elemen Baru" di bawah.</td></tr>
                         <?php else: ?>
                             <?php foreach($draftElemen as $no => $d): ?>
-                            <tr>
+                            
+                            <!-- 1. Tambahkan baris-data-elemen di tag TR ini -->
+                            <tr class="baris-data-elemen">
+                                
                                 <td class="text-center"><?= $no+1 ?></td>
-                                <!-- Tambahkan dir="auto" di sini -->
-                                <td class="font-weight-bold" dir="auto"><?= esc($d['nama_elemen']) ?></td>
-                                <td class="small" dir="auto"><?= nl2br(esc($d['deskripsi_cp'])) ?></td>
+                                
+                                <!-- 2. Tambahkan kolom-nama di tag TD ini -->
+                                <td class="font-weight-bold kolom-nama" dir="auto"><?= esc($d['nama_elemen']) ?></td>
+                                
+                                <!-- 3. Tambahkan kolom-teks di tag TD ini -->
+                                <td class="small kolom-teks" dir="auto"><?= nl2br(esc($d['deskripsi_cp'])) ?></td>
+                                
                                 <td class="text-center">
                                     <a href="<?= base_url('perangkat/delete_draft/'.$d['id']) ?>" class="btn btn-danger btn-sm py-0 px-2" onclick="return confirm('Hapus elemen ini?')">🗑️</a>
                                 </td>
                             </tr>
+                            
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </tbody>
@@ -163,8 +171,16 @@
     <script src="<?= base_url('assets/js/adminlte.min.js') ?>"></script>
 
     <!-- Script Custom Aplikasi (Vanilla JS) -->
+    <!-- Script Custom Aplikasi (Vanilla JS) -->
     <script>
-        // Reload saat dropdown berubah
+        // Data tersimpan dari Controller untuk prompt AI
+        const mapelAktif = "<?= esc($namaMapelAktif) ?>";
+        const kelasAktif = "<?= esc($namaKelasAktif) ?>";
+        const totalJpSemester = "<?= $totalJpTersedia ?> JP";
+        
+        // URL API AI
+        const urlAiAnalyze = "<?= base_url('ai/analyze_cp') ?>";
+
         function reloadTabel() {
             const baseUrl = document.getElementById('app-data').getAttribute('data-url-reload');
             const mapelId = document.getElementById('mapel_id').value;
@@ -175,15 +191,91 @@
             }
         }
 
-        // Trigger AI
-        document.getElementById('btn-lanjut-ai').addEventListener('click', function() {
+        // TRIGGER AI DAN KIRIM DATA
+        document.getElementById('btn-lanjut-ai').addEventListener('click', async function() {
+            
+            const btnAi = this;
             const areaHasil = document.getElementById('area-hasil-ai');
+            
+            // 1. Kumpulkan semua CP dari tabel (Ambil elemen dengan class kolom-nama dan kolom-teks)
+            let kumpulanCP = "";
+            let elemenList = [];
+            document.querySelectorAll('.baris-data-elemen').forEach(function(row, index) {
+                let nama = row.querySelector('.kolom-nama').innerText.trim();
+                let teks = row.querySelector('.kolom-teks').innerText.trim();
+                kumpulanCP += `${index + 1}. Elemen ${nama}:\n${teks}\n\n`;
+                elemenList.push(nama);
+            });
+
+            if (kumpulanCP === "") {
+                alert("Tabel elemen kosong! Silakan tambah elemen CP terlebih dahulu.");
+                return;
+            }
+
+            // 2. Susun Prompt sesuai Template Instruksi Pak Rully
+            const promptUser = `Guru sedang menyusun rencana pembelajaran dengan konteks berikut:
+- Mata Pelajaran: ${mapelAktif}
+- Fase/Kelas: ${kelasAktif}
+- Total JP Tersedia per Semester: ${totalJpSemester}
+- Capaian Pembelajaran (CP) yang dianalisis:
+${kumpulanCP}
+- Fokus Elemen: ${elemenList.join(", ")}
+
+Berdasarkan data di atas, tolong berikan analisis lengkap dan pemetaan materi untuk satu semester sesuai dengan aturan System Prompt Anda.`;
+
+            // Tampilkan area hasil & animasi loading
             areaHasil.style.display = 'block';
-            
-            // Animasi scroll halus murni Javascript (Tanpa jQuery)
+            areaHasil.innerHTML = `
+                <h5 class="font-weight-bold text-success mb-3">✨ SiKuMi Sedang Menganalisis...</h5>
+                <div class="alert alert-info shadow-sm" dir="auto">
+                    <i class="spinner-border spinner-border-sm mr-2"></i> 
+                    Membaca CP <b>${mapelAktif}</b> dan membaginya ke dalam <b>${totalJpSemester}</b> secara proporsional. Harap tunggu sekitar 15-30 detik...
+                </div>
+            `;
             areaHasil.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            
-            alert('Tahap selanjutnya: Data dari tabel akan dikirim ke SiKuMi untuk meracik Analisis CP!');
+
+            btnAi.disabled = true;
+            btnAi.innerHTML = '⏳ Memproses...';
+
+            // 3. Kirim via AJAX ke AiController
+            const formData = new FormData();
+            formData.append('message', promptUser);
+
+            try {
+                const response = await fetch(urlAiAnalyze, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                const resData = await response.json();
+
+                if(resData.status === 'success') {
+                    // Cetak hasil HTML dari AI
+                    areaHasil.innerHTML = `
+                        <h5 class="font-weight-bold text-success mb-3">✅ Hasil Analisis AI (Siap Diedit)</h5>
+                        <div class="card shadow-sm border-success">
+                            <div class="card-body" dir="auto" contenteditable="true" style="outline: none;">
+                                ${resData.reply}
+                            </div>
+                            <div class="card-footer bg-light text-right">
+                                <button class="btn btn-success font-weight-bold">💾 Simpan Analisis ke RPP (Segera Hadir)</button>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    // -------------------------------------------------------------
+                    // PERBAIKAN: Tangkap semua kemungkinan respons error dari server
+                    // -------------------------------------------------------------
+                    const pesanError = resData.reply || resData.message || resData.error || JSON.stringify(resData);
+                    areaHasil.innerHTML = `<div class="alert alert-danger shadow-sm">⚠️ Gagal: ${pesanError}</div>`;
+                }
+            } catch (error) {
+                areaHasil.innerHTML = `<div class="alert alert-danger shadow-sm">⚠️ Terjadi kesalahan jaringan saat menghubungi server AI.</div>`;
+            } finally {
+                btnAi.disabled = false;
+                btnAi.innerHTML = '✨ Lanjut Analisis dengan SiKuMi (AI)';
+            }
         });
     </script>
 </body>

@@ -140,4 +140,75 @@ class AiController extends BaseController
             'reply' => "Sistem AI Menolak: " . $errorMessage
         ]);
     }
+
+    public function analyzeCp()
+    {
+        $pesanUser = $this->request->getPost('message');
+
+        if (empty($pesanUser)) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Data CP tidak boleh kosong.']);
+        }
+
+        $db = \Config\Database::connect();
+        
+        $apiKeySetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_api_key')->get()->getRowArray() : null;
+        $apiKey = $apiKeySetting ? trim($apiKeySetting['value']) : '';
+
+        $apiProviderSetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_provider')->get()->getRowArray() : null;
+        $apiUrl = (!empty($apiProviderSetting['value'])) ? trim($apiProviderSetting['value']) : 'https://api.groq.com/openai/v1/chat/completions';
+
+        if (empty($apiKey)) {
+            return $this->response->setJSON(['status' => 'error', 'reply' => 'Maaf, kunci akses API AI belum dipasang.']);
+        }
+
+        // SYSTEM PROMPT KHUSUS DARI PAK RULLY
+        $systemInstruction = "Anda adalah Kurikulum AI Expert yang ahli dalam pengembangan Kurikulum Merdeka dan pendekatan Understanding by Design (UbD). Tugas Anda adalah membantu guru menganalisis Capaian Pembelajaran (CP) untuk menghasilkan dokumen perencanaan yang siap pakai.\n"
+                           . "Instruksi Analisis:\n"
+                           . "1. Analisis Komponen: Pecah CP menjadi Kompetensi (KKO) dan Lingkup Materi.\n"
+                           . "2. Perumusan TP: Buat Tujuan Pembelajaran (TP) yang SMART. Untuk mata pelajaran praktik, pastikan TP memiliki aspek keterampilan yang jelas.\n"
+                           . "3. Penetapan KKTP: Berikan indikator keberhasilan yang terukur (dapat berupa deskripsi kriteria atau rubrik).\n"
+                           . "4. Pemetaan Waktu: Berikan estimasi beban Jam Pelajaran (JP) untuk setiap TP berdasarkan tingkat kompleksitas, dengan total alokasi yang disesuaikan dengan input semester pengguna.\n"
+                           . "5. Aktivitas Pembelajaran: Sarankan 1-2 kegiatan belajar yang berbasis Experiential Learning atau Problem-Based Learning yang relevan dengan materi.\n"
+                           . "Aturan Format Output:\n"
+                           . "Sajikan dalam bentuk Tabel HTML dengan class 'table table-bordered' yang terdiri dari: [Elemen | Tujuan Pembelajaran (TP) | Lingkup Materi | KKTP | Estimasi JP | Aktivitas Pembelajaran]. Jangan gunakan Markdown (```html), langsung output tag HTML-nya saja.\n"
+                           . "Setelah tabel, berikan ringkasan singkat mengenai saran urutan materi (scaffolding) untuk satu semester tersebut agar pembelajaran lebih efektif.\n"
+                           . "Karakteristik Respons:\n"
+                           . "- Gunakan bahasa yang suportif dan pedagogis.\n"
+                           . "- Jika pengguna memasukkan CP yang sangat luas, bantu guru memecahnya menjadi unit-unit yang masuk akal untuk durasi 1 semester (asumsi 18 minggu).\n"
+                           . "- Selalu prioritaskan keberhasilan murid di kelas (Student-Centered).";
+
+        $data = [
+            'model' => 'llama-3.3-70b-versatile', 
+            'messages' => [
+                ['role' => 'system', 'content' => $systemInstruction],
+                ['role' => 'user', 'content' => $pesanUser]
+            ],
+            'temperature' => 0.6, // Dibuat 0.6 agar lebih presisi dalam tabel
+            'max_tokens' => 3000
+        ];
+
+        $headers = [ 'Authorization: Bearer ' . $apiKey, 'Content-Type: application/json' ];
+
+        $ch = curl_init($apiUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); 
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
+
+        $responseRaw = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $responseData = json_decode($responseRaw, true);
+
+        if ($httpCode >= 200 && $httpCode < 300) {
+            if (isset($responseData['choices'][0]['message']['content'])) {
+                $balasanSiKuMi = $responseData['choices'][0]['message']['content'];
+                return $this->response->setJSON(['status' => 'success', 'reply' => trim($balasanSiKuMi)]);
+            }
+        }
+
+        return $this->response->setJSON(['status' => 'error', 'reply' => "Sistem AI Menolak permintaan."]);
+    }
 }
