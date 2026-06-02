@@ -47,6 +47,22 @@
         .dot:nth-child(2) { animation-delay: -0.16s; }
         .dot:nth-child(3) { margin-right: 0; }
         @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+
+        .maskot-floating {
+        position: fixed; /* Membuat posisi tetap di layar */
+        bottom: 520px;    /* Jarak 20px dari bawah */
+        left: 140px;      /* Jarak 20px dari kiri */
+        width: 200px;     /* Atur ukuran lebar sesuai keinginan */
+        height: auto;    /* Menjaga proporsi gambar */
+        z-index: 9999;   /* Memastikan logo berada di lapisan paling atas */
+        transition: transform 0.3s ease; /* Animasi halus */
+        pointer-events: none; /* Supaya tidak mengganggu klik chat jika tertumpuk */
+    }
+
+    /* Efek sedikit membesar saat diarahkan mouse (opsional) */
+    .maskot-floating:hover {
+        transform: scale(1.1);
+    }
     </style>
 </head>
 <body>
@@ -65,7 +81,8 @@
             </div>
         </div>
     </nav>
-
+    <!-- Logo SiKuMi (Pojok Kiri Bawah) -->
+<img src="<?= base_url('assets/img/sikumi.png') ?>" alt="Maskot SiKuMi" class="maskot-floating">
     <div class="chat-container">
         
         <div class="chat-messages" id="chatBox">
