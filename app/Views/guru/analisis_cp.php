@@ -83,8 +83,9 @@
                             <?php foreach($draftElemen as $no => $d): ?>
                             <tr>
                                 <td class="text-center"><?= $no+1 ?></td>
-                                <td class="font-weight-bold"><?= esc($d['nama_elemen']) ?></td>
-                                <td class="small"><?= esc($d['deskripsi_cp']) ?></td>
+                                <!-- Tambahkan dir="auto" di sini -->
+                                <td class="font-weight-bold" dir="auto"><?= esc($d['nama_elemen']) ?></td>
+                                <td class="small" dir="auto"><?= nl2br(esc($d['deskripsi_cp'])) ?></td>
                                 <td class="text-center">
                                     <a href="<?= base_url('perangkat/delete_draft/'.$d['id']) ?>" class="btn btn-danger btn-sm py-0 px-2" onclick="return confirm('Hapus elemen ini?')">🗑️</a>
                                 </td>
@@ -135,11 +136,13 @@
 
                         <div class="form-group mb-3">
                             <label class="small font-weight-bold">Nama Elemen</label>
-                            <input type="text" name="nama_elemen" class="form-control" placeholder="Contoh: Berpikir Komputasional" required>
+                            <!-- Tambahkan dir="auto" di sini -->
+                            <input type="text" name="nama_elemen" class="form-control" placeholder="Contoh: Berpikir Komputasional (atau ketik huruf Arab...)" required dir="auto">
                         </div>
                         <div class="form-group mb-0">
                             <label class="small font-weight-bold">Deskripsi CP</label>
-                            <textarea name="deskripsi_cp" class="form-control" rows="5" placeholder="Kopi dan paste teks CP dari dokumen BSKAP di sini..." required></textarea>
+                            <!-- Tambahkan dir="auto" di sini -->
+                            <textarea name="deskripsi_cp" class="form-control" rows="5" placeholder="Kopi dan paste teks CP di sini..." required dir="auto"></textarea>
                         </div>
                     </div>
                     <div class="modal-footer bg-light">
@@ -180,7 +183,7 @@
             // Animasi scroll halus murni Javascript (Tanpa jQuery)
             areaHasil.scrollIntoView({ behavior: 'smooth', block: 'start' });
             
-            alert('Tahap selanjutnya: Data dari tabel akan dikirim ke SiKuMi untuk meracik RPP!');
+            alert('Tahap selanjutnya: Data dari tabel akan dikirim ke SiKuMi untuk meracik Analisis CP!');
         });
     </script>
 </body>
