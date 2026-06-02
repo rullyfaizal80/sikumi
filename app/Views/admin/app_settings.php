@@ -228,21 +228,23 @@
                             </div>
 
                             <div class="tab-pane fade" id="tab-ai" role="tabpanel">
-                                <h6 class="mb-3 font-weight-bold text-secondary border-bottom pb-2">🧠 Konfigurasi Asisten Kecerdasan Buatan</h6>
-                                <div class="row row-cols-1 row-cols-md-2 g-3">
-                                    <div>
-                                        <label class="form-label font-weight-bold small">Pilihan Core LLM AI</label>
-                                        <select name="ai_provider" class="form-select form-control form-control-sm">
-                                            <option value="gemini" <?= isset($settings['ai_provider']) && $settings['ai_provider'] == 'gemini' ? 'selected' : '' ?>>Google Gemini Flash</option>
-                                            <option value="openai" <?= isset($settings['ai_provider']) && $settings['ai_provider'] == 'openai' ? 'selected' : '' ?>>OpenAI GPT-4o Mini</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="form-label font-weight-bold small">Secret API Key Cloud Token</label>
-                                        <input type="password" name="ai_api_key" class="form-control form-control-sm" value="<?= $settings['ai_api_key'] ?? '••••••••••••••••••••••••' ?>">
-                                    </div>
-                                </div>
-                            </div>
+    <h6 class="mb-3 font-weight-bold text-secondary border-bottom pb-2">🧠 Konfigurasi Asisten Kecerdasan Buatan</h6>
+    <div class="row row-cols-1 row-cols-md-2 g-3">
+        <div>
+            <label class="form-label font-weight-bold small">URL API Endpoint (AI Provider)</label>
+            <!-- Mengubah select menjadi input text untuk fleksibilitas URL -->
+            <input type="text" name="ai_provider" class="form-control form-control-sm" 
+                   value="<?= $settings['ai_provider'] ?? 'https://api.groq.com/openai/v1/chat/completions' ?>" 
+                   placeholder="Masukkan URL API Endpoint...">
+        </div>
+        <div>
+            <label class="form-label font-weight-bold small">Secret API Key Cloud Token</label>
+            <input type="password" name="ai_api_key" class="form-control form-control-sm" 
+                   value="<?= $settings['ai_api_key'] ?? '' ?>" 
+                   placeholder="Masukkan API Key...">
+        </div>
+    </div>
+</div>
 
                         </div>
                     </div>
