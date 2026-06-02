@@ -61,7 +61,7 @@ class AiController extends BaseController
                            . "Anda menguasai pendekatan Understanding by Design (UbD), Teaching at the Right Level (TaRL), dan Experiential Learning (EL). "
                            . "Anda sangat mahir dan menguasai SEMUA mata pelajaran umum tingkat MTs (seperti PAI, Matematika, IPA, IPS, Bahasa Indonesia, Bahasa Inggris, Informatika, PKn, dll). "
                            . "Berikan jawaban yang terstruktur, rapi, praktis, dan langsung pada intinya. JANGAN gunakan pengantar bertele-tele.";
-                           
+
         // ==============================================================================
         // 🚀 3. SUSUN DATA UNTUK API (Groq / OpenAI Compatible)
         // ==============================================================================
@@ -80,34 +80,39 @@ class AiController extends BaseController
             'Content-Type: application/json'
         ];
 
-        // ==============================================================================
-        // 📡 4. EKSEKUSI API MENGGUNAKAN cURL (Dengan URL Dinamis)
-        // ==============================================================================
-        $ch = curl_init($apiUrl); // URL sekarang ditarik dari variabel dinamis $apiUrl
+        // ... (di dalam fungsi sendMessage)
+
+        // 4. EKSEKUSI API MENGGUNAKAN cURL (Simpan header ke variabel)
+        $ch = curl_init($apiUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); 
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        
-        // Matikan verifikasi SSL sementara jika menggunakan localhost
+        curl_setopt($ch, CURLOPT_HEADER, true); // <--- TAMBAHKAN INI untuk menangkap Header
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
 
-        $response = curl_exec($ch);
+        $responseRaw = curl_exec($ch);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE); // <--- TAMBAHKAN INI
+        $headerStr = substr($responseRaw, 0, $headerSize); // <--- TAMBAHKAN INI
+        $body = substr($responseRaw, $headerSize); // <--- TAMBAHKAN INI
+        
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $curlError = curl_error($ch);
         curl_close($ch);
 
-        // ==============================================================================
-        // 📨 5. TANGANI BALASAN DARI AI
-        // ==============================================================================
-        if ($curlError) {
+        // 5. TANGANI BALASAN
+        $responseData = json_decode($body, true);
+
+        // Jika kena limit (HTTP 429 Too Many Requests)
+        if ($httpCode == 429) {
+            // Mencari info reset dari header "x-ratelimit-reset-requests"
+            preg_match('/x-ratelimit-reset-requests:\s*([0-9a-zA-Z]+)/i', $headerStr, $matches);
+            $resetWaktu = $matches[1] ?? 'segera';
+            
             return $this->response->setJSON([
                 'status' => 'error',
-                'reply' => 'Kesalahan Koneksi Jaringan: ' . $curlError
+                'reply' => "Kuota SiKuMi habis. Sistem akan mereset otomatis dalam <b>{$resetWaktu}</b>. Mohon bersabar ya!"
             ]);
         }
-
-        $responseData = json_decode($response, true);
 
         // Jika berhasil (HTTP Status 200 OK)
         if ($httpCode >= 200 && $httpCode < 300) {
