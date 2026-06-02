@@ -148,3 +148,9 @@ $routes->group('guru', static function ($routes) {
 
     $routes->get('analisis-heb', '\App\Controllers\AnalysisController::index');
 });
+
+// =====================================================================
+// MENU KHUSUS: SIKUMI AI ASSISTANT (Berlaku untuk Admin & Guru)
+// =====================================================================
+$routes->get('sikumi-ai', 'AiController::index');
+$routes->post('sikumi-ai/send', 'AiController::sendMessage');

@@ -174,7 +174,7 @@
                         </tbody>
                         <tfoot>
                             <tr style="background-color: #f4f4f4; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
-                                <td colspan="4" class="text-right" style="font-weight: bold; padding-right: 10px;">TOTAL (JP)</td>
+                                <td colspan="5" class="text-right" style="font-weight: bold; padding-right: 10px;">TOTAL (JP)</td>
                                 <td style="font-weight: bold; font-size: 10.5px;"><?= $dataKelas['grandTotalJp'] ?></td>
                                 <td></td>
                             </tr>
