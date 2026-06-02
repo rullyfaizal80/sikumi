@@ -8,10 +8,7 @@ class PerangkatController extends BaseController
     {
         $db = \Config\Database::connect();
         
-        // 1. Ambil ID Guru (Dibersihkan agar lebih ringkas)
         $userId = session()->has('user_id') ? session()->get('user_id') : (function_exists('user_id') ? user_id() : 0);
-
-        // 2. Deteksi Tahun Ajaran Aktif
         $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
 
         $classOptions = [];
@@ -20,16 +17,20 @@ class PerangkatController extends BaseController
 
         if ($tahunAktif && $userId) {
             
-            // 3. Ambil Pilihan Kelas Berdasarkan Rombel
-            $classOptions = $db->table('class_rombel cr')
+            // Ambil Pilihan Kelas Berdasarkan Rombel
+            $kelasQuery = $db->table('class_rombel cr')
                 ->select('mc.id, mc.class_name, mc.curriculum_phase')
                 ->join('master_classes mc', 'mc.id = cr.master_class_id')
                 ->where('cr.academic_year_id', $tahunAktif['id'])
                 ->groupBy('mc.id') 
                 ->orderBy('mc.class_name', 'ASC')
                 ->get()->getResultArray();
+                
+            foreach ($kelasQuery as $k) {
+                $classOptions[$k['id']] = 'Kelas ' . ($k['class_name'] ?? '');
+            }
 
-            // 4. Ambil Pilihan Mapel (Tunggal & Gabungan) Sesuai Logika AnalysisController
+            // Ambil Pilihan Mapel (Tunggal & Gabungan)
             $csFields = $db->getFieldNames('class_schedules');
             $kolomIdGuru = in_array('teacher_id', $csFields) ? 'teacher_id' : (in_array('guru_id', $csFields) ? 'guru_id' : 'user_id');
             $kolomSubjectId = in_array('subject_id', $csFields) ? 'subject_id' : 'mapel_id';
@@ -52,26 +53,36 @@ class PerangkatController extends BaseController
                 ->get()->getResultArray();
 
             foreach ($mapelJadwal as $row) {
-                // Beri kode C_ untuk Gabungan dan S_ untuk Single/Tunggal
                 if (!empty($row['combined_subject_id'])) {
                     $subjectOptions['C_' . $row['combined_subject_id']] = $row['combined_name'] ?? 'Mapel Gabungan';
                 } elseif (!empty($row[$kolomSubjectId])) {
                     $subjectOptions['S_' . $row[$kolomSubjectId]] = $row['subject_name'] ?? 'Mapel Tunggal';
                 }
             }
+        }
 
-            // 5. Ambil data draft
+        // TANGKAP ID MAPEL & KELAS YANG SEDANG DIPILIH (Atau ambil urutan pertama jika kosong)
+        $selectedMapelId = $this->request->getGet('mapel_id') ?? array_key_first($subjectOptions);
+        $selectedKelasId = $this->request->getGet('kelas_id') ?? array_key_first($classOptions);
+
+        // Ambil Data Draft sesuai filter (Hanya jika jadwal tersedia)
+        if ($tahunAktif && $userId && $selectedMapelId && $selectedKelasId) {
             $draftElemen = $db->table('kurikulum_cp_drafts')
                 ->where('teacher_id', $userId)
                 ->where('academic_year_id', $tahunAktif['id'])
+                ->where('mapel_id', $selectedMapelId)
+                ->where('master_class_id', $selectedKelasId)
                 ->get()->getResultArray();
         }
 
+        // PASTIKAN SEMUA VARIABEL DIKIRIM KE VIEW
         return view('guru/analisis_cp', [
-            'tahunAktif'     => $tahunAktif,
-            'classOptions'   => $classOptions,
-            'subjectOptions' => $subjectOptions,
-            'draftElemen'    => $draftElemen
+            'tahunAktif'      => $tahunAktif,
+            'classOptions'    => $classOptions,
+            'subjectOptions'  => $subjectOptions,
+            'draftElemen'     => $draftElemen,
+            'selectedMapelId' => $selectedMapelId,
+            'selectedKelasId' => $selectedKelasId
         ]);
     }
 
@@ -81,25 +92,39 @@ class PerangkatController extends BaseController
         $userId = session()->has('user_id') ? session()->get('user_id') : (function_exists('user_id') ? user_id() : 0);
         $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
         
-        if (!$tahunAktif) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Tahun ajaran aktif tidak ditemukan.']);
-        }
-        
+        $mapelId = $this->request->getPost('mapel_id');
+        $kelasId = $this->request->getPost('master_class_id');
+
         $data = [
             'teacher_id'       => $userId,
-            'academic_year_id' => $tahunAktif['id'],
+            'academic_year_id' => $tahunAktif['id'] ?? 0,
             'semester'         => $tahunAktif['semester'] ?? 'Ganjil',
-            'mapel_id'         => $this->request->getPost('mapel_id'), // Menghapus (int) agar bisa menerima C_1 atau S_2
-            'master_class_id'  => $this->request->getPost('master_class_id'), 
+            'mapel_id'         => $mapelId, 
+            'master_class_id'  => $kelasId, 
             'nama_elemen'      => $this->request->getPost('nama_elemen'),
             'deskripsi_cp'     => $this->request->getPost('deskripsi_cp'),
             'created_at'       => date('Y-m-d H:i:s')
         ];
         
-        if ($db->table('kurikulum_cp_drafts')->insert($data)) {
-            return $this->response->setJSON(['status' => 'success', 'message' => 'Draft elemen berhasil disimpan.']);
+        $db->table('kurikulum_cp_drafts')->insert($data);
+        
+        // Redirect dan muat ulang halaman dengan Mapel & Kelas yang sama
+        return redirect()->to(base_url("guru/analisis-cp?mapel_id={$mapelId}&kelas_id={$kelasId}"))
+                         ->with('success', 'Elemen CP berhasil disimpan ke tabel.');
+    }
+
+    public function delete_draft_elemen($id) 
+    {
+        $db = \Config\Database::connect();
+        $draft = $db->table('kurikulum_cp_drafts')->where('id', $id)->get()->getRowArray();
+        
+        if ($draft) {
+            $db->table('kurikulum_cp_drafts')->where('id', $id)->delete();
+            return redirect()->to(base_url("guru/analisis-cp?mapel_id={$draft['mapel_id']}&kelas_id={$draft['master_class_id']}"))
+                             ->with('success', 'Elemen CP berhasil dihapus dari tabel.');
         }
         
-        return $this->response->setJSON(['status' => 'error', 'message' => 'Gagal menyimpan ke database.']);
+        return redirect()->back();
     }
+
 }

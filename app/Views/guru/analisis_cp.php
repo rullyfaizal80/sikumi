@@ -2,192 +2,186 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SiKuMi - Analisis CP</title>
+    <!-- CSS AdminLTE Lokal -->
     <link rel="stylesheet" href="<?= base_url('assets/css/adminlte.min.css') ?>">
 </head>
 <body class="p-4 bg-light">
+    
+    <div id="app-data" data-url-reload="<?= base_url('guru/analisis-cp') ?>"></div>
 
     <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h3 class="mb-0" style="color: #FF9F00; font-weight: 700;">🤖 Analisis Capaian Pembelajaran</h3>
-                <p class="text-muted small mb-0">Langkah 1: Kumpulkan semua elemen CP ke dalam tabel sebelum dianalisis.</p>
+        <h3 class="mb-3" style="color: #FF9F00; font-weight: 700;">🤖 Analisis Capaian Pembelajaran</h3>
+
+        <!-- Notifikasi PHP -->
+        <?php if(session()->getFlashdata('success')): ?>
+            <div class="alert alert-success alert-dismissible shadow-sm">
+                ✅ <?php echo session()->getFlashdata('success'); ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
-            <a href="<?= base_url('/') ?>" class="btn btn-outline-secondary btn-sm font-weight-bold">
-                ⬅️ Kembali ke Menu
-            </a>
-        </div>
+        <?php endif; ?>
 
-        <div class="card shadow-sm mb-4 border-0">
-            <div class="card-body bg-light rounded">
-                <div class="row">
-                    
-                    <div class="col-md-4 mb-3">
-                        <label class="font-weight-bold small text-secondary">Tahun Ajaran Aktif</label>
-                        <input type="text" class="form-control form-control-sm bg-white" value="<?= esc($tahunAktif['academic_year'] ?? 'Tidak ada data') ?> (<?= esc($tahunAktif['semester'] ?? '') ?>)" readonly>
-                    </div>
-
-                    <div class="col-md-4 mb-3">
-                        <label class="font-weight-bold small text-secondary">Pilih Kelas Anda</label>
-                        <select name="master_class_id" id="input_master_class_id" class="form-control form-control-sm">
-                            <option value="">-- Pilih Kelas --</option>
-                            <?php if(!empty($classOptions)): ?>
-                                <?php foreach ($classOptions as $class): ?>
-                                    <option value="<?= $class['id'] ?>">
-                                        Kelas <?= esc($class['class_name']) ?> (<?= esc($class['curriculum_phase']) ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <option value="">- Anda tidak memiliki kelas di rombel aktif -</option>
-                            <?php endif; ?>
-                        </select>
-                    </div>
-
-                    <div class="col-md-4 mb-3">
-                        <label class="font-weight-bold small text-secondary">Mata Pelajaran Anda</label>
-                        <select name="mapel_id" id="input_mapel_id" class="form-control form-control-sm">
-                            <option value="">-- Pilih Mata Pelajaran --</option>
-                            <?php if(!empty($subjectOptions)): ?>
-                                <?php foreach ($subjectOptions as $id => $mapelName): ?>
-                                    <option value="<?= $id ?>">
-                                        <?= esc($mapelName) ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            <?php else: ?>
-                                <option value="">- Tidak ada mapel di jadwal mengajar Anda -</option>
-                            <?php endif; ?>
-                        </select>
-                    </div>
-
+        <!-- 1. FILTER MAPEL & KELAS -->
+        <div class="card p-3 mb-4 shadow-sm border-0">
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="small font-weight-bold text-secondary">Mata Pelajaran Anda</label>
+                    <select id="mapel_id" class="form-control form-control-sm" onchange="reloadTabel()">
+                        <?php if(empty($subjectOptions)): ?>
+                            <option value="">- Tidak ada mapel di jadwal Anda -</option>
+                        <?php else: ?>
+                            <?php foreach($subjectOptions as $id => $val): ?>
+                                <?php if ($id == $selectedMapelId): ?>
+                                    <option value="<?= esc($id) ?>" selected><?= esc($val) ?></option>
+                                <?php else: ?>
+                                    <option value="<?= esc($id) ?>"><?= esc($val) ?></option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
+                </div>
+                
+                <div class="col-md-4">
+                    <label class="small font-weight-bold text-secondary">Fase / Kelas Anda</label>
+                    <select id="kelas_id" class="form-control form-control-sm" onchange="reloadTabel()">
+                        <?php if(empty($classOptions)): ?>
+                            <option value="">- Tidak ada kelas di jadwal Anda -</option>
+                        <?php else: ?>
+                            <?php foreach($classOptions as $id => $val): ?>
+                                <?php if ($id == $selectedKelasId): ?>
+                                    <option value="<?= esc($id) ?>" selected><?= esc($val) ?></option>
+                                <?php else: ?>
+                                    <option value="<?= esc($id) ?>"><?= esc($val) ?></option>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </select>
                 </div>
             </div>
         </div>
 
+        <!-- 2. TABEL DATA DRAFT (Elemen CP) -->
         <div class="card shadow-sm mb-4">
-            <div class="card-header bg-white pb-0 border-0">
-                <h6 class="m-0 font-weight-bold" style="color: #FF9F00;">📋 Tabel Daftar Elemen CP</h6>
+            <div class="card-header bg-white border-0 pb-0">
+                <h6 class="m-0 font-weight-bold" style="color: #FF9F00;">📋 Tabel Elemen CP Tersimpan</h6>
             </div>
+            
             <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-bordered table-hover mb-0" id="tabel-elemen">
-                        <thead class="bg-light">
+                <table class="table table-bordered bg-white table-hover" id="tabel-elemen">
+                    <thead class="bg-light">
+                        <tr>
+                            <th width="5%" class="text-center">No</th>
+                            <th width="25%">Nama Elemen</th>
+                            <th width="60%">Deskripsi CP</th>
+                            <th width="10%" class="text-center">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if(empty($draftElemen)): ?>
+                            <tr><td colspan="4" class="text-center text-muted py-3">Belum ada elemen yang ditambahkan. Silakan klik tombol "Tambah Elemen Baru" di bawah.</td></tr>
+                        <?php else: ?>
+                            <?php foreach($draftElemen as $no => $d): ?>
                             <tr>
-                                <th width="5%" class="text-center">No</th>
-                                <th width="25%">Nama Elemen</th>
-                                <th width="60%">Deskripsi CP</th>
-                                <th width="10%" class="text-center">Aksi</th>
+                                <td class="text-center"><?= $no+1 ?></td>
+                                <td class="font-weight-bold"><?= esc($d['nama_elemen']) ?></td>
+                                <td class="small"><?= esc($d['deskripsi_cp']) ?></td>
+                                <td class="text-center">
+                                    <a href="<?= base_url('perangkat/delete_draft/'.$d['id']) ?>" class="btn btn-danger btn-sm py-0 px-2" onclick="return confirm('Hapus elemen ini?')">🗑️</a>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody id="body-elemen">
-                            <tr id="baris-kosong">
-                                <td colspan="4" class="text-center text-muted small py-3">Belum ada elemen yang ditambahkan ke tabel.</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                <div class="text-right mt-3">
-                    <button type="button" id="btn-lanjut-ai" class="btn btn-success btn-sm font-weight-bold" disabled>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+                
+                <!-- POSISI BARU: Tombol Tambah Elemen dan Lanjut AI Berdampingan -->
+                <div class="d-flex justify-content-end gap-2 mt-3">
+                    <button type="button" class="btn btn-sm text-white font-weight-bold shadow-sm me-2" style="background-color: #FF9F00;" data-bs-toggle="modal" data-bs-target="#modalTambahElemen">
+                        ➕ Tambah Elemen Baru
+                    </button>
+                    
+                    <button type="button" id="btn-lanjut-ai" class="btn btn-success btn-sm font-weight-bold" <?php echo empty($draftElemen) ? 'disabled' : ''; ?>>
                         ✨ Lanjut Analisis dengan SiKuMi (AI)
                     </button>
                 </div>
             </div>
         </div>
 
-        <div class="card shadow-sm border-0" style="border-left: 4px solid #FF9F00 !important;">
-            <div class="card-body">
-                <h6 class="font-weight-bold text-dark mb-3">➕ Tambah Elemen Baru</h6>
-                <div class="row">
-                    <div class="col-md-12 mb-2">
-                        <label class="font-weight-bold small">Nama Elemen (Contoh: Berpikir Komputasional)</label>
-                        <input type="text" id="input_nama_elemen" class="form-control form-control-sm" placeholder="Ketik nama elemen...">
-                    </div>
-                    <div class="col-md-12 mb-3">
-                        <label class="font-weight-bold small">Deskripsi CP</label>
-                        <textarea id="input_teks_cp" class="form-control form-control-sm" rows="3" placeholder="Paste teks CP di sini..."></textarea>
-                    </div>
-                    <div class="col-md-12 text-right">
-                        <button type="button" id="btn-simpan-ke-tabel" class="btn btn-sm text-white px-3" style="background-color: #FF9F00; font-weight:bold;">
-                            💾 Simpan ke Tabel
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <!-- 3. TEMPAT HASIL AI -->
+        <div id="area-hasil-ai" class="mt-4" style="display: none;">
+            <h5 class="font-weight-bold text-success mb-3">✅ Hasil Analisis AI (Siap Diedit)</h5>
+            <hr>
         </div>
 
     </div>
 
+
+    <!-- ========================================================= -->
+    <!-- MODAL: FORM TAMBAH ELEMEN -->
+    <!-- ========================================================= -->
+    <div class="modal fade" id="modalTambahElemen" tabindex="-1" aria-labelledby="modalTambahElemenLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header text-white" style="background-color: #FF9F00;">
+                    <h6 class="modal-title font-weight-bold" id="modalTambahElemenLabel">➕ Tambah Elemen Baru</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <form action="<?= base_url('perangkat/save_draft') ?>" method="POST">
+                    <div class="modal-body">
+                        <!-- Data Tersembunyi -->
+                        <input type="hidden" name="mapel_id" value="<?= esc($selectedMapelId) ?>">
+                        <input type="hidden" name="master_class_id" value="<?= esc($selectedKelasId) ?>">
+
+                        <div class="form-group mb-3">
+                            <label class="small font-weight-bold">Nama Elemen</label>
+                            <input type="text" name="nama_elemen" class="form-control" placeholder="Contoh: Berpikir Komputasional" required>
+                        </div>
+                        <div class="form-group mb-0">
+                            <label class="small font-weight-bold">Deskripsi CP</label>
+                            <textarea name="deskripsi_cp" class="form-control" rows="5" placeholder="Kopi dan paste teks CP dari dokumen BSKAP di sini..." required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary btn-sm font-weight-bold" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-sm text-white font-weight-bold" style="background-color: #FF9F00;">
+                            💾 Simpan ke Tabel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- END MODAL -->
+
+
+    <!-- Hanya menggunakan file lokal tanpa jQuery CDN internet -->
     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
     <script src="<?= base_url('assets/js/adminlte.min.js') ?>"></script>
 
+    <!-- Script Custom Aplikasi (Vanilla JS) -->
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        
-        const btnSimpanKeTabel = document.getElementById('btn-simpan-ke-tabel');
-        const bodyElemen = document.getElementById('body-elemen');
-        const barisKosong = document.getElementById('baris-kosong');
-        const btnLanjutAi = document.getElementById('btn-lanjut-ai');
-        
-        let nomorUrut = 1;
-
-        // Fungsi saat tombol "Simpan ke Tabel" ditekan
-        btnSimpanKeTabel.addEventListener('click', function() {
-            const namaElemen = document.getElementById('input_nama_elemen').value.trim();
-            const teksCp = document.getElementById('input_teks_cp').value.trim();
-
-            if (namaElemen === '' || teksCp === '') {
-                alert('Nama Elemen dan Deskripsi CP tidak boleh kosong!');
-                return;
-            }
-
-            // Hapus baris "Belum ada elemen" jika masih ada
-            if (barisKosong) {
-                barisKosong.style.display = 'none';
-            }
-
-            // Buat baris (tr) baru untuk tabel
-            const tr = document.createElement('tr');
-            tr.className = 'baris-data-elemen'; // Penanda untuk dibaca AI nanti
+        // Reload saat dropdown berubah
+        function reloadTabel() {
+            const baseUrl = document.getElementById('app-data').getAttribute('data-url-reload');
+            const mapelId = document.getElementById('mapel_id').value;
+            const kelasId = document.getElementById('kelas_id').value;
             
-            tr.innerHTML = `
-                <td class="text-center font-weight-bold">${nomorUrut}</td>
-                <td class="kolom-nama">${namaElemen}</td>
-                <td class="kolom-teks small">${teksCp}</td>
-                <td class="text-center">
-                    <button type="button" class="btn btn-danger btn-sm py-0 px-2 btn-hapus" title="Hapus Baris">🗑️</button>
-                </td>
-            `;
-
-            // Tambahkan baris ke dalam tabel
-            bodyElemen.appendChild(tr);
-
-            // Aktifkan tombol Generate AI karena tabel sudah ada isinya
-            btnLanjutAi.disabled = false;
-
-            // Kosongkan form input kembali untuk elemen berikutnya
-            document.getElementById('input_nama_elemen').value = '';
-            document.getElementById('input_teks_cp').value = '';
-            document.getElementById('input_nama_elemen').focus();
-
-            nomorUrut++;
-            
-            // Tambahkan event listener untuk tombol hapus di baris yang baru dibuat
-            tr.querySelector('.btn-hapus').addEventListener('click', function() {
-                tr.remove();
-                cekTabelKosong();
-            });
-        });
-
-        // Fungsi untuk mengecek jika semua baris dihapus, maka kembalikan status kosong
-        function cekTabelKosong() {
-            const jumlahBaris = document.querySelectorAll('.baris-data-elemen').length;
-            if (jumlahBaris === 0) {
-                barisKosong.style.display = 'table-row';
-                btnLanjutAi.disabled = true;
-                nomorUrut = 1; // Reset nomor urut
+            if(mapelId !== '' && kelasId !== '') {
+                window.location.href = baseUrl + "?mapel_id=" + mapelId + "&kelas_id=" + kelasId;
             }
         }
-    });
+
+        // Trigger AI
+        document.getElementById('btn-lanjut-ai').addEventListener('click', function() {
+            const areaHasil = document.getElementById('area-hasil-ai');
+            areaHasil.style.display = 'block';
+            
+            // Animasi scroll halus murni Javascript (Tanpa jQuery)
+            areaHasil.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            alert('Tahap selanjutnya: Data dari tabel akan dikirim ke SiKuMi untuk meracik RPP!');
+        });
     </script>
 </body>
 </html>
