@@ -49,9 +49,9 @@
                         <select name="mapel_id" id="input_mapel_id" class="form-control form-control-sm">
                             <option value="">-- Pilih Mata Pelajaran --</option>
                             <?php if(!empty($subjectOptions)): ?>
-                                <?php foreach ($subjectOptions as $mapel): ?>
-                                    <option value="<?= $mapel['id'] ?>">
-                                        <?= esc($mapel['subject_name']) ?>
+                                <?php foreach ($subjectOptions as $id => $mapelName): ?>
+                                    <option value="<?= $id ?>">
+                                        <?= esc($mapelName) ?>
                                     </option>
                                 <?php endforeach; ?>
                             <?php else: ?>
