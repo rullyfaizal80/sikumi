@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>SiKuMi - Analisis CP</title>
-    <!-- CSS AdminLTE Lokal -->
     <link rel="stylesheet" href="<?= base_url('assets/css/adminlte.min.css') ?>">
 </head>
 <body class="p-4 bg-light">
@@ -11,9 +10,19 @@
     <div id="app-data" data-url-reload="<?= base_url('guru/analisis-cp') ?>"></div>
 
     <div class="container-fluid">
-        <h3 class="mb-3" style="color: #FF9F00; font-weight: 700;">🤖 Analisis Capaian Pembelajaran</h3>
+        
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h3 class="mb-0" style="color: #FF9F00; font-weight: 700;">🤖 Analisis Capaian Pembelajaran</h3>
+                <p class="text-muted small mb-0">Asisten SiKuMi: Bedah CP menjadi Tujuan Pembelajaran & KKTP.</p>
+            </div>
+            <div>
+                <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm font-weight-bold shadow-sm">
+                    🏠 Kembali ke Dashboard
+                </a>
+            </div>
+        </div>
 
-        <!-- Notifikasi PHP -->
         <?php if(session()->getFlashdata('success')): ?>
             <div class="alert alert-success alert-dismissible shadow-sm">
                 ✅ <?php echo session()->getFlashdata('success'); ?>
@@ -21,7 +30,6 @@
             </div>
         <?php endif; ?>
 
-        <!-- 1. FILTER MAPEL & KELAS -->
         <div class="card p-3 mb-4 shadow-sm border-0">
             <div class="row">
                 <div class="col-md-4">
@@ -57,10 +65,17 @@
                         <?php endif; ?>
                     </select>
                 </div>
+
+                <div class="col-md-4">
+                    <label class="small font-weight-bold text-secondary">Total JP Tersedia (Semester Ini)</label>
+                    <div class="form-control form-control-sm bg-light border-success text-success font-weight-bold text-center">
+                        ⏳ <?= isset($totalJpTersedia) && $totalJpTersedia > 0 ? esc($totalJpTersedia) . ' JP' : '0 JP (Cek Jadwal/Kaldik)' ?>
+                    </div>
+                </div>
+
             </div>
         </div>
 
-        <!-- 2. TABEL DATA DRAFT (Elemen CP) -->
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-white border-0 pb-0">
                 <h6 class="m-0 font-weight-bold" style="color: #FF9F00;">📋 Tabel Elemen CP Tersimpan</h6>
@@ -81,29 +96,19 @@
                             <tr><td colspan="4" class="text-center text-muted py-3">Belum ada elemen yang ditambahkan. Silakan klik tombol "Tambah Elemen Baru" di bawah.</td></tr>
                         <?php else: ?>
                             <?php foreach($draftElemen as $no => $d): ?>
-                            
-                            <!-- 1. Tambahkan baris-data-elemen di tag TR ini -->
                             <tr class="baris-data-elemen">
-                                
                                 <td class="text-center"><?= $no+1 ?></td>
-                                
-                                <!-- 2. Tambahkan kolom-nama di tag TD ini -->
                                 <td class="font-weight-bold kolom-nama" dir="auto"><?= esc($d['nama_elemen']) ?></td>
-                                
-                                <!-- 3. Tambahkan kolom-teks di tag TD ini -->
                                 <td class="small kolom-teks" dir="auto"><?= nl2br(esc($d['deskripsi_cp'])) ?></td>
-                                
                                 <td class="text-center">
                                     <a href="<?= base_url('perangkat/delete_draft/'.$d['id']) ?>" class="btn btn-danger btn-sm py-0 px-2" onclick="return confirm('Hapus elemen ini?')">🗑️</a>
                                 </td>
                             </tr>
-                            
                             <?php endforeach; ?>
                         <?php endif; ?>
                     </tbody>
                 </table>
                 
-                <!-- POSISI BARU: Tombol Tambah Elemen dan Lanjut AI Berdampingan -->
                 <div class="d-flex justify-content-end gap-2 mt-3">
                     <button type="button" class="btn btn-sm text-white font-weight-bold shadow-sm me-2" style="background-color: #FF9F00;" data-bs-toggle="modal" data-bs-target="#modalTambahElemen">
                         ➕ Tambah Elemen Baru
@@ -116,7 +121,6 @@
             </div>
         </div>
 
-        <!-- 3. TEMPAT HASIL AI -->
         <div id="area-hasil-ai" class="mt-4" style="display: none;">
             <h5 class="font-weight-bold text-success mb-3">✅ Hasil Analisis AI (Siap Diedit)</h5>
             <hr>
@@ -125,9 +129,6 @@
     </div>
 
 
-    <!-- ========================================================= -->
-    <!-- MODAL: FORM TAMBAH ELEMEN -->
-    <!-- ========================================================= -->
     <div class="modal fade" id="modalTambahElemen" tabindex="-1" aria-labelledby="modalTambahElemenLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content border-0 shadow-lg">
@@ -138,18 +139,15 @@
                 
                 <form action="<?= base_url('perangkat/save_draft') ?>" method="POST">
                     <div class="modal-body">
-                        <!-- Data Tersembunyi -->
                         <input type="hidden" name="mapel_id" value="<?= esc($selectedMapelId) ?>">
                         <input type="hidden" name="master_class_id" value="<?= esc($selectedKelasId) ?>">
 
                         <div class="form-group mb-3">
                             <label class="small font-weight-bold">Nama Elemen</label>
-                            <!-- Tambahkan dir="auto" di sini -->
-                            <input type="text" name="nama_elemen" class="form-control" placeholder="Contoh: Berpikir Komputasional (atau ketik huruf Arab...)" required dir="auto">
+                            <input type="text" name="nama_elemen" class="form-control" placeholder="Contoh: Berpikir Komputasional" required dir="auto">
                         </div>
                         <div class="form-group mb-0">
                             <label class="small font-weight-bold">Deskripsi CP</label>
-                            <!-- Tambahkan dir="auto" di sini -->
                             <textarea name="deskripsi_cp" class="form-control" rows="5" placeholder="Kopi dan paste teks CP di sini..." required dir="auto"></textarea>
                         </div>
                     </div>
@@ -163,22 +161,17 @@
             </div>
         </div>
     </div>
-    <!-- END MODAL -->
 
 
-    <!-- Hanya menggunakan file lokal tanpa jQuery CDN internet -->
     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
     <script src="<?= base_url('assets/js/adminlte.min.js') ?>"></script>
 
-    <!-- Script Custom Aplikasi (Vanilla JS) -->
-    <!-- Script Custom Aplikasi (Vanilla JS) -->
     <script>
         // Data tersimpan dari Controller untuk prompt AI
-        const mapelAktif = "<?= esc($namaMapelAktif) ?>";
-        const kelasAktif = "<?= esc($namaKelasAktif) ?>";
-        const totalJpSemester = "<?= $totalJpTersedia ?> JP";
+        const mapelAktif = "<?= esc($namaMapelAktif ?? '') ?>";
+        const kelasAktif = "<?= esc($namaKelasAktif ?? '') ?>";
+        const totalJpSemester = "<?= ($totalJpTersedia ?? 0) ?> JP";
         
-        // URL API AI
         const urlAiAnalyze = "<?= base_url('ai/analyze_cp') ?>";
 
         function reloadTabel() {
@@ -197,7 +190,6 @@
             const btnAi = this;
             const areaHasil = document.getElementById('area-hasil-ai');
             
-            // 1. Kumpulkan semua CP dari tabel (Ambil elemen dengan class kolom-nama dan kolom-teks)
             let kumpulanCP = "";
             let elemenList = [];
             document.querySelectorAll('.baris-data-elemen').forEach(function(row, index) {
@@ -212,7 +204,6 @@
                 return;
             }
 
-            // 2. Susun Prompt sesuai Template Instruksi Pak Rully
             const promptUser = `Guru sedang menyusun rencana pembelajaran dengan konteks berikut:
 - Mata Pelajaran: ${mapelAktif}
 - Fase/Kelas: ${kelasAktif}
@@ -223,7 +214,6 @@ ${kumpulanCP}
 
 Berdasarkan data di atas, tolong berikan analisis lengkap dan pemetaan materi untuk satu semester sesuai dengan aturan System Prompt Anda.`;
 
-            // Tampilkan area hasil & animasi loading
             areaHasil.style.display = 'block';
             areaHasil.innerHTML = `
                 <h5 class="font-weight-bold text-success mb-3">✨ SiKuMi Sedang Menganalisis...</h5>
@@ -237,7 +227,6 @@ Berdasarkan data di atas, tolong berikan analisis lengkap dan pemetaan materi un
             btnAi.disabled = true;
             btnAi.innerHTML = '⏳ Memproses...';
 
-            // 3. Kirim via AJAX ke AiController
             const formData = new FormData();
             formData.append('message', promptUser);
 
@@ -251,7 +240,6 @@ Berdasarkan data di atas, tolong berikan analisis lengkap dan pemetaan materi un
                 const resData = await response.json();
 
                 if(resData.status === 'success') {
-                    // Cetak hasil HTML dari AI
                     areaHasil.innerHTML = `
                         <h5 class="font-weight-bold text-success mb-3">✅ Hasil Analisis AI (Siap Diedit)</h5>
                         <div class="card shadow-sm border-success">
@@ -259,14 +247,11 @@ Berdasarkan data di atas, tolong berikan analisis lengkap dan pemetaan materi un
                                 ${resData.reply}
                             </div>
                             <div class="card-footer bg-light text-right">
-                                <button class="btn btn-success font-weight-bold">💾 Simpan Analisis ke RPP (Segera Hadir)</button>
+                                <button class="btn btn-success font-weight-bold">💾 Simpan Analisis ke Tabel Analisis CP (Segera Hadir)</button>
                             </div>
                         </div>
                     `;
                 } else {
-                    // -------------------------------------------------------------
-                    // PERBAIKAN: Tangkap semua kemungkinan respons error dari server
-                    // -------------------------------------------------------------
                     const pesanError = resData.reply || resData.message || resData.error || JSON.stringify(resData);
                     areaHasil.innerHTML = `<div class="alert alert-danger shadow-sm">⚠️ Gagal: ${pesanError}</div>`;
                 }
