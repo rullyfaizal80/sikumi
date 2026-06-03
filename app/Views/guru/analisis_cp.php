@@ -337,11 +337,18 @@
     <script src="<?= base_url('assets/js/adminlte.min.js') ?>"></script>
 
     <script>
+        // DATA UNTUK PROMPT AI (Teks)
         const mapelAktif = "<?= esc($namaMapelAktif ?? '') ?>";
         const kelasAktif = "<?= esc($namaKelasAktif ?? '') ?>";
+        
+        // DATA UNTUK DATABASE (ID - Perbaikan di sini)
+        const mapelIdAktif = "<?= esc($selectedMapelId ?? '') ?>";
+        const kelasIdAktif = "<?= esc($selectedKelasId ?? '') ?>";
+        
         const totalJpSemester = parseInt("<?= ($totalJpTersedia ?? 0) ?>") || 0;
         const urlAiAnalyze = "<?= base_url('ai/analyze_cp') ?>";
 
+        // Fungsi Reload Tabel saat Filter Diganti
         function reloadTabel() {
             const b = document.getElementById('app-data').getAttribute('data-url-reload');
             const m = document.getElementById('mapel_id').value;
@@ -349,7 +356,7 @@
             if(m && k) window.location.href = b + "?mapel_id=" + m + "&kelas_id=" + k;
         }
 
-        // Fill Edit Elemen
+        // Auto-Fill Form Edit Elemen
         document.querySelectorAll('.btn-edit-elemen').forEach(b => {
             b.addEventListener('click', function() {
                 document.getElementById('edit_draft_id').value = this.getAttribute('data-id');
@@ -358,7 +365,7 @@
             });
         });
 
-        // Fill Edit Analisis
+        // Auto-Fill Form Edit Analisis & Auto-Select Dropdown
         document.querySelectorAll('.btn-edit-analisis').forEach(b => {
             b.addEventListener('click', function() {
                 document.getElementById('edit_analisis_id').value = this.getAttribute('data-id');
@@ -368,24 +375,26 @@
                 document.getElementById('ea_kktp').value = this.getAttribute('data-kktp');
                 document.getElementById('ea_akt').value = this.getAttribute('data-akt');
                 
-                // Trik Auto-Select Dropdown Elemen Induk
                 let selectedElemenText = this.getAttribute('data-elemen');
                 let selectDraft = document.getElementById('ea_draft_id');
-                for (let i = 0; i < selectDraft.options.length; i++) {
-                    if (selectDraft.options[i].text === selectedElemenText) {
-                        selectDraft.selectedIndex = i;
-                        break;
+                if(selectDraft) {
+                    for (let i = 0; i < selectDraft.options.length; i++) {
+                        if (selectDraft.options[i].text === selectedElemenText) {
+                            selectDraft.selectedIndex = i; break;
+                        }
                     }
                 }
             });
         });
 
-        // Kalkulator JP
+        // Kalkulator Real-time JP
         function kalkulasiJP() {
             let t = 0;
             document.querySelectorAll('.kolom-jp-analisis').forEach(td => { t += parseInt(td.innerText) || 0; });
             const lbl = document.getElementById('total-jp-alokasi');
             const wrn = document.getElementById('jp-warning');
+            
+            if(!lbl || !wrn) return;
             lbl.innerText = t;
 
             if (t === 0) { wrn.style.display = 'none'; } 
@@ -406,7 +415,7 @@
         document.addEventListener("DOMContentLoaded", kalkulasiJP);
 
         // ========================================================
-        // TRIGGER AI DENGAN REKONSTRUKSI TABEL CERDAS & ERROR HANDLING
+        // TRIGGER AI DENGAN BATASAN JP & PARSING TABEL
         // ========================================================
         document.getElementById('btn-eksekusi-ai').addEventListener('click', async function() {
             
@@ -414,10 +423,12 @@
             const btnAi = this; 
             const areaHasil = document.getElementById('area-hasil-ai');
             
-            // 1. Tutup Modal secara aman (mengatasi bug backdrop nyangkut)
+            // Tutup Modal dengan aman
             let modalEl = document.getElementById('modalSettingAI');
-            let modalObj = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
-            if(modalObj) modalObj.hide();
+            if (modalEl) {
+                let modalObj = bootstrap.Modal.getInstance(modalEl) || bootstrap.Modal.getOrCreateInstance(modalEl);
+                if(modalObj) modalObj.hide();
+            }
 
             let kumpulanCP = ""; let elemenList = [];
             document.querySelectorAll('.baris-data-elemen').forEach(function(r, i) {
@@ -427,9 +438,8 @@
                 elemenList.push(nama);
             });
 
-            if (kumpulanCP === "") { alert("Isi elemen CP dulu!"); return; }
+            if (kumpulanCP === "") { alert("Tabel elemen kosong! Silakan tambah elemen CP terlebih dahulu."); return; }
 
-            // 2. PROMPT YANG DIPERKETAT (Anti Markdown)
             const promptUser = `Guru sedang menyusun rencana pembelajaran dengan konteks berikut:
 - Mata Pelajaran: ${mapelAktif}
 - Fase/Kelas: ${kelasAktif}
@@ -440,21 +450,20 @@ ${kumpulanCP}
 - Fokus Elemen: ${elemenList.join(", ")}
 
 Berdasarkan data di atas, tolong berikan analisis lengkap dan pemetaan materi.
-ATURAN WAJIB (SANGAT PENTING): 
-1. Anda WAJIB menjawab menggunakan tag tabel HTML murni (<table>, <thead>, <tbody>, <tr>, <th>, <td>).
-2. DILARANG KERAS menggunakan format tabel Markdown (seperti | Elemen | TP |).
+ATURAN WAJIB: 
+1. Jawab menggunakan tag tabel HTML murni (<table>, <thead>, <tbody>, <tr>, <th>, <td>).
+2. DILARANG KERAS menggunakan format tabel Markdown.
 3. Buat tepat 6 kolom persis urutan ini: Elemen CP, Tujuan Pembelajaran, Lingkup Materi, KKTP, Estimasi JP, Aktivitas Pembelajaran. (Jangan tambahkan kolom Nomor!).`;
 
             areaHasil.style.display = 'block';
             areaHasil.innerHTML = `
                 <h5 class="font-weight-bold text-success mb-3">✨ SiKuMi Sedang Menganalisis...</h5>
                 <div class="alert alert-info shadow-sm" dir="auto">
-                    <i class="spinner-border spinner-border-sm mr-2"></i> Memecah CP <b>${mapelAktif}</b> menjadi TP berbobot rata-rata <b>${targetJp} JP</b>. Harap tunggu 15-30 detik...
+                    <i class="spinner-border spinner-border-sm mr-2"></i> Memecah CP menjadi TP berbobot rata-rata <b>${targetJp} JP</b>. Harap tunggu...
                 </div>`;
             areaHasil.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-            btnAi.disabled = true; 
-            btnAi.innerHTML = '⏳ Memproses...';
+            
+            btnAi.disabled = true; btnAi.innerHTML = '⏳ Memproses...';
 
             const formData = new FormData(); formData.append('message', promptUser);
             
@@ -463,10 +472,8 @@ ATURAN WAJIB (SANGAT PENTING):
                 const resData = await response.json();
                 
                 if(resData.status === 'success') {
-                    
                     let tempDiv = document.createElement('div');
                     tempDiv.innerHTML = resData.reply;
-                    
                     let aiTables = tempDiv.querySelectorAll('table');
                     
                     if (aiTables.length > 0) {
@@ -498,23 +505,18 @@ ATURAN WAJIB (SANGAT PENTING):
                             let tds = tr.querySelectorAll('td');
                             if (tds.length < 5) return;
                             
-                            // Deteksi pintar jika AI menambahkan kolom "No" di awal
                             let offset = 0;
                             let firstColText = tds[0].innerText.trim().toLowerCase();
-                            if (/^\d+$/.test(firstColText) || firstColText === 'no') {
-                                offset = 1;
-                            }
+                            if (/^\d+$/.test(firstColText) || firstColText === 'no' || firstColText === 'no.') offset = 1;
 
                             let elemen = tds[offset] ? tds[offset].innerText.trim() : '';
                             let tp = tds[offset+1] ? tds[offset+1].innerText.trim() : '';
                             let lingkup = tds[offset+2] ? tds[offset+2].innerText.trim() : '';
                             let kktp = tds[offset+3] ? tds[offset+3].innerText.trim() : '';
-                            
                             let jpText = tds[offset+4] ? tds[offset+4].innerText : '0';
                             let jp = jpText.replace(/[^0-9]/g, '') || '0'; 
                             let aktivitas = tds[offset+5] ? tds[offset+5].innerText.trim() : '';
 
-                            // Amankan teks dari kutipan
                             let safeElemen = elemen.replace(/"/g, '&quot;');
                             let safeTp = tp.replace(/"/g, '&quot;');
                             let safeLingkup = lingkup.replace(/"/g, '&quot;');
@@ -555,10 +557,10 @@ ATURAN WAJIB (SANGAT PENTING):
                         `;
                         areaHasil.innerHTML = newTableHtml;
 
-                        // Binding event klik Simpan
+                        // BINDING EVENT SIMPAN KE DATABASE
                         document.getElementById('btn-save-ai-batch').addEventListener('click', async function() {
                             const btnSave = this;
-                            btnSave.disabled = true; btnSave.innerHTML = "⏳ Menyimpan...";
+                            btnSave.disabled = true; btnSave.innerHTML = "⏳ Menyimpan ke Database...";
                             
                             let dataToSave = [];
                             document.querySelectorAll('.chk-ai-row:checked').forEach(chk => {
@@ -573,12 +575,15 @@ ATURAN WAJIB (SANGAT PENTING):
                             });
 
                             if(dataToSave.length === 0) {
-                                alert("Tidak ada baris TP yang dicentang!"); btnSave.disabled = false; btnSave.innerHTML = "⬇️ Simpan yang Dicentang ke Tabel Analisis"; return;
+                                alert("Tidak ada baris yang dicentang!"); 
+                                btnSave.disabled = false; btnSave.innerHTML = "⬇️ Simpan yang Dicentang ke Tabel Analisis"; 
+                                return;
                             }
 
                             let batchForm = new FormData();
-                            batchForm.append('mapel_id', mapelAktif);
-                            batchForm.append('master_class_id', '<?= esc($selectedKelasId) ?>');
+                            // PERBAIKAN: Menggunakan Variabel ID, bukan Nama String
+                            batchForm.append('mapel_id', mapelIdAktif); 
+                            batchForm.append('master_class_id', kelasIdAktif);
                             batchForm.append('data_rows', JSON.stringify(dataToSave));
 
                             try {
@@ -591,37 +596,25 @@ ATURAN WAJIB (SANGAT PENTING):
                                     btnSave.disabled = false; btnSave.innerHTML = "⬇️ Simpan yang Dicentang ke Tabel Analisis";
                                 }
                             } catch (e) {
-                                alert("Terjadi kesalahan sistem saat memindahkan data.");
+                                alert("Terjadi kesalahan sistem saat menyimpan ke database.");
                                 btnSave.disabled = false; btnSave.innerHTML = "⬇️ Simpan yang Dicentang ke Tabel Analisis";
                             }
                         });
 
                     } else {
-                        // JIKA AI NGE-TROLL MENGGUNAKAN MARKDOWN (FALLBACK)
                         areaHasil.innerHTML = `
-                            <h5 class="font-weight-bold text-warning mb-3">⚠️ AI Merespons Tanpa Format Tabel HTML</h5>
-                            <div class="alert alert-info py-2 small shadow-sm">
-                                💡 <b>Info:</b> AI gagal menyusun tabel HTML dengan rapi. Namun Anda bisa membaca teks aslinya di bawah ini, atau klik tombol <b>🚀 Mulai Analisis Otomatis</b> sekali lagi.
-                            </div>
-                            <div class="card shadow-sm border-warning mb-4">
-                                <div class="card-body" dir="auto" style="white-space: pre-wrap;">${resData.reply}</div>
-                            </div>
+                            <h5 class="font-weight-bold text-warning mb-3">⚠️ AI Merespons Tanpa Format Tabel</h5>
+                            <div class="alert alert-info py-2 small shadow-sm">AI gagal merangkai format tabel, silakan klik tombol <b>🚀 Mulai Analisis Otomatis</b> sekali lagi.</div>
+                            <div class="card shadow-sm border-warning mb-4"><div class="card-body" dir="auto" style="white-space: pre-wrap;">${resData.reply}</div></div>
                         `;
                     }
                 } else {
-                    areaHasil.innerHTML = `<div class="alert alert-danger shadow-sm">⚠️ Gagal: ${resData.reply || resData.message || "Error server."}</div>`;
+                    areaHasil.innerHTML = `<div class="alert alert-danger shadow-sm">⚠️ Gagal: ${resData.reply || resData.message || "Error"}</div>`;
                 }
             } catch (error) {
-                areaHasil.innerHTML = `<div class="alert alert-danger shadow-sm">⚠️ Kesalahan saat mengambil data AI. Detail: ${error.message}</div>`;
-                console.error("AI Fetch Error:", error);
+                areaHasil.innerHTML = `<div class="alert alert-danger shadow-sm">⚠️ Kesalahan saat mengambil data AI.</div>`;
             } finally {
-                // =========================================================
-                // INI KUNCI AGAR TOMBOL KEMBALI NORMAL & LOADING BERHENTI
-                // =========================================================
-                btnAi.disabled = false; 
-                btnAi.innerHTML = '🚀 Mulai Analisis Otomatis';
-                
-                // Pastikan layer hitam modal (backdrop) hilang bersih
+                btnAi.disabled = false; btnAi.innerHTML = '🚀 Mulai Analisis Otomatis';
                 document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
                 document.body.classList.remove('modal-open');
                 document.body.style = '';
