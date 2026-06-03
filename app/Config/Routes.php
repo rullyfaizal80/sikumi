@@ -165,3 +165,6 @@ $routes->post('perangkat/save_draft', 'PerangkatController::save_draft_elemen');
 $routes->get('perangkat/delete_draft/(:num)', 'PerangkatController::delete_draft_elemen/$1');
 
 $routes->post('ai/analyze_cp', 'AiController::analyzeCp');
+
+$routes->post('perangkat/update_draft', 'PerangkatController::update_draft_elemen');
+

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>SiKuMi - Analisis CP</title>
+    <!-- CSS AdminLTE Lokal -->
     <link rel="stylesheet" href="<?= base_url('assets/css/adminlte.min.css') ?>">
 </head>
 <body class="p-4 bg-light">
@@ -11,6 +12,7 @@
 
     <div class="container-fluid">
         
+        <!-- HEADER HALAMAN & TOMBOL DASHBOARD -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h3 class="mb-0" style="color: #FF9F00; font-weight: 700;">🤖 Analisis Capaian Pembelajaran</h3>
@@ -23,6 +25,7 @@
             </div>
         </div>
 
+        <!-- Notifikasi PHP -->
         <?php if(session()->getFlashdata('success')): ?>
             <div class="alert alert-success alert-dismissible shadow-sm">
                 ✅ <?php echo session()->getFlashdata('success'); ?>
@@ -30,6 +33,7 @@
             </div>
         <?php endif; ?>
 
+        <!-- 1. FILTER MAPEL, KELAS, & TOTAL JP -->
         <div class="card p-3 mb-4 shadow-sm border-0">
             <div class="row">
                 <div class="col-md-4">
@@ -66,6 +70,7 @@
                     </select>
                 </div>
 
+                <!-- KOLOM TOTAL JP OTOMATIS -->
                 <div class="col-md-4">
                     <label class="small font-weight-bold text-secondary">Total JP Tersedia (Semester Ini)</label>
                     <div class="form-control form-control-sm bg-light border-success text-success font-weight-bold text-center">
@@ -76,6 +81,7 @@
             </div>
         </div>
 
+        <!-- 2. TABEL DATA DRAFT (Elemen CP) -->
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-white border-0 pb-0">
                 <h6 class="m-0 font-weight-bold" style="color: #FF9F00;">📋 Tabel Elemen CP Tersimpan</h6>
@@ -86,9 +92,9 @@
                     <thead class="bg-light">
                         <tr>
                             <th width="5%" class="text-center">No</th>
-                            <th width="25%">Nama Elemen</th>
+                            <th width="20%">Nama Elemen</th>
                             <th width="60%">Deskripsi CP</th>
-                            <th width="10%" class="text-center">Aksi</th>
+                            <th width="15%" class="text-center">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -101,6 +107,14 @@
                                 <td class="font-weight-bold kolom-nama" dir="auto"><?= esc($d['nama_elemen']) ?></td>
                                 <td class="small kolom-teks" dir="auto"><?= nl2br(esc($d['deskripsi_cp'])) ?></td>
                                 <td class="text-center">
+                                    <!-- TOMBOL EDIT BARU -->
+                                    <button type="button" class="btn btn-primary btn-sm py-0 px-2 btn-edit" 
+                                            data-bs-toggle="modal" data-bs-target="#modalEditElemen"
+                                            data-id="<?= $d['id'] ?>" 
+                                            data-nama="<?= esc($d['nama_elemen']) ?>" 
+                                            data-teks="<?= esc($d['deskripsi_cp']) ?>" 
+                                            title="Edit Elemen">✏️</button>
+                                            
                                     <a href="<?= base_url('perangkat/delete_draft/'.$d['id']) ?>" class="btn btn-danger btn-sm py-0 px-2" onclick="return confirm('Hapus elemen ini?')">🗑️</a>
                                 </td>
                             </tr>
@@ -121,6 +135,7 @@
             </div>
         </div>
 
+        <!-- 3. TEMPAT HASIL AI -->
         <div id="area-hasil-ai" class="mt-4" style="display: none;">
             <h5 class="font-weight-bold text-success mb-3">✅ Hasil Analisis AI (Siap Diedit)</h5>
             <hr>
@@ -129,6 +144,9 @@
     </div>
 
 
+    <!-- ========================================== -->
+    <!-- MODAL 1: FORM TAMBAH ELEMEN -->
+    <!-- ========================================== -->
     <div class="modal fade" id="modalTambahElemen" tabindex="-1" aria-labelledby="modalTambahElemenLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content border-0 shadow-lg">
@@ -163,15 +181,54 @@
     </div>
 
 
+    <!-- ========================================== -->
+    <!-- MODAL 2: FORM EDIT ELEMEN -->
+    <!-- ========================================== -->
+    <div class="modal fade" id="modalEditElemen" tabindex="-1" aria-labelledby="modalEditElemenLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header text-white bg-primary">
+                    <h6 class="modal-title font-weight-bold" id="modalEditElemenLabel">✏️ Edit Elemen CP</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                
+                <form action="<?= base_url('perangkat/update_draft') ?>" method="POST">
+                    <div class="modal-body">
+                        <!-- Input ID Draft yang akan diedit -->
+                        <input type="hidden" name="draft_id" id="edit_draft_id">
+                        <input type="hidden" name="mapel_id" value="<?= esc($selectedMapelId) ?>">
+                        <input type="hidden" name="master_class_id" value="<?= esc($selectedKelasId) ?>">
+
+                        <div class="form-group mb-3">
+                            <label class="small font-weight-bold">Nama Elemen</label>
+                            <input type="text" name="nama_elemen" id="edit_nama_elemen" class="form-control" required dir="auto">
+                        </div>
+                        <div class="form-group mb-0">
+                            <label class="small font-weight-bold">Deskripsi CP</label>
+                            <textarea name="deskripsi_cp" id="edit_deskripsi_cp" class="form-control" rows="5" required dir="auto"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light">
+                        <button type="button" class="btn btn-secondary btn-sm font-weight-bold" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary btn-sm font-weight-bold">
+                            💾 Simpan Perubahan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Hanya menggunakan file lokal tanpa jQuery CDN internet -->
     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
     <script src="<?= base_url('assets/js/adminlte.min.js') ?>"></script>
 
+    <!-- Script Custom Aplikasi (Vanilla JS) -->
     <script>
-        // Data tersimpan dari Controller untuk prompt AI
         const mapelAktif = "<?= esc($namaMapelAktif ?? '') ?>";
         const kelasAktif = "<?= esc($namaKelasAktif ?? '') ?>";
         const totalJpSemester = "<?= ($totalJpTersedia ?? 0) ?> JP";
-        
         const urlAiAnalyze = "<?= base_url('ai/analyze_cp') ?>";
 
         function reloadTabel() {
@@ -184,9 +241,17 @@
             }
         }
 
+        // FUNGSI UNTUK MENGISI DATA KE DALAM MODAL EDIT SAAT TOMBOL ✏️ DIKLIK
+        document.querySelectorAll('.btn-edit').forEach(button => {
+            button.addEventListener('click', function() {
+                document.getElementById('edit_draft_id').value = this.getAttribute('data-id');
+                document.getElementById('edit_nama_elemen').value = this.getAttribute('data-nama');
+                document.getElementById('edit_deskripsi_cp').value = this.getAttribute('data-teks');
+            });
+        });
+
         // TRIGGER AI DAN KIRIM DATA
         document.getElementById('btn-lanjut-ai').addEventListener('click', async function() {
-            
             const btnAi = this;
             const areaHasil = document.getElementById('area-hasil-ai');
             

@@ -218,4 +218,25 @@ class PerangkatController extends BaseController
         return $minTotalJp ?? 0;
     }
 
+    public function update_draft_elemen() 
+    {
+        $db = \Config\Database::connect();
+        
+        $id = $this->request->getPost('draft_id');
+        $mapelId = $this->request->getPost('mapel_id');
+        $kelasId = $this->request->getPost('master_class_id');
+
+        $data = [
+            'nama_elemen'  => $this->request->getPost('nama_elemen'),
+            'deskripsi_cp' => $this->request->getPost('deskripsi_cp')
+        ];
+        
+        // Update ke database
+        $db->table('kurikulum_cp_drafts')->where('id', $id)->update($data);
+        
+        // Redirect kembali dengan pesan sukses
+        return redirect()->to(base_url("guru/analisis-cp?mapel_id={$mapelId}&kelas_id={$kelasId}"))
+                         ->with('success', 'Elemen CP berhasil diperbarui.');
+    }
+
 }
