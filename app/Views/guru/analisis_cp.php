@@ -28,6 +28,12 @@
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         <?php endif; ?>
+        <?php if(session()->getFlashdata('error')): ?>
+            <div class="alert alert-danger alert-dismissible shadow-sm">
+                ⚠️ <?= session()->getFlashdata('error') ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <?php endif; ?>
 
         <!-- 1. FILTER MAPEL, KELAS, & TOTAL JP -->
         <div class="card p-3 mb-4 shadow-sm border-0">
@@ -95,7 +101,14 @@
                     </tbody>
                 </table>
                 <div class="d-flex justify-content-end gap-2 mt-3">
-                    <button type="button" class="btn btn-sm text-white font-weight-bold shadow-sm" style="background-color: #FF9F00;" data-bs-toggle="modal" data-bs-target="#modalTambahElemen">➕ Tambah Elemen Baru</button>
+                    <button type="button" class="btn btn-sm text-white font-weight-bold shadow-sm me-2" style="background-color: #17a2b8;" data-bs-toggle="modal" data-bs-target="#modalCopyElemen">
+                        🔄 Salin CP dari Kelas Lain
+                    </button>
+
+                    <button type="button" class="btn btn-sm text-white font-weight-bold shadow-sm me-2" style="background-color: #FF9F00;" data-bs-toggle="modal" data-bs-target="#modalTambahElemen">
+                        ➕ Tambah Elemen Baru
+                    </button>
+                    
                     <button type="button" class="btn btn-success btn-sm font-weight-bold" data-bs-toggle="modal" data-bs-target="#modalSettingAI" <?= empty($draftElemen) ? 'disabled' : '' ?>>
                         ✨ Lanjut Analisis dengan SiKuMi (AI)
                     </button>
@@ -329,6 +342,43 @@
                         🚀 Mulai Analisis Otomatis
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="modalCopyElemen" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header text-white bg-info">
+                    <h6 class="modal-title font-weight-bold">🔄 Salin Draft Elemen CP</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="<?= base_url('perangkat/copy_draft') ?>" method="POST">
+                    <div class="modal-body bg-light">
+                        <input type="hidden" name="mapel_id" value="<?= esc($selectedMapelId) ?>">
+                        <input type="hidden" name="kelas_tujuan_id" value="<?= esc($selectedKelasId) ?>">
+                        
+                        <div class="alert alert-info small p-2 mb-3">
+                            Pilih kelas asal untuk menyalin semua <b>Elemen CP</b> ke kelas <b><?= esc($namaKelasAktif ?? '') ?></b> pada mapel <b><?= esc($namaMapelAktif ?? '') ?></b>.
+                        </div>
+                        
+                        <div class="form-group mb-0">
+                            <label class="small font-weight-bold">Sumber Salinan (Kelas Asal)</label>
+                            <select name="kelas_asal_id" class="form-control" required>
+                                <option value="">-- Pilih Kelas Asal --</option>
+                                <?php foreach($classOptions as $id => $val): ?>
+                                    <?php if($id != $selectedKelasId): ?>
+                                        <option value="<?= esc($id) ?>"><?= esc($val) ?></option>
+                                    <?php endif; ?>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-white">
+                        <button type="button" class="btn btn-secondary btn-sm font-weight-bold" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-info btn-sm font-weight-bold text-white">🔄 Salin Sekarang</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>

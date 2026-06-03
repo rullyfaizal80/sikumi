@@ -458,4 +458,66 @@ class PerangkatController extends BaseController
         return $this->response->setJSON(['status' => 'success', 'message' => 'Data AI berhasil dipindahkan ke Tabel Analisis Manual!']);
     }
 
+    public function copy_draft_elemen()
+    {
+        $db = \Config\Database::connect();
+        $userId = session()->has('user_id') ? session()->get('user_id') : (function_exists('user_id') ? user_id() : 0);
+        $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+
+        $mapelId = $this->request->getPost('mapel_id');
+        $kelasAsalId = $this->request->getPost('kelas_asal_id');
+        $kelasTujuanId = $this->request->getPost('kelas_tujuan_id');
+
+        if (!$kelasAsalId || !$kelasTujuanId || !$mapelId) {
+            return redirect()->back()->with('error', 'Data tidak lengkap untuk menyalin CP.');
+        }
+
+        // 1. Ambil data draft dari kelas asal
+        $draftsAsal = $db->table('kurikulum_cp_drafts')
+            ->where([
+                'teacher_id' => $userId,
+                'academic_year_id' => $tahunAktif['id'],
+                'mapel_id' => $mapelId,
+                'master_class_id' => $kelasAsalId
+            ])->get()->getResultArray();
+
+        if (empty($draftsAsal)) {
+            return redirect()->back()->with('error', 'Tidak ada data Draft Elemen di kelas asal tersebut.');
+        }
+
+        $count = 0;
+        foreach ($draftsAsal as $draft) {
+            // 2. Cek apakah elemen ini sudah ada di kelas tujuan agar tidak dobel
+            $cek = $db->table('kurikulum_cp_drafts')
+                ->where([
+                    'teacher_id' => $userId,
+                    'academic_year_id' => $tahunAktif['id'],
+                    'mapel_id' => $mapelId,
+                    'master_class_id' => $kelasTujuanId,
+                    'nama_elemen' => $draft['nama_elemen']
+                ])->countAllResults();
+
+            // 3. Jika belum ada, Insert (Salin)!
+            if ($cek == 0) {
+                $db->table('kurikulum_cp_drafts')->insert([
+                    'teacher_id'       => $userId,
+                    'academic_year_id' => $tahunAktif['id'],
+                    'semester'         => $tahunAktif['semester'] ?? 'Ganjil',
+                    'mapel_id'         => $mapelId,
+                    'master_class_id'  => $kelasTujuanId,
+                    'nama_elemen'      => $draft['nama_elemen'],
+                    'deskripsi_cp'     => $draft['deskripsi_cp'],
+                    'created_at'       => date('Y-m-d H:i:s')
+                ]);
+                $count++;
+            }
+        }
+
+        if ($count > 0) {
+            return redirect()->back()->with('success', "Berhasil menyalin $count Elemen CP dari kelas lain.");
+        } else {
+            return redirect()->back()->with('error', "Tidak ada elemen baru yang disalin (Mungkin elemen sudah ada di kelas ini).");
+        }
+    }
+
 }
