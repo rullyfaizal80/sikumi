@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print Analisis CP - SiKuMi</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: 'Times New Roman', Times, serif; color: #000; margin: 0; padding: 20px 0; background-color: #525659; }
+        .a4-paper { width: 297mm; min-height: 210mm; margin: 0 auto; background: #fff; padding: 10mm 12mm; box-shadow: 0 0 15px rgba(0,0,0,0.4); position: relative; }
+
+        @page { size: A4 landscape; margin: 10mm; }
+        @media print {
+            body { background: #fff; padding: 0; }
+            .a4-paper { width: 100%; min-height: auto; margin: 0; padding: 0; box-shadow: none; }
+            .print-actions-wrapper { display: none !important; }
+        }
+
+        /* UTILITY CLASS */
+        .d-flex { display: flex !important; }
+        .justify-content-between { justify-content: space-between !important; }
+        .justify-content-center { justify-content: center !important; }
+        .text-center { text-align: center !important; }
+        .text-right { text-align: right !important; }
+        .mb-0 { margin-bottom: 0 !important; }
+        .font-weight-bold { font-weight: bold !important; }
+        .text-muted { color: #6c757d !important; }
+        .d-inline-block { display: inline-block !important; }
+        .section-title { font-weight: bold; font-size: 13px; margin-top: 15px; margin-bottom: 5px; color: #000; }
+
+        /* HEADER */
+        .header-container { display: flex; justify-content: center; align-items: center; border-bottom: 3px double #000; padding-bottom: 8px; margin-bottom: 15px; width: 100%; }
+        .header-content { display: flex; align-items: center; justify-content: center; gap: 20px; width: 100%; }
+        .header-content img { height: 70px; width: auto; object-fit: contain; }
+        .header-text { text-align: center; margin: 0; line-height: 1.2; }
+        .header-text h5 { margin: 0 0 2px 0; font-weight: 800; color: #002060; font-size: 16px; letter-spacing: 0.5px; }
+        .header-text h6 { margin: 2px 0; font-weight: 700; font-size: 12px; }
+        .badge-semester { font-weight: bold; text-transform: uppercase; color: #fff; font-size: 10px; background-color: #002060 !important; border-radius: 3px; padding: 2px 8px; display: inline-block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+        /* INFO GURU & MAPEL */
+        .info-table { width: auto; margin-bottom: 10px; font-weight: bold; }
+        .info-table td { border: none !important; padding: 2px 8px 2px 0 !important; text-align: left !important; font-size: 12px !important; }
+
+        /* TABLE STYLE */
+        .table-container { margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; text-align: left; table-layout: fixed; }
+        th, td { border: 1px solid #000; padding: 6px; vertical-align: top; font-size: 11px; line-height: 1.3; }
+        th { background-color: #f4f4f4 !important; font-weight: bold; text-align: center; vertical-align: middle; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        
+        /* TANDA TANGAN SECTION */
+        .signature-section { font-size: 12px; margin-top: 30px; padding: 0 30px; page-break-inside: avoid; }
+
+        /* PANEL KONTROL */
+        .print-actions-wrapper { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+        .btn-group-top { display: flex; gap: 10px; }
+        .btn-print { background: #002060; color: #fff; padding: 8px 16px; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .btn-close { background: #dc3545; color: #fff; padding: 8px 16px; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .control-panel { background: #fff; padding: 12px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid #ddd; text-align: center; width: 140px; }
+        .control-panel p { margin: 0 0 8px 0; font-size: 11px; font-weight: bold; color: #333; }
+        .d-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; justify-items: center; }
+        .btn-dpad { background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; width: 30px; height: 30px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+        .btn-dpad:hover { background: #dee2e6; }
+        .btn-reset { margin-top: 8px; background: #6c757d; color: white; border: none; border-radius: 4px; font-size: 10px; padding: 4px; width: 100%; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="print-actions-wrapper">
+        <div class="btn-group-top">
+            <button class="btn-print" onclick="window.print()">🖨️ Cetak PDF</button>
+            <button class="btn-close" onclick="window.close()">❌ Tutup</button>
+        </div>
+        <div class="control-panel">
+            <p>Atur Posisi TTD Guru</p>
+            <div class="d-pad">
+                <div></div><button class="btn-dpad" onclick="moveTtd(0, -3)">⬆️</button><div></div>
+                <button class="btn-dpad" onclick="moveTtd(-3, 0)">⬅️</button>
+                <button class="btn-dpad" onclick="moveTtd(0, 3)">⬇️</button>
+                <button class="btn-dpad" onclick="moveTtd(3, 0)">➡️</button>
+            </div>
+            <button class="btn-reset" onclick="resetTtd()">🔄 Reset Posisi</button>
+        </div>
+    </div>
+
+    <div class="a4-paper">
+        <!-- HEADER KOP SURAT -->
+        <div class="header-container">
+            <div class="header-content">
+                <img src="<?= base_url('assets/img/logo_kaldik1.png') ?>" alt="Logo Yayasan">
+                <div class="header-text">
+                    <h5>ANALISIS CAPAIAN PEMBELAJARAN (CP) & TUJUAN PEMBELAJARAN</h5>
+                    <h5 style="font-size: 18px; margin-top: 2px;"><?= strtoupper(esc($namaMadrasah ?? 'MTs MIFTAHUL HUDA (MIMHa)')) ?></h5>
+                    <h6>TAHUN PELAJARAN <?= $tahunAktif ? esc($tahunAktif['academic_year']) : '-' ?></h6>
+                    <span class="badge-semester">
+                        SEMESTER <?= strtoupper(esc($tahunAktif['semester'] ?? '-')) ?>
+                    </span>
+                </div>
+                <img src="<?= base_url('assets/img/logo_kaldik2.png') ?>" alt="Logo MTs">
+            </div>
+        </div>
+
+        <!-- INFORMASI MAPEL -->
+        <table class="info-table">
+            <tr><td width="120">Mata Pelajaran</td><td width="10">:</td><td><?= esc($namaMapelAktif ?? '-') ?></td></tr>
+            <tr><td>Fase / Kelas</td><td>:</td><td><?= esc($namaKelasAktif ?? '-') ?></td></tr>
+            <tr><td>Guru Pengampu</td><td>:</td><td><?= esc($namaGuruCetak) ?></td></tr>
+        </table>
+
+        <!-- ============================================================== -->
+        <!-- BAGIAN A: TABEL DESKRIPSI CP (DRAFT ELEMEN)                    -->
+        <!-- ============================================================== -->
+        <div class="section-title">A. DESKRIPSI CAPAIAN PEMBELAJARAN (CP)</div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th width="5%">No</th>
+                        <th width="20%">Elemen CP</th>
+                        <th width="75%">Deskripsi Capaian Pembelajaran</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if(empty($draftElemen)): ?>
+                        <tr><td colspan="3" class="text-center">Belum ada deskripsi elemen CP.</td></tr>
+                    <?php else: ?>
+                        <?php foreach($draftElemen as $no => $d): ?>
+                        <tr>
+                            <td class="text-center"><?= $no+1 ?></td>
+                            <td class="font-weight-bold" dir="auto"><?= esc($d['nama_elemen']) ?></td>
+                            <td dir="auto" style="text-align: justify;"><?= nl2br(esc($d['deskripsi_cp'])) ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ============================================================== -->
+        <!-- BAGIAN B: TABEL ANALISIS TP & KKTP                             -->
+        <!-- ============================================================== -->
+        <div class="section-title">B. ANALISIS TUJUAN PEMBELAJARAN (TP) & KKTP</div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th width="4%">No</th>
+                        <th width="15%">Elemen CP</th>
+                        <th width="22%">Tujuan Pembelajaran (TP)</th>
+                        <th width="16%">Lingkup Materi</th>
+                        <th width="23%">Kriteria Ketercapaian TP (KKTP)</th>
+                        <th width="15%">Aktivitas Pembelajaran</th>
+                        <th width="5%">JP</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php 
+                    $totalJp = 0;
+                    if(empty($analisisData)): 
+                    ?>
+                        <tr><td colspan="7" class="text-center">Belum ada data analisis CP.</td></tr>
+                    <?php else: ?>
+                        <?php foreach($analisisData as $no => $dt): 
+                            $totalJp += (int)$dt['estimasi_jp'];
+                        ?>
+                        <tr>
+                            <td class="text-center"><?= $no+1 ?></td>
+                            <td class="font-weight-bold" dir="auto"><?= esc($dt['elemen_cp']) ?></td>
+                            <td dir="auto"><?= esc($dt['tujuan_pembelajaran']) ?></td>
+                            <td dir="auto"><?= esc($dt['lingkup_materi']) ?></td>
+                            <td dir="auto"><?= nl2br(esc($dt['kktp'])) ?></td>
+                            <td dir="auto"><?= esc($dt['aktivitas_tarl']) ?></td>
+                            <td class="text-center font-weight-bold"><?= esc($dt['estimasi_jp']) ?></td>
+                        </tr>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </tbody>
+                <tfoot>
+                    <tr style="background-color: #f4f4f4; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+                        <td colspan="6" class="text-right" style="font-weight: bold; padding-right: 15px; vertical-align: middle;">TOTAL ALOKASI JP:</td>
+                        <td class="text-center font-weight-bold" style="font-size: 13px;"><?= $totalJp ?></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- TANDA TANGAN -->
+        <div class="d-flex justify-content-between signature-section">
+            <div class="text-center" style="width: 250px; line-height: 1;">
+                <p class="mb-0">Mengetahui,</p>
+                <p class="font-weight-bold" style="font-weight: 700; margin-top: 3px; margin-bottom: -15px; position: relative; z-index: 1;">Kepala Madrasah,</p>
+                <img src="<?= base_url('assets/img/ttd_kamad.png') ?>" alt="TTD Kamad" 
+                     style="height: 90px; width: auto; object-fit: contain; margin-top: -8px; margin-bottom: -30px; position: relative; z-index: 2; mix-blend-mode: multiply; transform: scale(0.85); left: -25px;" 
+                     onerror="this.style.opacity='0'">
+                <p class="font-weight-bold mb-0 d-inline-block" style="font-weight: 800; position: relative; z-index: 3; text-decoration: underline;"><?= esc($kepalaNama ?? '.............................................') ?></p>
+                <p class="text-muted small mb-0" style="font-size: 11px; position: relative; z-index: 3; margin-top: 4px;">NPK. <?= esc($kepalaNpk ?? '.....................................') ?></p>
+            </div>
+
+            <div class="text-center" style="width: 250px; line-height: 1;">
+                <p class="mb-0"><?= esc($titiMangsa ?? 'Bandung, ....................................') ?></p>
+                <p class="font-weight-bold" style="font-weight: 700; margin-top: 3px; margin-bottom: -15px; position: relative; z-index: 1;">Guru Mata Pelajaran,</p>
+                <div style="width: 100%; position: relative; z-index: 2;">
+                    <img id="ttd-guru" src="<?= base_url('assets/img/ttd_' . esc($userId) . '.png') ?>" alt="TTD Guru" 
+                         style="height: 78px; width: auto; object-fit: contain; top: 0px; margin-top: 3px; margin-bottom: -28px; position: relative; mix-blend-mode: multiply; transform: scale(0.85); left: 0px;" 
+                         onerror="this.style.opacity='0'">
+                </div>
+                <p class="font-weight-bold mb-0 d-inline-block" style="font-weight: 800; position: relative; z-index: 3; text-decoration: underline;"><?= esc($namaGuruCetak) ?></p>
+                <p class="text-muted small mb-0" style="font-size: 11px; position: relative; z-index: 3; margin-top: 4px;">NPK. <?= esc($guruNpk) ?></p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let ttdPosX = 0; let ttdPosY = 0;
+        const imgTtdGuru = document.getElementById('ttd-guru');
+
+        function moveTtd(x, y) {
+            ttdPosX += x; ttdPosY += y;
+            if(imgTtdGuru) { imgTtdGuru.style.left = ttdPosX + 'px'; imgTtdGuru.style.top = ttdPosY + 'px'; }
+        }
+
+        function resetTtd() {
+            ttdPosX = 0; ttdPosY = 0;
+            if(imgTtdGuru) { imgTtdGuru.style.left = ttdPosX + 'px'; imgTtdGuru.style.top = ttdPosY + 'px'; }
+        }
+    </script>
+</body>
+</html>

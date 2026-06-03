@@ -32,7 +32,11 @@ class PerangkatController extends BaseController
                 ->get()->getResultArray();
                 
             foreach ($kelasQuery as $k) {
-                $classOptions[$k['id']] = 'Kelas ' . ($k['class_name'] ?? '') . ' (Fase ' . ($k['curriculum_phase'] ?? '-') . ')';
+                // Bersihkan kata "Fase" dari database jika sudah ada, lalu gabungkan kembali agar seragam
+                $faseAsli = trim($k['curriculum_phase'] ?? '-');
+                $faseBersih = trim(str_ireplace('Fase', '', $faseAsli));
+                
+                $classOptions[$k['id']] = 'Kelas ' . ($k['class_name'] ?? '') . ' (Fase ' . $faseBersih . ')';
             }
 
             // 2. Ambil Pilihan Mapel (Tunggal & Gabungan)
@@ -100,8 +104,41 @@ class PerangkatController extends BaseController
                 ->get()->getResultArray();
         }
 
-        // KIRIM SEMUA DATA KE VIEW
-        return view('guru/analisis_cp', [
+        // ==============================================================
+        // 📥 AMBIL PENGATURAN MADRASAH & TTD (UNTUK CETAK)
+        // ==============================================================
+        $namaMadrasah = $db->tableExists('settings') ? $db->table('settings')->where('key', 'nama_madrasah')->get()->getRowArray() : null;
+        $titiMangsa = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_titi_mangsa')->get()->getRowArray() : null;
+        $kepalaSekolah = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_nama')->get()->getRowArray() : null;
+        $npkKepala = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_npk')->get()->getRowArray() : null;
+
+        $guruNpk = '-';
+        $namaGuruCetak = '.....................................'; // Default garis titik-titik
+
+        // 1. Coba ambil nama & NPK dari tabel teacher_profiles
+        if ($db->tableExists('teacher_profiles')) {
+            $guruProfile = $db->table('teacher_profiles')->where('user_id', $userId)->get()->getRowArray();
+            if ($guruProfile) {
+                $guruNpk = $guruProfile['nip'] ?? $guruProfile['npk'] ?? '-';
+                // Menyesuaikan dengan nama kolom yang biasa dipakai
+                $namaGuruCetak = $guruProfile['nama_guru'] ?? $guruProfile['nama'] ?? $guruProfile['full_name'] ?? $namaGuruCetak;
+            }
+        }
+        
+        // 2. Jika di teacher_profiles tidak ada, coba ambil dari tabel users (bawaan login)
+        if ($namaGuruCetak == '.....................................' && $db->tableExists('users')) {
+            $userData = $db->table('users')->where('id', $userId)->get()->getRowArray();
+            if ($userData) {
+                $namaGuruCetak = $userData['fullname'] ?? $userData['name'] ?? $userData['username'] ?? $namaGuruCetak;
+            }
+        }
+        
+        // 3. Fallback terakhir ke Session jika DB gagal
+        if ($namaGuruCetak == '.....................................') {
+            $namaGuruCetak = session()->get('nama_guru') ?? session()->get('fullname') ?? session()->get('name') ?? 'Guru Pengampu';
+        }
+
+        $dataView = [
             'tahunAktif'      => $tahunAktif,
             'classOptions'    => $classOptions,
             'subjectOptions'  => $subjectOptions,
@@ -111,8 +148,24 @@ class PerangkatController extends BaseController
             'selectedKelasId' => $selectedKelasId,
             'totalJpTersedia' => $totalJpTersedia,
             'namaMapelAktif'  => $namaMapelAktif,
-            'namaKelasAktif'  => $namaKelasAktif
-        ]);
+            'namaKelasAktif'  => $namaKelasAktif,
+            
+            // Variabel khusus cetak
+            'namaMadrasah'    => $namaMadrasah ? $namaMadrasah['value'] : 'MTs MIFTAHUL HUDA (MIMHa)',
+            'titiMangsa'      => $titiMangsa ? $titiMangsa['value'] : 'Bandung, ' . date('d F Y'),
+            'kepalaNama'      => $kepalaSekolah ? $kepalaSekolah['value'] : 'Rully Faizal, S.T.',
+            'kepalaNpk'       => $npkKepala ? $npkKepala['value'] : '-',
+            'guruNpk'         => $guruNpk,
+            'namaGuruCetak'   => $namaGuruCetak,
+            'userId'          => $userId
+        ];
+
+        // 🖨️ CEK JIKA USER MEMINTA HALAMAN PRINT
+        if ($this->request->getGet('print') == '1') {
+            return view('guru/print_analisis_cp', $dataView);
+        }
+
+        return view('guru/analisis_cp', $dataView);
     }
 
     public function save_draft_elemen() 

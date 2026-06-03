@@ -11,14 +11,20 @@
     <div id="app-data" data-url-reload="<?= base_url('guru/analisis-cp') ?>"></div>
 
     <div class="container-fluid">
-        <!-- HEADER HALAMAN -->
+       <!-- HEADER HALAMAN & TOMBOL DASHBOARD -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h3 class="mb-0" style="color: #FF9F00; font-weight: 700;">🤖 Analisis Capaian Pembelajaran</h3>
                 <p class="text-muted small mb-0">Susun TP & KKTP secara manual, atau biarkan AI SiKuMi membantu Anda.</p>
             </div>
-            <div>
-                <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm font-weight-bold shadow-sm">🏠 Kembali ke Dashboard</a>
+            <div class="d-flex gap-2">
+                <!-- Tombol Print Baru -->
+                <a href="<?= base_url("guru/analisis-cp?mapel_id={$selectedMapelId}&kelas_id={$selectedKelasId}&print=1") ?>" target="_blank" class="btn btn-primary btn-sm font-weight-bold shadow-sm me-2">
+                    🖨️ Cetak Analisis (PDF)
+                </a>
+                <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm font-weight-bold shadow-sm">
+                    🏠 Kembali ke Dashboard
+                </a>
             </div>
         </div>
 
