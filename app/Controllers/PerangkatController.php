@@ -145,15 +145,31 @@ class PerangkatController extends BaseController
     public function delete_draft_elemen($id) 
     {
         $db = \Config\Database::connect();
+        
+        // 1. Cari data draft yang akan dihapus
         $draft = $db->table('kurikulum_cp_drafts')->where('id', $id)->get()->getRowArray();
         
         if ($draft) {
+            // 2. Lacak apakah draft ini sudah pernah dianalisis ke tabel Header & Detail
+            $header = $db->table('kurikulum_cp_headers')
+                         ->where([
+                             'teacher_id'      => $draft['teacher_id'],
+                             'mapel_id'        => $draft['mapel_id'],
+                             'master_class_id' => $draft['master_class_id'],
+                             'elemen_cp'       => $draft['nama_elemen']
+                         ])->get()->getRowArray();
+                         
+            // 3. Jika ketemu, sapu bersih Detail dan Header-nya sekaligus
+            if ($header) {
+                $db->table('kurikulum_cp_details')->where('header_id', $header['id'])->delete();
+                $db->table('kurikulum_cp_headers')->where('id', $header['id'])->delete();
+            }
+            
+            // 4. Terakhir, hapus Draft itu sendiri
             $db->table('kurikulum_cp_drafts')->where('id', $id)->delete();
-            return redirect()->to(base_url("guru/analisis-cp?mapel_id={$draft['mapel_id']}&kelas_id={$draft['master_class_id']}"))
-                             ->with('success', 'Elemen CP berhasil dihapus dari tabel.');
         }
         
-        return redirect()->back();
+        return redirect()->back()->with('success', 'Draft Elemen CP berhasil dihapus.');
     }
 
     /**
@@ -362,7 +378,26 @@ class PerangkatController extends BaseController
 
     public function delete_analisis_manual($id) 
     {
-        \Config\Database::connect()->table('kurikulum_cp_details')->where('id', $id)->delete();
+        $db = \Config\Database::connect();
+        
+        // 1. Ambil info detail (TP) sebelum dihapus untuk mengetahui ID Header-nya
+        $detail = $db->table('kurikulum_cp_details')->where('id', $id)->get()->getRowArray();
+        
+        if ($detail) {
+            $headerId = $detail['header_id'];
+            
+            // 2. Hapus baris detail (TP) tersebut
+            $db->table('kurikulum_cp_details')->where('id', $id)->delete();
+            
+            // 3. Cek apakah Header (Elemen) tersebut masih memiliki TP lain yang tersisa?
+            $cekSisaDetail = $db->table('kurikulum_cp_details')->where('header_id', $headerId)->countAllResults();
+            
+            // 4. Jika sudah kosong melompong (0), hapus juga Header-nya agar tidak jadi sampah!
+            if ($cekSisaDetail == 0) {
+                $db->table('kurikulum_cp_headers')->where('id', $headerId)->delete();
+            }
+        }
+
         return redirect()->back()->with('success', 'Data Analisis CP berhasil dihapus.');
     }
 
