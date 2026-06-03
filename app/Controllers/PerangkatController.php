@@ -365,4 +365,62 @@ class PerangkatController extends BaseController
         \Config\Database::connect()->table('kurikulum_cp_details')->where('id', $id)->delete();
         return redirect()->back()->with('success', 'Data Analisis CP berhasil dihapus.');
     }
+
+    public function save_analisis_batch() 
+    {
+        $db = \Config\Database::connect();
+        $userId = session()->has('user_id') ? session()->get('user_id') : (function_exists('user_id') ? user_id() : 0);
+        $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+        
+        $mapelId = $this->request->getPost('mapel_id');
+        $kelasId = $this->request->getPost('master_class_id');
+        $dataRows = json_decode($this->request->getPost('data_rows'), true);
+
+        if (empty($dataRows) || !is_array($dataRows)) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Tidak ada data yang dipilih atau format salah.']);
+        }
+
+        foreach ($dataRows as $row) {
+            $namaElemen = trim($row['elemen']);
+            
+            // 1. Cek Header berdasarkan nama Elemen
+            $header = $db->table('kurikulum_cp_headers')
+                         ->where(['teacher_id' => $userId, 'academic_year_id' => $tahunAktif['id'], 'mapel_id' => $mapelId, 'master_class_id' => $kelasId, 'elemen_cp' => $namaElemen])
+                         ->get()->getRowArray();
+                         
+            if (!$header) {
+                // Jika Header belum ada, ambil teks asli dari draft
+                $draft = $db->table('kurikulum_cp_drafts')->where(['teacher_id' => $userId, 'mapel_id' => $mapelId, 'master_class_id' => $kelasId, 'nama_elemen' => $namaElemen])->get()->getRowArray();
+                $teksAsli = $draft ? $draft['deskripsi_cp'] : 'Hasil Analisis AI SiKuMi';
+
+                $db->table('kurikulum_cp_headers')->insert([
+                    'academic_year_id' => $tahunAktif['id'],
+                    'master_class_id'  => $kelasId,
+                    'mapel_id'         => $mapelId,
+                    'teacher_id'       => $userId,
+                    'elemen_cp'        => $namaElemen,
+                    'teks_cp_asli'     => $teksAsli,
+                    'created_at'       => date('Y-m-d H:i:s')
+                ]);
+                $headerId = $db->insertID();
+            } else {
+                $headerId = $header['id'];
+            }
+
+            // 2. Insert ke Tabel Detail
+            $db->table('kurikulum_cp_details')->insert([
+                'header_id'           => $headerId,
+                'kompetensi'          => '', 
+                'lingkup_materi'      => $row['lingkup'],
+                'tujuan_pembelajaran' => $row['tp'],
+                'kktp'                => $row['kktp'],
+                'estimasi_jp'         => (int)$row['jp'],
+                'aktivitas_tarl'      => $row['aktivitas'],
+                'created_at'          => date('Y-m-d H:i:s')
+            ]);
+        }
+
+        return $this->response->setJSON(['status' => 'success', 'message' => 'Data AI berhasil dipindahkan ke Tabel Analisis Manual!']);
+    }
+
 }
