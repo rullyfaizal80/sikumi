@@ -7,20 +7,22 @@ class PerangkatController extends BaseController
     public function analisis_cp()
     {
         $db = \Config\Database::connect();
+        
         $userId = session()->has('user_id') ? session()->get('user_id') : (function_exists('user_id') ? user_id() : 0);
         $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
 
         $classOptions = [];
         $subjectOptions = [];
         $draftElemen = [];
+        $analisisData = [];
         
-        $totalJpTersedia = 0; // Variabel baru untuk menampung JP
+        $totalJpTersedia = 0; 
         $namaMapelAktif = '';
         $namaKelasAktif = '';
 
         if ($tahunAktif && $userId) {
             
-            // Ambil Pilihan Kelas Berdasarkan Rombel
+            // 1. Ambil Pilihan Kelas Berdasarkan Rombel
             $kelasQuery = $db->table('class_rombel cr')
                 ->select('mc.id, mc.class_name, mc.curriculum_phase')
                 ->join('master_classes mc', 'mc.id = cr.master_class_id')
@@ -33,7 +35,7 @@ class PerangkatController extends BaseController
                 $classOptions[$k['id']] = 'Kelas ' . ($k['class_name'] ?? '') . ' (Fase ' . ($k['curriculum_phase'] ?? '-') . ')';
             }
 
-            // Ambil Pilihan Mapel (Tunggal & Gabungan)
+            // 2. Ambil Pilihan Mapel (Tunggal & Gabungan)
             $csFields = $db->getFieldNames('class_schedules');
             $kolomIdGuru = in_array('teacher_id', $csFields) ? 'teacher_id' : (in_array('guru_id', $csFields) ? 'guru_id' : 'user_id');
             $kolomSubjectId = in_array('subject_id', $csFields) ? 'subject_id' : 'mapel_id';
@@ -64,6 +66,7 @@ class PerangkatController extends BaseController
             }
         }
 
+        // TANGKAP ID MAPEL & KELAS YANG SEDANG DIPILIH
         $selectedMapelId = $this->request->getGet('mapel_id') ?? array_key_first($subjectOptions);
         $selectedKelasId = $this->request->getGet('kelas_id') ?? array_key_first($classOptions);
 
@@ -76,24 +79,39 @@ class PerangkatController extends BaseController
             // Hitung JP Minimum dari Jadwal & Kaldik
             $totalJpTersedia = $this->_calculateMinTotalJp($db, $userId, $tahunAktif, $selectedMapelId, $selectedKelasId, $kolomIdGuru, $kolomSubjectId);
 
+            // Ambil Data Draft Elemen (Tabel Langkah 1)
             $draftElemen = $db->table('kurikulum_cp_drafts')
                 ->where('teacher_id', $userId)
                 ->where('academic_year_id', $tahunAktif['id'])
                 ->where('mapel_id', $selectedMapelId)
                 ->where('master_class_id', $selectedKelasId)
+                ->orderBy('id', 'ASC')
+                ->get()->getResultArray();
+
+            // Ambil Data Analisis CP (Tabel Langkah 2)
+            $analisisData = $db->table('kurikulum_cp_details d')
+                ->select('d.*, h.elemen_cp')
+                ->join('kurikulum_cp_headers h', 'h.id = d.header_id')
+                ->where('h.teacher_id', $userId)
+                ->where('h.academic_year_id', $tahunAktif['id'])
+                ->where('h.mapel_id', $selectedMapelId)
+                ->where('h.master_class_id', $selectedKelasId)
+                ->orderBy('h.id', 'ASC')->orderBy('d.id', 'ASC')
                 ->get()->getResultArray();
         }
 
+        // KIRIM SEMUA DATA KE VIEW
         return view('guru/analisis_cp', [
             'tahunAktif'      => $tahunAktif,
             'classOptions'    => $classOptions,
             'subjectOptions'  => $subjectOptions,
             'draftElemen'     => $draftElemen,
+            'analisisData'    => $analisisData,
             'selectedMapelId' => $selectedMapelId,
             'selectedKelasId' => $selectedKelasId,
-            'totalJpTersedia' => $totalJpTersedia, // Kirim ke View
-            'namaMapelAktif'  => $namaMapelAktif,  // Kirim ke View
-            'namaKelasAktif'  => $namaKelasAktif   // Kirim ke View
+            'totalJpTersedia' => $totalJpTersedia,
+            'namaMapelAktif'  => $namaMapelAktif,
+            'namaKelasAktif'  => $namaKelasAktif
         ]);
     }
 
@@ -239,4 +257,112 @@ class PerangkatController extends BaseController
                          ->with('success', 'Elemen CP berhasil diperbarui.');
     }
 
+    // =========================================================================
+    // CRUD UNTUK TABEL ANALISIS CP (LANGKAH 2)
+    // =========================================================================
+    public function save_analisis_manual() 
+    {
+        $db = \Config\Database::connect();
+        $userId = session()->has('user_id') ? session()->get('user_id') : (function_exists('user_id') ? user_id() : 0);
+        $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+        
+        $mapelId = $this->request->getPost('mapel_id');
+        $kelasId = $this->request->getPost('master_class_id');
+        $draftId = $this->request->getPost('draft_id'); // ID dari elemen yang dipilih
+        
+        // 1. Ambil nama elemen dari tabel draft
+        $draft = $db->table('kurikulum_cp_drafts')->where('id', $draftId)->get()->getRowArray();
+        
+        // 2. Cek apakah Header untuk Elemen ini sudah ada
+        $header = $db->table('kurikulum_cp_headers')
+                     ->where(['teacher_id' => $userId, 'academic_year_id' => $tahunAktif['id'], 'mapel_id' => $mapelId, 'master_class_id' => $kelasId, 'elemen_cp' => $draft['nama_elemen']])
+                     ->get()->getRowArray();
+                     
+        if (!$header) {
+            // Jika belum ada, buat Header baru
+            $db->table('kurikulum_cp_headers')->insert([
+                'academic_year_id' => $tahunAktif['id'],
+                'master_class_id'  => $kelasId,
+                'mapel_id'         => $mapelId,
+                'teacher_id'       => $userId,
+                'elemen_cp'        => $draft['nama_elemen'],
+                'teks_cp_asli'     => $draft['deskripsi_cp'],
+                'created_at'       => date('Y-m-d H:i:s')
+            ]);
+            $headerId = $db->insertID();
+        } else {
+            $headerId = $header['id'];
+        }
+
+        // 3. Simpan ke Tabel Detail
+        $db->table('kurikulum_cp_details')->insert([
+            'header_id'           => $headerId,
+            'kompetensi'          => '', 
+            'lingkup_materi'      => $this->request->getPost('lingkup_materi'),
+            'tujuan_pembelajaran' => $this->request->getPost('tujuan_pembelajaran'),
+            'kktp'                => $this->request->getPost('kktp'),
+            'estimasi_jp'         => $this->request->getPost('estimasi_jp'),
+            'aktivitas_tarl'      => $this->request->getPost('aktivitas'),
+            'created_at'          => date('Y-m-d H:i:s')
+        ]);
+
+        return redirect()->back()->with('success', 'Analisis CP berhasil ditambahkan.');
+    }
+
+    public function update_analisis_manual() 
+    {
+        $db = \Config\Database::connect();
+        $userId = session()->has('user_id') ? session()->get('user_id') : (function_exists('user_id') ? user_id() : 0);
+        $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+        
+        $detailId = $this->request->getPost('detail_id');
+        $mapelId = $this->request->getPost('mapel_id');
+        $kelasId = $this->request->getPost('master_class_id');
+        $draftId = $this->request->getPost('draft_id'); // Menangkap Elemen CP dari dropdown edit
+        
+        // 1. Ambil nama elemen dari tabel draft berdasarkan pilihan baru
+        $draft = $db->table('kurikulum_cp_drafts')->where('id', $draftId)->get()->getRowArray();
+        
+        if ($draft && $tahunAktif) {
+            // 2. Cek apakah Header untuk Elemen ini sudah ada
+            $header = $db->table('kurikulum_cp_headers')
+                         ->where(['teacher_id' => $userId, 'academic_year_id' => $tahunAktif['id'], 'mapel_id' => $mapelId, 'master_class_id' => $kelasId, 'elemen_cp' => $draft['nama_elemen']])
+                         ->get()->getRowArray();
+                         
+            if (!$header) {
+                // Jika belum ada, buat Header baru
+                $db->table('kurikulum_cp_headers')->insert([
+                    'academic_year_id' => $tahunAktif['id'],
+                    'master_class_id'  => $kelasId,
+                    'mapel_id'         => $mapelId,
+                    'teacher_id'       => $userId,
+                    'elemen_cp'        => $draft['nama_elemen'],
+                    'teks_cp_asli'     => $draft['deskripsi_cp'],
+                    'created_at'       => date('Y-m-d H:i:s')
+                ]);
+                $headerId = $db->insertID();
+            } else {
+                $headerId = $header['id']; // Jika sudah ada, gunakan ID yang sudah ada
+            }
+            
+            // 3. Update Tabel Detail (Termasuk pindah header_id)
+            $db->table('kurikulum_cp_details')->where('id', $detailId)->update([
+                'header_id'           => $headerId, // <--- Ini kunci untuk memindahkan elemen
+                'lingkup_materi'      => $this->request->getPost('lingkup_materi'),
+                'tujuan_pembelajaran' => $this->request->getPost('tujuan_pembelajaran'),
+                'kktp'                => $this->request->getPost('kktp'),
+                'estimasi_jp'         => $this->request->getPost('estimasi_jp'),
+                'aktivitas_tarl'      => $this->request->getPost('aktivitas'),
+                'updated_at'          => date('Y-m-d H:i:s')
+            ]);
+        }
+        
+        return redirect()->back()->with('success', 'Analisis CP berhasil diperbarui.');
+    }
+
+    public function delete_analisis_manual($id) 
+    {
+        \Config\Database::connect()->table('kurikulum_cp_details')->where('id', $id)->delete();
+        return redirect()->back()->with('success', 'Data Analisis CP berhasil dihapus.');
+    }
 }
