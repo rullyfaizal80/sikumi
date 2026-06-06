@@ -42,7 +42,7 @@ class AtpController extends BaseController
 
         $selectedRombelId = $this->request->getGet('rombel_id') ?? (!empty($daftarRombel) ? $daftarRombel[0]['id'] : 1);
 
-        $tingkatKelas = 7;
+       $tingkatKelas = 7; // Default
         $masterClassId = 1; 
         $namaRombelAktif = '-';
         
@@ -52,7 +52,22 @@ class AtpController extends BaseController
                 $rombelName = $r['rombel_name'] ?? '';
                 $namaRombelAktif = $className . ($rombelName ? ' - ' . $rombelName : '');
                 
-                $tingkatKelas = $r['level_type'] ?? (preg_replace('/[^0-9]/', '', $className) ?: 7);
+                // 🌟 PERBAIKAN: Deteksi Angka atau Romawi
+                $angkaTingkat = preg_replace('/[^0-9]/', '', $className); // Cari angka biasa
+                
+                if (!empty($angkaTingkat)) {
+                    $tingkatKelas = $angkaTingkat;
+                } else {
+                    // Jika tidak ada angka (misal pakai "Kelas VII"), kita konversi Romawi ke Angka
+                    $upperClass = strtoupper($className);
+                    if (strpos($upperClass, 'VIII') !== false) { $tingkatKelas = 8; }
+                    elseif (strpos($upperClass, 'VII') !== false) { $tingkatKelas = 7; }
+                    elseif (strpos($upperClass, 'IX') !== false) { $tingkatKelas = 9; }
+                    elseif (strpos($upperClass, 'XII') !== false) { $tingkatKelas = 12; }
+                    elseif (strpos($upperClass, 'XI') !== false) { $tingkatKelas = 11; }
+                    elseif (strpos($upperClass, 'X') !== false) { $tingkatKelas = 10; }
+                }
+                
                 $masterClassId = $r['master_class_id'] ?? $r['id'];
                 break;
             }
@@ -104,7 +119,7 @@ class AtpController extends BaseController
                 }
             }
             
-            // A. Ambil Mapel Reguler Guru
+            // A. Ambil Mapel Reguler Guru KEMUDIAN
             $mapelReguler = $db->table('class_schedules cs')
                           ->select("cs.{$kolomSubjectId} as id, s.{$kolomNamaMapel} as subject_name")
                           ->join("{$tabelMapel} s", "s.id = cs.{$kolomSubjectId}", 'left')
@@ -117,32 +132,30 @@ class AtpController extends BaseController
                           
             foreach($mapelReguler as $m) {
                 if(!empty($m['id'])) {
-                    $daftarMapel[] = ['id' => $m['id'], 'subject_name' => $m['subject_name']];
+                    // 🌟 PERBAIKAN: Tambahkan 'S_' di depan ID mapel reguler
+                    $daftarMapel[] = [
+                        'id' => 'S_' . $m['id'], 
+                        'subject_name' => $m['subject_name']
+                    ];
                 }
-            }        
+            }    
         }
 
         $selectedMapelId = $this->request->getGet('mapel_id') ?? (!empty($daftarMapel) ? $daftarMapel[0]['id'] : 1);
 
         // ==============================================================
-        // 4. LOAD DATA ANALISIS CP (DIJAMIN MUNCUL)
+        // 4. LOAD DATA ANALISIS CP (PERBAIKAN QUERY KE KURIKULUM_CP)
         // ==============================================================
         $dataAtp = [];
-        $tabelAnalisis = 'analisis_cp_data'; 
         
-        if ($db->tableExists($tabelAnalisis)) {
-             $analisisFields = $db->getFieldNames($tabelAnalisis);
-             
-             $builder = $db->table($tabelAnalisis)->where('mapel_id', $selectedMapelId);
-             
-             // Jaring Pengaman Cerdas: Cari dari Tingkat, atau Master Kelas, atau Rombel ID
-             $builder->groupStart();
-             if (in_array('tingkat', $analisisFields)) { $builder->orWhere('tingkat', $tingkatKelas); }
-             if (in_array('kelas_id', $analisisFields)) {
-                 $builder->orWhere('kelas_id', $masterClassId);
-                 $builder->orWhere('kelas_id', $selectedRombelId);
-             }
-             $builder->groupEnd();
+        if ($db->tableExists('kurikulum_cp_headers') && $db->tableExists('kurikulum_cp_details')) {
+             $builder = $db->table('kurikulum_cp_headers h')
+                          ->select('d.*, h.mapel_id, h.master_class_id')
+                          ->join('kurikulum_cp_details d', 'd.header_id = h.id', 'inner')
+                          ->where('h.mapel_id', $selectedMapelId)
+                          ->where('h.master_class_id', $masterClassId)
+                          ->orderBy('d.urutan', 'ASC')
+                          ->orderBy('d.id', 'ASC');
 
              $dataAtp = $builder->get()->getResultArray();
         }
@@ -183,6 +196,8 @@ class AtpController extends BaseController
         foreach ($dataAtp as $idx => &$row) {
             $row['tanggal'] = $listTanggal[$idx] ?? 'Tentukan Jadwal';
         }
+
+        
 
         // ==============================================================
         // 6. RENDER KE VIEW
