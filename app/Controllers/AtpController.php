@@ -290,8 +290,10 @@ class AtpController extends BaseController
             // 5b. DISTRIBUSI TANGGAL MINGGUAN KHUSUS UNTUK ROMBEL YANG DIPILIH
             // ==============================================================
             $hariMengajar = [];
+            // PERBAIKAN: Join time_slots untuk mendapat day_name
             $builderSch = $db->table('class_schedules cs')
-                             ->select('cs.day_name')
+                             ->select('ts.day_name')
+                             ->join('schedule_time_slots ts', 'ts.id = cs.slot_id')
                              ->where('cs.version_id', $jadwalAktif['id'])
                              ->where('cs.rombel_id', $selectedRombelId);
             
@@ -303,6 +305,14 @@ class AtpController extends BaseController
                     $hariMengajar[] = $sch['day_name'];
                 }
             }
+
+            // PERBAIKAN: Tarik event Kaldik KHUSUS untuk master_class_id Rombel saat ini
+            $currentKaldikEvents = $db->tableExists('academic_calendars') 
+                ? $db->table('academic_calendars')
+                     ->where('academic_year_id', $tahunAktif['id'])
+                     ->where('class_id', $currentMasterClassId)
+                     ->get()->getResultArray() 
+                : [];
 
             $rawHebDates = [];
             if (!empty($hariMengajar)) {
@@ -318,7 +328,7 @@ class AtpController extends BaseController
 
                         if (in_array($namaHari, $hariMengajar)) {
                             $isLibur = false;
-                            foreach ($kaldikEvents as $ev) {
+                            foreach ($currentKaldikEvents as $ev) { // PERBAIKAN: Pengecekan pakai currentKaldikEvents
                                 if ($dateStr >= $ev['start_date'] && $dateStr <= $ev['end_date']) { 
                                     $isLibur = true; 
                                     break; 
@@ -335,6 +345,7 @@ class AtpController extends BaseController
             // ==============================================================
             // 5c. GABUNGKAN TANGGAL BERDASARKAN MINGGU YANG SAMA
             // ==============================================================
+            $listTanggal = [];
             if (!empty($rawHebDates)) {
                 $weeklyDates = [];
                 foreach ($rawHebDates as $dStr) {
@@ -379,14 +390,33 @@ class AtpController extends BaseController
                     }
                 }
             }
-        }
 
-        // ==============================================================
-        // 5d. DISTRIBUSI TANGGAL KE TABEL ATP
-        // ==============================================================
-        foreach ($dataAtp as $idx => &$row) {
-            $row['nomor_atp'] = $tingkatKelas . '.' . ($idx + 1);
-            $row['tanggal'] = $listTanggal[$idx] ?? 'Jadwal Habis / Belum Diatur';
+            // ==============================================================
+            // 5d. DISTRIBUSI TANGGAL KE TABEL ATP (DENGAN PENAMBAHAN BARIS JIKA SISA)
+            // ==============================================================
+            $totalTgl = count($listTanggal);
+            $totalAtp = count($dataAtp);
+
+            // Masukkan tanggal ke baris ATP yang sudah ada
+            foreach ($dataAtp as $idx => &$row) {
+                $row['nomor_atp'] = $tingkatKelas . '.' . ($idx + 1);
+                // PERBAIKAN: Teks diubah menjadi 'Jadwal habis'
+                $row['tanggal'] = $listTanggal[$idx] ?? 'Jadwal habis';
+            }
+
+            // PERBAIKAN: Jika masih ada sisa tanggal (tanggal > materi), tambahkan baris baru
+            if ($totalTgl > $totalAtp) {
+                for ($i = $totalAtp; $i < $totalTgl; $i++) {
+                    $dataAtp[] = [
+                        'nomor_atp' => $tingkatKelas . '.' . ($i + 1),
+                        'tanggal' => $listTanggal[$i],
+                        'tujuan_pembelajaran' => '', // Baris kosong untuk diisi mandiri
+                        'lingkup_materi' => '',
+                        'aktivitas_tarl' => '',
+                        'estimasi_jp' => 0
+                    ];
+                }
+            }
         }
 // ==============================================================
         // 🌟 TAMBAHAN: Hitung Total JP Target ATP di Controller
