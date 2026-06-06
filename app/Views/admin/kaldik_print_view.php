@@ -90,7 +90,15 @@
         $end = strtotime($ag['end_date']);
         for ($current = $start; $current <= $end; $current += 86400) {
             $dateKey = date('Y-m-d', $current);
-            $mappedEvents[$dateKey] = ['name' => $ag['event_name'], 'color' => $ag['color_hex'], 'category_id' => $ag['category_id']];
+            $mappedEvents[$dateKey] = [
+                        'id'          => $ag['id'],
+                        'name'        => $ag['event_name'],
+                        'color'       => $ag['color_hex'],
+                        'category_id' => $ag['category_id'],
+                        'jenis_matriks' => $ag['jenis_matriks'], // <--- TAMBAHKAN BARIS INI
+                        'start_date'  => $ag['start_date'],
+                        'end_date'    => $ag['end_date']
+                    ];
         }
     }
 
@@ -142,15 +150,16 @@
                             $dayLabel = $mapDayIndex[$dayOfWeek];
                             $kategoriHari = 'HEB';
 
-                            if (isset($mappedEvents[$fullDate])) {
-                                $idKategori = (int)$mappedEvents[$fullDate]['category_id'];
-                                if ($idKategori === 4 || $idKategori === 5) { $kategoriHari = 'HEF'; }
-                                elseif ($idKategori === 2 || $idKategori === 3) { $kategoriHari = 'HLCB'; }
-                            } else {
-                                if ($dayOfWeek == 0 || ($dayOfWeek == 6 && $hariKerjaSetting == 5)) { 
-                                    $kategoriHari = 'HLCB'; 
-                                }
-                            }
+                            // Filter Sensor Utama Kategori Database (Tanpa Hardcode)
+                                            if (isset($mappedEvents[$fullDate])) {
+                                                // Langsung ambil tujuannya dari database!
+                                                $kategoriHari = $mappedEvents[$fullDate]['jenis_matriks'];
+                                            } else {
+                                                // Logika HLCB polos jika kalender kosong
+                                                if ($dayOfWeek == 0 || ($dayOfWeek == 6 && $hariKerjaSetting == 5)) {
+                                                    $kategoriHari = 'HLCB';
+                                                }
+                                            }
 
                             $rekapBulanan[$numBulan][$kategoriHari][$dayLabel]++;
                             $rekapBulanan[$numBulan][$kategoriHari]['jml']++;

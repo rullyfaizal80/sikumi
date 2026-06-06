@@ -69,12 +69,14 @@
                         for ($current = $start; $current <= $end; $current += 86400) {
                             $dateKey = date('Y-m-d', $current);
                             $mappedEvents[$dateKey] = [
-                                'name'        => $ag['event_name'],
-                                'color'       => $ag['color_hex'],
-                                'category_id' => $ag['category_id'],
-                                'start_date'  => $ag['start_date'],
-                                'end_date'    => $ag['end_date']
-                            ];
+                        'id'          => $ag['id'],
+                        'name'        => $ag['event_name'],
+                        'color'       => $ag['color_hex'],
+                        'category_id' => $ag['category_id'],
+                        'jenis_matriks' => $ag['jenis_matriks'], // <--- TAMBAHKAN BARIS INI
+                        'start_date'  => $ag['start_date'],
+                        'end_date'    => $ag['end_date']
+                    ];
                         }
                     }
 
@@ -158,10 +160,9 @@
                                                         $cDate = sprintf('%s-%02d-%02d', $targetYear, $numBulan, $d);
                                                         $cDay = (int)date('w', strtotime($cDate));
                                                         if (isset($mappedEvents[$cDate])) {
-                                                            $idCat = (int)$mappedEvents[$cDate]['category_id'];
-                                                            if ($idCat === 4 || $idCat === 5) { $matriksHari['HEF'][$cDay]++; }
-                                                            elseif ($idCat === 2 || $idCat === 3) { $matriksHari['HLCB'][$cDay]++; }
-                                                            else { $matriksHari['HEB'][$cDay]++; }
+                                                            // Ambil langsung jenis matriks dari database
+                                                            $kategoriCat = $mappedEvents[$cDate]['jenis_matriks'];
+                                                            $matriksHari[$kategoriCat][$cDay]++;
                                                         } else {
                                                             if ($cDay == 0 || ($cDay == 6 && $hariKerjaSetting == 5)) { 
                                                                 $matriksHari['HLCB'][$cDay]++; 
@@ -259,14 +260,12 @@
                                             $dayLabel = $mapDayIndex[$dayOfWeek];
                                             $kategoriHari = 'HEB';
 
+                                            // Filter Sensor Utama Kategori Database (Tanpa Hardcode)
                                             if (isset($mappedEvents[$fullDate])) {
-                                                $idKategori = (int)$mappedEvents[$fullDate]['category_id'];
-                                                if ($idKategori === 4 || $idKategori === 5) {
-                                                    $kategoriHari = 'HEF';
-                                                } elseif ($idKategori === 2 || $idKategori === 3) {
-                                                    $kategoriHari = 'HLCB';
-                                                }
+                                                // Langsung ambil tujuannya dari database!
+                                                $kategoriHari = $mappedEvents[$fullDate]['jenis_matriks'];
                                             } else {
+                                                // Logika HLCB polos jika kalender kosong
                                                 if ($dayOfWeek == 0 || ($dayOfWeek == 6 && $hariKerjaSetting == 5)) {
                                                     $kategoriHari = 'HLCB';
                                                 }

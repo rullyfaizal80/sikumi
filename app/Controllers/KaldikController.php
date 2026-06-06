@@ -53,7 +53,7 @@ class KaldikController extends BaseController
         $agendaKaldik = [];
         if ($tahunAktif) {
             $agendaKaldik = $db->table('academic_calendars ac')
-                   ->select('ac.*, mc.category_name, mc.color_hex, ac.category_id')
+                   ->select('ac.*, mc.category_name, mc.color_hex, mc.jenis_matriks, ac.category_id')
                    ->join('master_categories mc', 'mc.id = ac.category_id')
                    ->where('ac.academic_year_id', $tahunAktif['id'])
                    ->where('ac.class_id', $kelasTerpilih)
@@ -205,7 +205,7 @@ class KaldikController extends BaseController
         $agendaKaldik = [];
         if ($tahunAktif) {
             $agendaKaldik = $db->table('academic_calendars ac')
-                               ->select('ac.*, mc.category_name, mc.color_hex, ac.category_id')
+                               ->select('ac.*, mc.category_name, mc.color_hex, mc.jenis_matriks, ac.category_id')
                                ->join('master_categories mc', 'mc.id = ac.category_id')
                                ->where('ac.academic_year_id', $tahunAktif['id'])
                                ->where('ac.class_id', $kelasTerpilih)
@@ -227,6 +227,61 @@ class KaldikController extends BaseController
         ];
 
         return view('admin/kaldik_print_view', $data);
+    }
+
+    // =========================================================================
+    // CRUD MASTER KATEGORI WARNA (DINAMIS)
+    // =========================================================================
+    public function storeCategory()
+    {
+        $db = \Config\Database::connect();
+        
+        $jenisMatriks = $this->request->getPost('jenis_matriks');
+        // Logika Pintar: Jika HEB nilainya 1, selain itu 0
+        $countEff = ($jenisMatriks == 'HEB') ? 1 : 0;
+
+        $db->table('master_categories')->insert([
+            'category_name'      => $this->request->getPost('category_name'),
+            'color_hex'          => $this->request->getPost('color_hex'),
+            'jenis_matriks'      => $jenisMatriks,
+            'count_as_effective' => $countEff
+        ]);
+
+        return redirect()->back()->with('sukses', 'Kategori warna baru berhasil ditambahkan!');
+    }
+
+    public function updateCategory()
+    {
+        $db = \Config\Database::connect();
+        
+        $id = $this->request->getPost('id');
+        $jenisMatriks = $this->request->getPost('jenis_matriks');
+        $countEff = ($jenisMatriks == 'HEB') ? 1 : 0;
+
+        $db->table('master_categories')->where('id', $id)->update([
+            'category_name'      => $this->request->getPost('category_name'),
+            'color_hex'          => $this->request->getPost('color_hex'),
+            'jenis_matriks'      => $jenisMatriks,
+            'count_as_effective' => $countEff
+        ]);
+
+        return redirect()->back()->with('sukses', 'Kategori warna berhasil diperbarui!');
+    }
+
+    public function deleteCategory($id)
+    {
+        $db = \Config\Database::connect();
+
+        // PROTEKSI: Cek apakah kategori ini sudah dipakai di tabel kalender
+        $cekDipakai = $db->table('academic_calendars')->where('category_id', $id)->countAllResults();
+        
+        if ($cekDipakai > 0) {
+            // Jika flashdata 'gagal' belum didukung di view Bapak, kita pakai 'sukses' dengan ikon peringatan
+            return redirect()->back()->with('sukses', '⚠️ Gagal! Kategori ini tidak bisa dihapus karena sedang digunakan pada agenda kalender.');
+        }
+
+        $db->table('master_categories')->where('id', $id)->delete();
+        return redirect()->back()->with('sukses', 'Kategori warna berhasil dihapus!');
     }
 
     // =========================================================================
@@ -261,7 +316,7 @@ class KaldikController extends BaseController
         $agendaKaldik = [];
         if ($tahunAktif) {
             $agendaKaldik = $db->table('academic_calendars ac')
-                   ->select('ac.*, mc.category_name, mc.color_hex, ac.category_id')
+                   ->select('ac.*, mc.category_name, mc.color_hex, mc.jenis_matriks, ac.category_id')
                    ->join('master_categories mc', 'mc.id = ac.category_id')
                    ->where('ac.academic_year_id', $tahunAktif['id'])
                    ->where('ac.class_id', $kelasTerpilih)
@@ -313,7 +368,7 @@ class KaldikController extends BaseController
         $agendaKaldik = [];
         if ($tahunAktif) {
             $agendaKaldik = $db->table('academic_calendars ac')
-                               ->select('ac.*, mc.category_name, mc.color_hex, ac.category_id')
+                               ->select('ac.*, mc.category_name, mc.color_hex, mc.jenis_matriks, ac.category_id')
                                ->join('master_categories mc', 'mc.id = ac.category_id')
                                ->where('ac.academic_year_id', $tahunAktif['id'])
                                ->where('ac.class_id', $kelasTerpilih)

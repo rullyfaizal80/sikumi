@@ -104,13 +104,14 @@
                         for ($current = $start; $current <= $end; $current += 86400) {
                             $dateKey = date('Y-m-d', $current);
                             $mappedEvents[$dateKey] = [
-                                'id'          => $ag['id'],
-                                'name'        => $ag['event_name'],
-                                'color'       => $ag['color_hex'],
-                                'category_id' => $ag['category_id'],
-                                'start_date'  => $ag['start_date'],
-                                'end_date'    => $ag['end_date']
-                            ];
+                        'id'          => $ag['id'],
+                        'name'        => $ag['event_name'],
+                        'color'       => $ag['color_hex'],
+                        'category_id' => $ag['category_id'],
+                        'jenis_matriks' => $ag['jenis_matriks'],
+                        'start_date'  => $ag['start_date'],
+                        'end_date'    => $ag['end_date']
+                    ];
                         }
                     }
 
@@ -201,10 +202,9 @@
                                                         $cDate = sprintf('%s-%02d-%02d', $targetYear, $numBulan, $d);
                                                         $cDay = (int)date('w', strtotime($cDate));
                                                         if (isset($mappedEvents[$cDate])) {
-                                                            $idCat = (int)$mappedEvents[$cDate]['category_id'];
-                                                            if ($idCat === 4 || $idCat === 5) { $matriksHari['HEF'][$cDay]++; }
-                                                            elseif ($idCat === 2 || $idCat === 3) { $matriksHari['HLCB'][$cDay]++; }
-                                                            else { $matriksHari['HEB'][$cDay]++; }
+                                                            // Ambil langsung jenis matriks dari database
+                                                            $kategoriCat = $mappedEvents[$cDate]['jenis_matriks'];
+                                                            $matriksHari[$kategoriCat][$cDay]++;
                                                         } else {
         // REVISI LOGIKA HLCB POLOS BULANAN:
         if ($cDay == 0 || ($cDay == 6 && $hariKerjaSetting == 5)) { 
@@ -263,6 +263,12 @@
                                 </div>
                                 <!-- LEGEND WARNA NOTIFIKASI KATEGORI -->
                                 <div class="border-top mt-4 pt-3 no-print">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="font-weight-bold mb-0 text-muted">🎨 Legenda Kategori Agenda</h6>
+                                        <button type="button" class="btn btn-sm btn-outline-primary font-weight-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalMasterKategori">
+                                            ⚙️ Kelola Master Kategori
+                                        </button>
+                                    </div>
                                     <div class="d-flex flex-wrap gap-4">
                                         <?php foreach ($daftarWarna as $dw): ?>
                                             <div class="legend-item"><div class="legend-color" style="background-color: <?= $dw['color_hex'] ?>;"></div><span><?= $dw['category_name'] ?></span></div>
@@ -308,20 +314,16 @@
                                             $dayLabel = $mapDayIndex[$dayOfWeek];
                                             $kategoriHari = 'HEB'; // Default awal
 
-                                            // Filter Sensor Utama Kategori Database
+                                            // Filter Sensor Utama Kategori Database (Tanpa Hardcode)
                                             if (isset($mappedEvents[$fullDate])) {
-                                                $idKategori = (int)$mappedEvents[$fullDate]['category_id'];
-                                                if ($idKategori === 4 || $idKategori === 5) {
-                                                    $kategoriHari = 'HEF';
-                                                } elseif ($idKategori === 2 || $idKategori === 3) {
+                                                // Langsung ambil tujuannya dari database!
+                                                $kategoriHari = $mappedEvents[$fullDate]['jenis_matriks'];
+                                            } else {
+                                                // Logika HLCB polos jika kalender kosong
+                                                if ($dayOfWeek == 0 || ($dayOfWeek == 6 && $hariKerjaSetting == 5)) {
                                                     $kategoriHari = 'HLCB';
                                                 }
-                                            } else {
-    // REVISI LOGIKA PENENTUAN HLCB POLOS ANALISIS SEMESTER:
-    if ($dayOfWeek == 0 || ($dayOfWeek == 6 && $hariKerjaSetting == 5)) {
-        $kategoriHari = 'HLCB';
-    }
-}
+                                            }
 
                                             // Akumulasikan ke dalam matriks hari bulanan secara presisi
                                             $rekapBulanan[$numBulan][$kategoriHari][$dayLabel]++;
@@ -570,6 +572,88 @@
         </div>
     </div>
 
+    <div class="modal fade" id="modalMasterKategori" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0">
+                <div class="modal-header bg-primary text-white">
+                    <h6 class="modal-title font-weight-bold">⚙️ Kelola Master Kategori Kaldik</h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                
+                <div class="modal-body bg-light border-bottom">
+                    <form action="<?= base_url('admin/kaldik/category/store') ?>" method="POST" id="formKategori">
+                        <?= csrf_field() ?>
+                        
+                        <input type="hidden" name="id" id="kat_id" />
+                        
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-5">
+                                <label class="small font-weight-bold">Nama Kategori</label>
+                                <input type="text" name="category_name" id="kat_name" class="form-control form-control-sm" required placeholder="Cth: Rapat Guru" />
+                            </div>
+                            <div class="col-md-3">
+                                <label class="small font-weight-bold">Warna Tema</label>
+                                <input type="color" name="color_hex" id="kat_color" class="form-control form-control-sm p-1" required value="#0dcaf0" style="height: 31px;" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="small font-weight-bold">Target Matriks</label>
+                                <select name="jenis_matriks" id="kat_jenis" class="form-select form-select-sm" required>
+                                    <option value="HEB">HEB (Tetap Dihitung Efektif)</option>
+                                    <option value="HEF">HEF (Hari Efektif Fakultatif)</option>
+                                    <option value="HLCB">HLCB (Libur & Cuti Bersama)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-3 text-end">
+                            <button type="button" class="btn btn-secondary btn-sm font-weight-bold" id="btnBatalEditKat" style="display:none;" onclick="resetFormKat()">Batal Edit</button>
+                            <button type="submit" class="btn btn-success btn-sm font-weight-bold shadow-sm" id="btnSimpanKat">➕ Tambah Kategori</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="modal-body p-0">
+                    <table class="table table-hover table-bordered m-0 small text-center align-middle">
+                        <thead class="bg-white">
+                            <tr>
+                                <th width="5%">No</th>
+                                <th width="10%">Warna</th>
+                                <th width="40%" class="text-start">Nama Kategori</th>
+                                <th width="20%">Matriks</th>
+                                <th width="25%">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($daftarWarna as $idx => $dw): ?>
+                            <tr>
+                                <td><?= $idx + 1 ?></td>
+                                <td>
+                                    <div style="width: 20px; height: 20px; background-color: <?= esc($dw['color_hex']) ?>; margin: 0 auto; border-radius: 4px; border: 1px solid #ccc;"></div>
+                                </td>
+                                <td class="text-start font-weight-bold"><?= esc($dw['category_name']) ?></td>
+                                <td><span class="badge bg-secondary"><?= esc($dw['jenis_matriks'] ?? 'HEB') ?></span></td>
+                                <td>
+                                    <button type="button" class="btn btn-warning btn-sm py-0 px-2 text-white" 
+                                            data-id="<?= esc($dw['id']) ?>"
+                                            data-name="<?= esc($dw['category_name']) ?>"
+                                            data-color="<?= esc($dw['color_hex']) ?>"
+                                            data-jenis="<?= esc($dw['jenis_matriks'] ?? 'HEB') ?>"
+                                            onclick="editKat(this.dataset.id, this.dataset.name, this.dataset.color, this.dataset.jenis)">
+                                        ✏️
+                                    </button>
+                                    
+                                    <a href="<?= base_url('admin/kaldik/category/delete/' . $dw['id']) ?>" class="btn btn-danger btn-sm py-0 px-2" onclick="return confirm('Yakin ingin menghapus kategori ini?')">
+                                        🗑️
+                                    </a>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
        <!-- ======================================================== -->
     <!-- SUSUNAN UTUH SCRIPT PENUTUP BERKAS KALDIK_MANAGE.PHP -->
     <!-- ======================================================== -->
@@ -645,6 +729,32 @@
                 });
             });
         });
+    </script>
+    <!-- SCRIPT UNTUK HANDLE EDIT KATEGORI -->
+    <script>
+        function editKat(id, name, color, jenis) {
+            document.getElementById('formKategori').action = "<?= base_url('admin/kaldik/category/update') ?>";
+            document.getElementById('kat_id').value = id;
+            document.getElementById('kat_name').value = name;
+            document.getElementById('kat_color').value = color;
+            document.getElementById('kat_jenis').value = jenis;
+            
+            document.getElementById('btnSimpanKat').innerHTML = "💾 Update Kategori";
+            document.getElementById('btnSimpanKat').className = "btn btn-warning btn-sm font-weight-bold shadow-sm text-white";
+            document.getElementById('btnBatalEditKat').style.display = "inline-block";
+        }
+
+        function resetFormKat() {
+            document.getElementById('formKategori').action = "<?= base_url('admin/kaldik/category/store') ?>";
+            document.getElementById('kat_id').value = "";
+            document.getElementById('kat_name').value = "";
+            document.getElementById('kat_color').value = "#0dcaf0";
+            document.getElementById('kat_jenis').value = "HEB";
+            
+            document.getElementById('btnSimpanKat').innerHTML = "➕ Tambah Kategori";
+            document.getElementById('btnSimpanKat').className = "btn btn-success btn-sm font-weight-bold shadow-sm";
+            document.getElementById('btnBatalEditKat').style.display = "none";
+        }
     </script>
 </body>
 </html>

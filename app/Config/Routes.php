@@ -175,3 +175,7 @@ $routes->get('perangkat/delete_analisis_manual/(:num)', 'PerangkatController::de
 $routes->post('perangkat/save_analisis_batch', 'PerangkatController::save_analisis_batch');
 
 $routes->post('perangkat/copy_draft', 'PerangkatController::copy_draft_elemen');
+
+$routes->post('admin/kaldik/category/store', 'KaldikController::storeCategory');
+$routes->post('admin/kaldik/category/update', 'KaldikController::updateCategory');
+$routes->get('admin/kaldik/category/delete/(:num)', 'KaldikController::deleteCategory/$1');
