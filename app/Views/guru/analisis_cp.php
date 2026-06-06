@@ -336,11 +336,15 @@
                 </div>
                 <div class="modal-body bg-light">
                     <label class="small font-weight-bold">Target Rata-rata JP per Tujuan Pembelajaran (TP)</label>
-                    <p class="text-muted small mb-2">Berapa JP estimasi waktu ideal untuk 1 materi/TP di kelas Anda? (Ini akan memaksa AI memecah CP menjadi materi-materi berdurasi pendek).</p>
+                    <p class="text-muted small mb-2">Berapa JP estimasi waktu ideal untuk 1 materi/TP di kelas Anda?</p>
                     <div class="input-group mb-3">
                         <input type="number" id="input_target_jp" class="form-control font-weight-bold text-center" value="2" min="1" max="10">
                         <span class="input-group-text font-weight-bold bg-white">Jam Pelajaran (JP)</span>
                     </div>
+
+                    <label class="small font-weight-bold mt-2">Instruksi Tambahan untuk AI (Opsional)</label>
+                    <p class="text-muted small mb-2">Contoh: <i>"Awali setiap TP dengan kata 'Murid dapat...'"</i> atau <i>"Sertakan nilai-nilai Islami."</i></p>
+                    <textarea id="input_instruksi_tambahan" class="form-control" rows="3" placeholder="Ketik instruksi khusus Anda di sini..."></textarea>
                 </div>
                 <div class="modal-footer bg-white">
                     <button type="button" class="btn btn-secondary btn-sm font-weight-bold" data-bs-dismiss="modal">Batal</button>
@@ -476,6 +480,7 @@
         document.getElementById('btn-eksekusi-ai').addEventListener('click', async function() {
             
             const targetJp = document.getElementById('input_target_jp').value || "2";
+            const instruksiTambahan = document.getElementById('input_instruksi_tambahan').value.trim(); // <-- TANGKAP INSTRUKSI
             const btnAi = this; 
             const areaHasil = document.getElementById('area-hasil-ai');
             
@@ -496,21 +501,27 @@
 
             if (kumpulanCP === "") { alert("Tabel elemen kosong! Silakan tambah elemen CP terlebih dahulu."); return; }
 
-            const promptUser = `Guru sedang menyusun rencana pembelajaran dengan konteks berikut:
+            // Susun instruksi dasar
+            let promptUser = `Guru sedang menyusun rencana pembelajaran dengan konteks berikut:
 - Mata Pelajaran: ${mapelAktif}
 - Fase/Kelas: ${kelasAktif}
-- Total JP Tersedia per Semester: ${totalJpSemester} JP
-- Batasan JP: Pecah TP sedemikian rupa sehingga setiap 1 TP berbobot rata-rata ${targetJp} JP. (Maksimal ${parseInt(targetJp) + 2} JP per TP).
+- Total Ketersediaan Waktu: ${totalJpSemester} JP per semester.
 - Capaian Pembelajaran (CP) yang dianalisis:
 ${kumpulanCP}
-- Fokus Elemen: ${elemenList.join(", ")}
+- Fokus Elemen: ${elemenList.join(", ")}`;
 
-Berdasarkan data di atas, tolong berikan analisis lengkap dan pemetaan materi.
-ATURAN WAJIB: 
-1. Jawab menggunakan tag tabel HTML murni (<table>, <thead>, <tbody>, <tr>, <th>, <td>).
-2. DILARANG KERAS menggunakan format tabel Markdown.
-3. Buat tepat 6 kolom persis urutan ini: Elemen CP, Tujuan Pembelajaran, Lingkup Materi, KKTP, Estimasi JP, Aktivitas Pembelajaran. (Jangan tambahkan kolom Nomor!).`;
+            // Sisipkan instruksi tambahan JIKA guru mengisinya
+            if (instruksiTambahan !== "") {
+                promptUser += `\n- Instruksi Khusus/Tambahan dari Guru: ${instruksiTambahan}`;
+            }
 
+            // Gabungkan dengan aturan wajib sistem yang diperbaiki logikanya
+            promptUser += `\n\nBerdasarkan data di atas, tolong berikan analisis lengkap dan pemetaan materi.
+ATURAN WAJIB MATEMATIS & FORMATTING (SANGAT PENTING): 
+1. BATASAN JP PER BARIS: Pecah Tujuan Pembelajaran (TP) menjadi sangat detail sehingga setiap 1 baris TP berbobot rata-rata ${targetJp} JP. (MAKSIMAL ${parseInt(targetJp) + 2} JP per baris).
+2. CARA MENCAPAI TOTAL KESELURUHAN: Untuk mencapai total keseluruhan ${totalJpSemester} JP, Anda WAJIB MEMPERBANYAK jumlah baris/rincian TP. (Misal: Jika butuh 40 JP dan target 2 JP/TP, buatlah sekitar 20 baris rincian TP).
+3. Jawab HANYA menggunakan tag tabel HTML murni (<table>, <thead>, <tbody>, <tr>, <th>, <td>). DILARANG menggunakan format Markdown.
+4. Buat tepat 6 kolom persis urutan ini: Elemen CP, Tujuan Pembelajaran, Lingkup Materi, KKTP, Estimasi JP, Aktivitas Pembelajaran. (Tanpa kolom Nomor!).`;        
             areaHasil.style.display = 'block';
             areaHasil.innerHTML = `
                 <h5 class="font-weight-bold text-success mb-3">✨ SiKuMi Sedang Menganalisis...</h5>
