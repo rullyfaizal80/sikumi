@@ -161,44 +161,99 @@ class AtpController extends BaseController
         }
 
         // ==============================================================
-        // 5. LOAD TANGGAL JADWAL
+        // 5. LOAD TANGGAL JADWAL (BERDASARKAN ANALISIS HEB & KALDIK)
         // ==============================================================
         $listTanggal = [];
-        if ($db->tableExists('class_schedules')) {
-            $scheduleFields = $db->getFieldNames('class_schedules');
-            $kolomTgl = in_array('tanggal_pembelajaran', $scheduleFields) ? 'tanggal_pembelajaran' : (in_array('tanggal', $scheduleFields) ? 'tanggal' : null);
+
+        if ($jadwalAktif && $tahunAktif && !empty($selectedRombelId)) {
+            $isCombined = (strpos($selectedMapelId, 'C_') === 0);
+            $realSubjectId = str_replace(['S_', 'C_'], '', $selectedMapelId);
+
+            // 5a. Dapatkan hari apa saja guru ini mengajar mapel tsb di Rombel ini
+            $hariMengajar = [];
+            $builderSch = $db->table('class_schedules cs')
+                             ->select('cs.day_name') // Ambil nama hari dari jadwal
+                             ->where('cs.version_id', $jadwalAktif['id'])
+                             ->where('cs.rombel_id', $selectedRombelId);
             
-            $isCombined = (strpos($selectedMapelId, 'C') === 0);
-            $searchMapelId = $isCombined ? str_replace('C', '', $selectedMapelId) : $selectedMapelId;
-
-            if ($kolomTgl) {
-                $queryJadwal = $db->table('class_schedules')
-                                  ->select($kolomTgl)
-                                  ->where('rombel_id', $selectedRombelId); 
-                
-                if ($isCombined && in_array('combined_subject_id', $scheduleFields)) {
-                    $queryJadwal->where('combined_subject_id', $searchMapelId);
-                } else {
-                    $queryJadwal->where($kolomSubjectId ?? 'subject_id', $searchMapelId);
+            // Filter berdasarkan mapel reguler atau gabungan
+            if ($isCombined) { 
+                $builderSch->where('cs.combined_subject_id', $realSubjectId); 
+            } else { 
+                $kolomSubjectId = in_array('subject_id', $db->getFieldNames('class_schedules')) ? 'subject_id' : 'mapel_id';
+                $builderSch->where("cs.{$kolomSubjectId}", $realSubjectId); 
+            }
+            
+            $schedules = $builderSch->get()->getResultArray();
+            foreach ($schedules as $sch) {
+                // Simpan hari unik (Senin, Selasa, dst) ke dalam array
+                if (!empty($sch['day_name']) && !in_array($sch['day_name'], $hariMengajar)) {
+                    $hariMengajar[] = $sch['day_name'];
                 }
+            }
 
-                if ($jadwalAktif) {
-                    $queryJadwal->where('version_id', $jadwalAktif['id']);
-                }
+            // 5b. Jika ternyata ada jadwal harinya, kita petakan ke Kalender
+            if (!empty($hariMengajar)) {
+                // Ambil data Kaldik untuk deteksi libur (seperti di AnalysisController)
+                $kaldikEvents = $db->tableExists('academic_calendars') ? $db->table('academic_calendars')->where('academic_year_id', $tahunAktif['id'])->get()->getResultArray() : [];
+
+                // Atur jangkauan bulan berdasarkan semester
+                $tahunSplit = explode('/', $tahunAktif['academic_year']);
+                $tahunStart = (int)trim($tahunSplit[0]);
+                $tahunEnd = isset($tahunSplit[1]) ? (int)trim($tahunSplit[1]) : $tahunStart + 1;
+                $isGanjil = strtolower($tahunAktif['semester']) == 'ganjil';
+                $bulanList = $isGanjil ? [7, 8, 9, 10, 11, 12] : [1, 2, 3, 4, 5, 6];
                 
-                $hasilJadwal = $queryJadwal->orderBy($kolomTgl, 'ASC')->get()->getResultArray();
-                foreach ($hasilJadwal as $j) {
-                    if(!empty($j[$kolomTgl])) $listTanggal[] = $j[$kolomTgl];
+                // Mapping index hari PHP (1=Senin ... 7=Minggu)
+                $hariNamesNumeric = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
+                $namaBulanIndo = [1=>'Jan', 2=>'Feb', 3=>'Mar', 4=>'Apr', 5=>'Mei', 6=>'Jun', 7=>'Jul', 8=>'Agu', 9=>'Sep', 10=>'Okt', 11=>'Nov', 12=>'Des'];
+
+                // Loop setiap bulan aktif di semester ini
+                foreach ($bulanList as $bln) {
+                    $tahunTerkait = ($isGanjil && $bln >= 7) ? $tahunStart : (($isGanjil) ? $tahunStart : $tahunEnd);
+                    if (!$isGanjil && $bln <= 6) { $tahunTerkait = $tahunEnd; } // Fix untuk genap
+                    
+                    $jmlHariBulan = cal_days_in_month(CAL_GREGORIAN, $bln, $tahunTerkait);
+
+                    for ($d = 1; $d <= $jmlHariBulan; $d++) {
+                        $dateStr = sprintf("%04d-%02d-%02d", $tahunTerkait, $bln, $d);
+                        $dayOfWeek = date('N', strtotime($dateStr)); 
+                        $namaHari = $hariNamesNumeric[$dayOfWeek];
+
+                        // Jika hari tersebut adalah hari guru mengajar
+                        if (in_array($namaHari, $hariMengajar)) {
+                            // Cek apakah tanggal ini masuk masa libur di Kaldik
+                            $isLibur = false;
+                            foreach ($kaldikEvents as $ev) {
+                                if ($dateStr >= $ev['start_date'] && $dateStr <= $ev['end_date']) { 
+                                    $isLibur = true; 
+                                    break; 
+                                }
+                            }
+                            
+                            // Jika bukan libur, masukkan ke dalam daftar tanggal tersedia!
+                            if (!$isLibur) {
+                                // Format tampilan misal: "12 Jul 2026"
+                                $tglFormat = sprintf("%02d %s %04d", $d, $namaBulanIndo[$bln], $tahunTerkait);
+                                $listTanggal[] = $tglFormat;
+                            }
+                        }
+                    }
                 }
             }
         }
 
+        // ==============================================================
+        // 5c. Distribusikan Tanggal ke Tabel ATP
+        // ==============================================================
         foreach ($dataAtp as $idx => &$row) {
-            $row['tanggal'] = $listTanggal[$idx] ?? 'Tentukan Jadwal';
+            // Karena tidak pakai array reference ($row), pastikan penomoran jalan
+            $row['nomor_atp'] = $tingkatKelas . '.' . ($idx + 1);
+            
+            // Masukkan tanggal berdasarkan index, jika habis beri keterangan
+            $row['tanggal'] = $listTanggal[$idx] ?? 'Jadwal Habis / Belum Diatur';
         }
-
         
-
         // ==============================================================
         // 6. RENDER KE VIEW
         // ==============================================================
