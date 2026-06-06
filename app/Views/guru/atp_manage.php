@@ -22,6 +22,17 @@
     </style>
 </head>
 <body class="layout-fixed">
+    <?php
+        // Hitung total estimasi JP ATP secara aman dari data yang ada
+        $totalJpAtp = 0;
+        if (!empty($dataAtp)) {
+            foreach ($dataAtp as $row) {
+                $totalJpAtp += (int)($row['estimasi_jp'] ?? $row['jp'] ?? 0);
+            }
+        }
+        $jpTersedia = isset($totalJpTersedia) ? $totalJpTersedia : 0;
+    ?>
+
     <div class="wrapper p-4">
         
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -38,7 +49,7 @@
         <div class="card shadow-sm border-0 rounded-lg mb-4">
             <div class="card-body bg-white p-3">
                 <form action="<?= base_url('guru/atp') ?>" method="GET" class="row g-3 align-items-end justify-content-center">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="small font-weight-bold text-muted">Mata Pelajaran (Reguler & Gabungan)</label>
                         <select name="mapel_id" class="form-select form-select-sm font-weight-bold text-primary border-primary" onchange="this.form.submit()">
                             <?php if(empty($daftarMapel)): ?>
@@ -52,7 +63,8 @@
                             <?php endif; ?>
                         </select>
                     </div>
-                    <div class="col-md-6">
+
+                    <div class="col-md-4">
                         <label class="small font-weight-bold text-muted">Pilih Rombel (Kelas Spesifik)</label>
                         <select name="rombel_id" class="form-select form-select-sm font-weight-bold border-success" onchange="this.form.submit()">
                             <?php foreach($daftarRombel as $r): ?>
@@ -61,6 +73,25 @@
                                 </option>
                             <?php endforeach; ?>
                         </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="small font-weight-bold text-secondary">Analisis Beban Waktu Terkecil Tingkat</label>
+                        <div class="d-flex gap-2">
+                            <div class="form-control form-control-sm bg-light border-success text-success font-weight-bold text-center w-50" title="Alokasi JP paling sedikit di antara seluruh rombel paralel tingkat ini">
+                                ⏳ Min Tersedia: <?= $jpTersedia ?> JP
+                            </div>
+                            
+                            <?php $warnaAtp = ($totalJpAtp > $jpTersedia && $jpTersedia > 0) ? 'border-danger text-danger' : 'border-primary text-primary'; ?>
+                            <div class="form-control form-control-sm bg-light <?= $warnaAtp ?> font-weight-bold text-center w-50" title="Total Akumulasi JP yang telah disusun dalam tabel ATP">
+                                📚 Target ATP: <?= $totalJpAtp ?> JP
+                            </div>
+                        </div>
+                        <?php if($totalJpAtp > $jpTersedia && $jpTersedia > 0): ?>
+                            <small class="text-danger font-weight-bold d-block mt-1 animate__animated animate__headShake" style="font-size: 10px; line-height: 1.1;">
+                                ⚠️ Perhatian: Beban JP ATP melebihi waktu minimum paralel!
+                            </small>
+                        <?php endif; ?>
                     </div>
                 </form>
             </div>
@@ -77,9 +108,9 @@
                         <thead>
                             <tr>
                                 <th width="4%">Aksi</th>
-                                <th width="9%">Tanggal</th>
+                                <th width="10%">Tanggal</th>
                                 <th width="4%">No</th>
-                                <th width="23%">Tujuan Pembelajaran</th>
+                                <th width="22%">Tujuan Pembelajaran</th>
                                 <th width="12%">Lingkup Materi</th>
                                 <th width="12%">Aktivitas Kognitif</th>
                                 <th width="16%">8 Dimensi Profil Lulusan</th>
@@ -103,9 +134,15 @@
                                         </div>
                                     </td>
                                     
-                                    <td class="text-center font-weight-bold text-primary align-middle cell-tanggal">
-                                        <?= esc($row['tanggal']) ?>
+                                    <?php 
+                                        $tglText = $row['tanggal'] ?? 'Jadwal Habis / Belum Diatur';
+                                        $isHabis = (strpos($tglText, 'Habis') !== false || strpos($tglText, 'Belum') !== false);
+                                        $colorClass = $isHabis ? 'text-danger' : 'text-success';
+                                    ?>
+                                    <td class="text-center font-weight-bold align-middle cell-tanggal <?= $colorClass ?>">
+                                        <?= esc($tglText) ?>
                                     </td>
+
                                     <td class="text-center font-weight-bold align-middle cell-no"><?= esc($tingkatKelas) . '.' . ($idx + 1) ?></td>
                                     
                                     <td dir="auto" class="text-justify"><?= esc($row['tujuan_pembelajaran'] ?? $row['tp'] ?? '-') ?></td>
@@ -136,7 +173,7 @@
                                             <?php foreach($listPancaCinta as $kode => $teks): ?>
                                             <div class="custom-check">
                                                 <input type="checkbox" id="pc_<?= $idx ?>_<?= $kode ?>" value="<?= $kode ?>">
-                                                <label for="pc_<?= $idx ?>_<?= $kode ?>"><?= $teks ?></label>
+                                                <label for="pc_<?= $idx ?>_<?= $kode ?>"><b><?= $kode ?></b>: <?= $teks ?></label>
                                             </div>
                                             <?php endforeach; ?>
                                         </div>
@@ -171,7 +208,7 @@
             let rows = document.querySelectorAll("#tbody-atp tr");
             rows.forEach(r => {
                 let cellTgl = r.querySelector('.cell-tanggal');
-                if(cellTgl) arrTanggal.push(cellTgl.innerText);
+                if(cellTgl) arrTanggal.push(cellTgl.innerText.trim());
             });
         });
 
@@ -194,7 +231,17 @@
                 let cellNo = r.querySelector('.cell-no');
                 
                 if (cellTgl && arrTanggal[idx]) {
-                    cellTgl.innerText = arrTanggal[idx];
+                    let currentText = arrTanggal[idx];
+                    cellTgl.innerText = currentText;
+                    
+                    // Jaga konsistensi warna teks saat baris ditukar posisi (Drag & Drop Safe)
+                    if (currentText.includes('Habis') || currentText.includes('Belum')) {
+                        cellTgl.classList.remove('text-success');
+                        cellTgl.classList.add('text-danger');
+                    } else {
+                        cellTgl.classList.remove('text-danger');
+                        cellTgl.classList.add('text-success');
+                    }
                 }
                 if (cellNo) {
                     cellNo.innerText = tingkatKelas + "." + (idx + 1);

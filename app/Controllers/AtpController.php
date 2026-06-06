@@ -161,79 +161,183 @@ class AtpController extends BaseController
         }
 
         // ==============================================================
-        // 5. LOAD TANGGAL JADWAL (CERDAS: PENGGABUNGAN PER MINGGU)
+        // 5. LOAD TANGGAL JADWAL & HITUNG TOTAL JP MINIMAL (CERDAS & AMAN)
         // ==============================================================
         $listTanggal = [];
+        $totalJpTersedia = 0;
 
         if ($jadwalAktif && $tahunAktif && !empty($selectedRombelId)) {
             $isCombined = (strpos($selectedMapelId, 'C_') === 0);
             $realSubjectId = str_replace(['S_', 'C_'], '', $selectedMapelId);
+            
+            $csFields = $db->getFieldNames('class_schedules');
+            $kolomIdGuru = in_array('teacher_id', $csFields) ? 'teacher_id' : (in_array('guru_id', $csFields) ? 'guru_id' : 'user_id');
+            $kolomSubjectId = in_array('subject_id', $csFields) ? 'subject_id' : 'mapel_id';
 
-            // 5a. Dapatkan hari apa saja guru ini mengajar mapel tsb di Rombel ini
+            // --- PERSIAPAN VARIABEL KALENDER (Mengikuti Pola Aman AnalysisController) ---
+            $kaldikEvents = $db->tableExists('academic_calendars') ? $db->table('academic_calendars')->where('academic_year_id', $tahunAktif['id'])->get()->getResultArray() : [];
+            $tahunSplit = explode('/', $tahunAktif['academic_year']);
+            $tahunStart = (int)trim($tahunSplit[0]);
+            $tahunEnd = isset($tahunSplit[1]) ? (int)trim($tahunSplit[1]) : $tahunStart + 1;
+            $isGanjil = strtolower($tahunAktif['semester']) == 'ganjil';
+            $bulanList = $isGanjil ? [7, 8, 9, 10, 11, 12] : [1, 2, 3, 4, 5, 6];
+            
+            // Definisikan 7 hari penuh agar aman dari Undefined Key
+            $hariNamesNumeric = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
+
+            // ==============================================================
+            // 5a. CARI NILAI JP MINIMAL KHUSUS UNTUK TINGKAT YANG SAMA (SESUAI HEB)
+            // ==============================================================
+            // 1. Ambil master_class_id dari Rombel yang sedang aktif dibuka saat ini
+            $currentRombel = $db->table('class_rombel')->where('id', $selectedRombelId)->get()->getRowArray();
+            $currentMasterClassId = $currentRombel['master_class_id'] ?? null;
+
+            // 2. Ambil seluruh rombel paralel di tingkat yang sama yang diajar oleh guru ini
+            $builderRombelParalel = $db->table('class_schedules cs')
+                                ->select('cs.rombel_id, r.rombel_name, r.master_class_id')
+                                ->join('class_rombel r', 'r.id = cs.rombel_id')
+                                ->where('cs.version_id', $jadwalAktif['id'])
+                                ->where("cs.{$kolomIdGuru}", $userId);
+            
+            // Kunci filter hanya untuk tingkat kelas yang sama (Misal: Sama-sama kelas 8)
+            if (!empty($currentMasterClassId)) {
+                $builderRombelParalel->where('r.master_class_id', $currentMasterClassId);
+            }
+
+            if ($isCombined) { 
+                $builderRombelParalel->where('cs.combined_subject_id', $realSubjectId); 
+            } else { 
+                $builderRombelParalel->where("cs.{$kolomSubjectId}", $realSubjectId); 
+            }
+            $rombelParalel = $builderRombelParalel->groupBy('cs.rombel_id, r.rombel_name, r.master_class_id')->get()->getResultArray();
+
+            // Persiapan format tahun dan bulan persis sesuai AnalysisController
+            $tahunSplit = explode('/', $tahunAktif['academic_year']);
+            $tahunStart = (int)trim($tahunSplit[0]);
+            $tahunEnd = isset($tahunSplit[1]) ? (int)trim($tahunSplit[1]) : $tahunStart + 1;
+            $isGanjil = strtolower($tahunAktif['semester']) == 'ganjil';
+            $bulanList = $isGanjil ? [7, 8, 9, 10, 11, 12] : [1, 2, 3, 4, 5, 6];
+            $hariNamesNumeric = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat'];
+
+            $kumpulanJpRombel = [];
+
+            // 3. Hitung Alokasi Waktu HEB Rombel Paralel satu per satu
+            foreach ($rombelParalel as $rp) {
+                // 🌟 PERBAIKAN UTAMA: Wajib JOIN ke schedule_time_slots untuk mendapatkan day_name yang valid
+                $builderSch = $db->table('class_schedules cs')
+                                 ->join('schedule_time_slots ts', 'ts.id = cs.slot_id')
+                                 ->where('cs.version_id', $jadwalAktif['id'])
+                                 ->where('cs.rombel_id', $rp['rombel_id'])
+                                 ->where("cs.{$kolomIdGuru}", $userId);
+                
+                if ($isCombined) { $builderSch->where('cs.combined_subject_id', $realSubjectId); } 
+                else { $builderSch->where("cs.{$kolomSubjectId}", $realSubjectId); }
+                $schedules = $builderSch->get()->getResultArray();
+
+                $jpPerHari = ['Senin' => 0, 'Selasa' => 0, 'Rabu' => 0, 'Kamis' => 0, 'Jumat' => 0];
+                foreach ($schedules as $sch) {
+                    if (isset($jpPerHari[$sch['day_name']])) {
+                        $jpPerHari[$sch['day_name']] += 1;
+                    }
+                }
+
+                // Ambil kaldik libur berdasarkan master_class_id masing-masing rombel
+                $kaldikEvents = $db->tableExists('academic_calendars') 
+                    ? $db->table('academic_calendars')
+                         ->where('academic_year_id', $tahunAktif['id'])
+                         ->where('class_id', $rp['master_class_id'])
+                         ->get()->getResultArray() 
+                    : [];
+
+                $grandTotalJpRombel = 0;
+
+                // Loop perhitungan tanggal HEB (Senin s.d Jumat) sesuai blueprint AnalysisController
+                foreach ($bulanList as $bln) {
+                    $tahunTerkait = ($isGanjil) ? $tahunStart : $tahunEnd;
+                    $jmlHariBulan = cal_days_in_month(CAL_GREGORIAN, $bln, $tahunTerkait);
+                    $hebBulanIni = ['Senin' => 0, 'Selasa' => 0, 'Rabu' => 0, 'Kamis' => 0, 'Jumat' => 0];
+
+                    for ($d = 1; $d <= $jmlHariBulan; $d++) {
+                        $dateStr = sprintf("%04d-%02d-%02d", $tahunTerkait, $bln, $d);
+                        $dayOfWeek = date('N', strtotime($dateStr)); 
+                        if ($dayOfWeek <= 5) {
+                            $namaHari = $hariNamesNumeric[$dayOfWeek];
+                            $isLibur = false;
+                            foreach ($kaldikEvents as $ev) {
+                                if ($dateStr >= $ev['start_date'] && $dateStr <= $ev['end_date']) { 
+                                    $isLibur = true; 
+                                    break; 
+                                }
+                            }
+                            if (!$isLibur) {
+                                $hebBulanIni[$namaHari]++;
+                            }
+                        }
+                    }
+
+                    foreach (['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'] as $hari) {
+                        $grandTotalJpRombel += $hebBulanIni[$hari] * $jpPerHari[$hari];
+                    }
+                }
+
+                $kumpulanJpRombel[] = $grandTotalJpRombel;
+            }
+
+            // MENDAPATKAN BENCHMARK JP MINIMUM KHUSUS TINGKAT TERKAIT
+            $totalJpTersedia = !empty($kumpulanJpRombel) ? min($kumpulanJpRombel) : 0;
+
+            // ==============================================================
+            // 5b. DISTRIBUSI TANGGAL MINGGUAN KHUSUS UNTUK ROMBEL YANG DIPILIH
+            // ==============================================================
             $hariMengajar = [];
             $builderSch = $db->table('class_schedules cs')
                              ->select('cs.day_name')
                              ->where('cs.version_id', $jadwalAktif['id'])
                              ->where('cs.rombel_id', $selectedRombelId);
             
-            if ($isCombined) { 
-                $builderSch->where('cs.combined_subject_id', $realSubjectId); 
-            } else { 
-                $kolomSubjectId = in_array('subject_id', $db->getFieldNames('class_schedules')) ? 'subject_id' : 'mapel_id';
-                $builderSch->where("cs.{$kolomSubjectId}", $realSubjectId); 
-            }
+            if ($isCombined) { $builderSch->where('cs.combined_subject_id', $realSubjectId); } 
+            else { $builderSch->where("cs.{$kolomSubjectId}", $realSubjectId); }
             
-            $schedules = $builderSch->get()->getResultArray();
-            foreach ($schedules as $sch) {
+            foreach ($builderSch->get()->getResultArray() as $sch) {
                 if (!empty($sch['day_name']) && !in_array($sch['day_name'], $hariMengajar)) {
                     $hariMengajar[] = $sch['day_name'];
                 }
             }
 
-            // 5b. Kumpulkan semua tanggal mentah (Hari Efektif)
             $rawHebDates = [];
             if (!empty($hariMengajar)) {
-                $kaldikEvents = $db->tableExists('academic_calendars') ? $db->table('academic_calendars')->where('academic_year_id', $tahunAktif['id'])->get()->getResultArray() : [];
-
-                $tahunSplit = explode('/', $tahunAktif['academic_year']);
-                $tahunStart = (int)trim($tahunSplit[0]);
-                $tahunEnd = isset($tahunSplit[1]) ? (int)trim($tahunSplit[1]) : $tahunStart + 1;
-                $isGanjil = strtolower($tahunAktif['semester']) == 'ganjil';
-                $bulanList = $isGanjil ? [7, 8, 9, 10, 11, 12] : [1, 2, 3, 4, 5, 6];
-                
-                $hariNamesNumeric = [1 => 'Senin', 2 => 'Selasa', 3 => 'Rabu', 4 => 'Kamis', 5 => 'Jumat', 6 => 'Sabtu', 7 => 'Minggu'];
-
                 foreach ($bulanList as $bln) {
                     $tahunTerkait = ($isGanjil && $bln >= 7) ? $tahunStart : (($isGanjil) ? $tahunStart : $tahunEnd);
                     if (!$isGanjil && $bln <= 6) { $tahunTerkait = $tahunEnd; }
                     
                     $jmlHariBulan = cal_days_in_month(CAL_GREGORIAN, $bln, $tahunTerkait);
-
                     for ($d = 1; $d <= $jmlHariBulan; $d++) {
                         $dateStr = sprintf("%04d-%02d-%02d", $tahunTerkait, $bln, $d);
-                        $dayOfWeek = date('N', strtotime($dateStr)); 
-                        $namaHari = $hariNamesNumeric[$dayOfWeek];
+                        $dayNum = (int)date('N', strtotime($dateStr));
+                        $namaHari = $hariNamesNumeric[$dayNum] ?? '';
 
                         if (in_array($namaHari, $hariMengajar)) {
                             $isLibur = false;
                             foreach ($kaldikEvents as $ev) {
                                 if ($dateStr >= $ev['start_date'] && $dateStr <= $ev['end_date']) { 
-                                    $isLibur = true; break; 
+                                    $isLibur = true; 
+                                    break; 
                                 }
                             }
-                            if (!$isLibur) {
-                                $rawHebDates[] = $dateStr; // Simpan Format Y-m-d
+                            if (!$isLibur) { 
+                                $rawHebDates[] = $dateStr; 
                             }
                         }
                     }
                 }
             }
 
-            // 5c. Logika Cerdas: Gabungkan Tanggal berdasarkan Minggu yang Sama
+            // ==============================================================
+            // 5c. GABUNGKAN TANGGAL BERDASARKAN MINGGU YANG SAMA
+            // ==============================================================
             if (!empty($rawHebDates)) {
                 $weeklyDates = [];
                 foreach ($rawHebDates as $dStr) {
-                    // Gunakan 'o-W' untuk mengelompokkan berdasarkan Tahun & Minggu ISO (Senin-Minggu)
                     $weekKey = date('o-W', strtotime($dStr));
                     $weeklyDates[$weekKey][] = $dStr;
                 }
@@ -253,17 +357,14 @@ class AtpController extends BaseController
                     }
                     
                     if($sameMonthYear) {
-                        // Jika 1 minggu ada di bulan dan tahun yang sama: "3 dan 5 Jul 2026"
                         $daysArr = array_map(function($d) { return date('j', strtotime($d)); }, $dates);
                         if (count($daysArr) > 2) {
                             $lastDay = array_pop($daysArr);
-                            $daysStr = implode(', ', $daysArr) . ' dan ' . $lastDay;
+                            $listTanggal[] = implode(', ', $daysArr) . ' dan ' . $lastDay . ' ' . $namaBulanIndo[$firstM] . ' ' . $firstY;
                         } else {
-                            $daysStr = implode(' dan ', $daysArr);
+                            $listTanggal[] = implode(' dan ', $daysArr) . ' ' . $namaBulanIndo[$firstM] . ' ' . $firstY;
                         }
-                        $listTanggal[] = $daysStr . ' ' . $namaBulanIndo[$firstM] . ' ' . $firstY;
                     } else {
-                        // Jika melintasi bulan (Misal: Rabu 31 Jul, Jumat 2 Agu) -> "31 Jul 2026 dan 2 Agu 2026"
                         $formattedDates = [];
                         foreach($dates as $d) {
                             $t = strtotime($d);
@@ -281,34 +382,45 @@ class AtpController extends BaseController
         }
 
         // ==============================================================
-        // 5d. Distribusikan Tanggal ke Tabel ATP
+        // 5d. DISTRIBUSI TANGGAL KE TABEL ATP
         // ==============================================================
         foreach ($dataAtp as $idx => &$row) {
             $row['nomor_atp'] = $tingkatKelas . '.' . ($idx + 1);
-            
-            // Masukkan kelompok tanggal mingguan, jika baris TP lebih banyak dari jadwal, beri keterangan
             $row['tanggal'] = $listTanggal[$idx] ?? 'Jadwal Habis / Belum Diatur';
+        }
+// ==============================================================
+        // 🌟 TAMBAHAN: Hitung Total JP Target ATP di Controller
+        // ==============================================================
+        $totalJpAtp = 0;
+        if (!empty($dataAtp)) {
+            foreach ($dataAtp as $row) {
+                $totalJpAtp += (int)($row['estimasi_jp'] ?? $row['jp'] ?? 0);
+            }
         }
 
         // ==============================================================
         // 6. RENDER KE VIEW
         // ==============================================================
         $data = [
-            'tahunAktif'    => $tahunAktif,
-            'daftarRombel'  => $daftarRombel,
-            'daftarMapel'   => $daftarMapel,
+            'tahunAktif'       => $tahunAktif,
+            'daftarRombel'     => $daftarRombel,
+            'daftarMapel'      => $daftarMapel,
             'selectedRombelId' => $selectedRombelId,
             'selectedMapelId'  => $selectedMapelId,
             'tingkatKelas'     => $tingkatKelas,
             'namaRombelAktif'  => $namaRombelAktif,
             'dataAtp'          => $dataAtp,
             
-            'namaMadrasah' => $namaMadrasah['value'] ?? 'MIMHa',
-            'titiMangsa'   => $titiMangsa['value'] ?? date('d F Y'),
-            'kepalaNama'   => $kepalaSekolah['value'] ?? '-',
-            'namaGuruCetak'=> $namaGuruCetak,
-            'listProfilLulusan' => ['DPL1'=>'Keimanan','DPL2'=>'Kewargaan','DPL3'=>'Penalaran Kritis','DPL4'=>'Kreativitas','DPL5'=>'Kolaborasi','DPL6'=>'Kemandirian','DPL7'=>'Kesehatan','DPL8'=>'Komunikasi'],
-            'listPancaCinta'    => ['P1'=>'Cinta Allah/Rasul','P2'=>'Cinta Ilmu','P3'=>'Cinta Diri/Sesama','P4'=>'Cinta Lingkungan','P5'=>'Cinta Tanah Air']
+            // 🌟 INI DIA 2 VARIABEL BARU UNTUK ANALISIS WAKTU
+            'totalJpTersedia'  => $totalJpTersedia ?? 0,
+            'totalJpAtp'       => $totalJpAtp,
+            
+            'namaMadrasah'      => $namaMadrasah['value'] ?? 'MIMHa',
+            'titiMangsa'        => $titiMangsa['value'] ?? date('d F Y'),
+            'kepalaNama'        => $kepalaSekolah['value'] ?? '-',
+            'namaGuruCetak'     => $namaGuruCetak,
+            'listProfilLulusan' => ['DPL 1'=>'Keimanan dan ketakwaan terhadap Tuhan Yang Maha Esa','DPL 2'=>'Kewargaan','DPL 3'=>'Penalaran Kritis','DPL 4'=>'Kreativitas','DPL 5'=>'Kolaborasi','DPL6'=>'Kemandirian','DPL7'=>'Kesehatan','DPL8'=>'Komunikasi'],
+            'listPancaCinta'    => ['Pilar 1'=>'Cinta kepada Allah SWT dan Rasul-Nya','Pilar 2'=>'Cinta kepada Ilmu','Pilar 3'=>'Cinta kepada Diri dan Sesama','Pilar 4'=>'Cinta kepada Alam dan Lingkungan','Pilar 5'=>'Cinta kepada Bangsa, Tanah Air, dan Negara']
         ];
 
         return view('guru/atp_manage', $data);
