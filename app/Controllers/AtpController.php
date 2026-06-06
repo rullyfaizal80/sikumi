@@ -78,6 +78,32 @@ class AtpController extends BaseController
             $mapelFields = $db->getFieldNames($tabelMapel);
             $kolomNamaMapel = in_array('subject_name', $mapelFields) ? 'subject_name' : (in_array('nama_mapel', $mapelFields) ? 'nama_mapel' : 'name');
     
+            // B. Ambil Mapel Gabungan Guru
+            if ($kolomCombinedId && $db->tableExists('schedule_combined_subjects')) { 
+                $mapelGabungan = $db->table('class_schedules cs')
+                             // PERBAIKAN 2: Cukup ambil 'c.combined_name' sesuai dengan struktur di controller referensi
+                             ->select("cs.{$kolomCombinedId} as combined_id, c.combined_name") 
+                             // PERBAIKAN 3: Join ke tabel yang benar
+                             ->join("schedule_combined_subjects c", "c.id = cs.{$kolomCombinedId}", 'left') 
+                             ->where('cs.version_id', $jadwalAktif['id'])
+                             ->where("cs.{$kolomIdGuru}", $userId)
+                             ->where("cs.{$kolomCombinedId} IS NOT NULL")
+                             ->where("cs.{$kolomCombinedId} !=", 0)
+                             ->groupBy("cs.{$kolomCombinedId}")
+                             ->get()->getResultArray();
+
+                foreach($mapelGabungan as $mg) {
+                    if(!empty($mg['combined_id'])) {
+                        $namaGabungan = $mg['combined_name'] ?? 'Mapel Gabungan';
+                        $daftarMapel[] = [
+                            // Saya tambahkan underscore 'C_' agar format ID-nya sama persis dengan yang di controller referensi
+                            'id' => 'C_' . $mg['combined_id'], 
+                            'subject_name' => $namaGabungan
+                        ];
+                    }
+                }
+            }
+            
             // A. Ambil Mapel Reguler Guru
             $mapelReguler = $db->table('class_schedules cs')
                           ->select("cs.{$kolomSubjectId} as id, s.{$kolomNamaMapel} as subject_name")
@@ -93,30 +119,7 @@ class AtpController extends BaseController
                 if(!empty($m['id'])) {
                     $daftarMapel[] = ['id' => $m['id'], 'subject_name' => $m['subject_name']];
                 }
-            }
-
-            // B. Ambil Mapel Gabungan Guru
-            if ($kolomCombinedId && $db->tableExists('combined_subjects')) {
-                $mapelGabungan = $db->table('class_schedules cs')
-                             ->select("cs.{$kolomCombinedId} as combined_id, c.name as combined_name, c.combined_name as alt_name")
-                             ->join("combined_subjects c", "c.id = cs.{$kolomCombinedId}", 'left')
-                             ->where('cs.version_id', $jadwalAktif['id'])
-                             ->where("cs.{$kolomIdGuru}", $userId)
-                             ->where("cs.{$kolomCombinedId} IS NOT NULL")
-                             ->where("cs.{$kolomCombinedId} !=", 0)
-                             ->groupBy("cs.{$kolomCombinedId}")
-                             ->get()->getResultArray();
-
-                foreach($mapelGabungan as $mg) {
-                    if(!empty($mg['combined_id'])) {
-                        $namaGabungan = $mg['combined_name'] ?? $mg['alt_name'] ?? 'Mapel Gabungan';
-                        $daftarMapel[] = [
-                            'id' => 'C' . $mg['combined_id'], 
-                            'subject_name' => '🗂️ [Gabungan] ' . $namaGabungan
-                        ];
-                    }
-                }
-            }
+            }        
         }
 
         $selectedMapelId = $this->request->getGet('mapel_id') ?? (!empty($daftarMapel) ? $daftarMapel[0]['id'] : 1);
