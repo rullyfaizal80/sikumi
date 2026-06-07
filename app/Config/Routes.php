@@ -184,3 +184,5 @@ $routes->get('admin/kaldik/category/delete/(:num)', 'KaldikController::deleteCat
 // ROUTE MODUL ALUR TUJUAN PEMBELAJARAN (ATP)
 // =========================================================================
 $routes->get('guru/atp', 'AtpController::index');
+
+$routes->post('guru/atp/simpan', 'AtpController::simpanAtp');

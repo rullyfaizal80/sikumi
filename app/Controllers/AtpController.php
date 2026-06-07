@@ -470,7 +470,71 @@ class AtpController extends BaseController
                 'P5' => 'Cinta kepada Bangsa, Tanah Air, dan Negara'
             ]
         ];
-        
+
         return view('guru/atp_manage', $data);
     }
+
+    // ==============================================================
+    // FUNGSI UNTUK MENYIMPAN DATA ATP KE DATABASE
+    // ==============================================================
+    public function simpanAtp()
+    {
+        $db = \Config\Database::connect();
+        $request = \Config\Services::request();
+
+        // Cek apakah request datang dari AJAX
+        if (!$request->isAJAX()) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Akses tidak sah.']);
+        }
+
+        $rombelId = $request->getPost('rombel_id');
+        $dataAtpJson = $request->getPost('data_atp');
+        
+        if (empty($rombelId) || empty($dataAtpJson)) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Data tidak lengkap.']);
+        }
+
+        $dataAtp = json_decode($dataAtpJson, true);
+        $cpDetailIds = array_column($dataAtp, 'cp_detail_id');
+
+        if (empty($cpDetailIds)) {
+             return $this->response->setJSON(['status' => 'error', 'message' => 'Tabel kosong, tidak ada yang disimpan.']);
+        }
+
+        $db->transStart();
+
+        // 1. Bersihkan data ATP lama untuk rombel & CP ini (Mencegah duplikasi saat Update)
+        $db->table('kurikulum_atp')
+           ->where('rombel_id', $rombelId)
+           ->whereIn('cp_detail_id', $cpDetailIds)
+           ->delete();
+
+        // 2. Siapkan array untuk Insert Massal (Batch)
+        $dataToInsert = [];
+        foreach ($dataAtp as $item) {
+            $dataToInsert[] = [
+                'cp_detail_id'         => $item['cp_detail_id'],
+                'rombel_id'            => $rombelId,
+                'urutan'               => $item['urutan'],
+                'aktivitas_kognitif'   => $item['aktivitas_kognitif'],
+                'dpl_terpilih'         => $item['dpl'], // Sudah berbentuk "DPL1,DPL3"
+                'panca_cinta_terpilih' => $item['pilar'], // Sudah berbentuk "P1,P5"
+                'created_at'           => date('Y-m-d H:i:s')
+            ];
+        }
+
+        // 3. Masukkan data susunan yang baru
+        if (!empty($dataToInsert)) {
+            $db->table('kurikulum_atp')->insertBatch($dataToInsert);
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Gagal menyimpan ke database.']);
+        }
+
+        return $this->response->setJSON(['status' => 'success', 'message' => 'Susunan ATP berhasil disimpan permanen!']);
+    }
+
 }

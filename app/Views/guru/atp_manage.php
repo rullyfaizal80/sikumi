@@ -128,7 +128,7 @@
                                 </td></tr>
                             <?php else: ?>
                                 <?php foreach($dataAtp as $idx => $row): ?>
-                                <tr>
+                                <tr data-cpid="<?= esc($row['id']) ?>">
                                     <td class="text-center align-middle bg-light">
                                         <div class="d-flex flex-column gap-1 align-items-center">
                                             <button type="button" class="btn btn-sm btn-move" onclick="moveRow(this, 'up')" title="Geser ke Atas">▲</button>
@@ -150,7 +150,7 @@
                                     <td dir="auto" class="text-justify"><?= esc($row['tujuan_pembelajaran'] ?? $row['tp'] ?? '-') ?></td>
                                     <td class="font-weight-bold text-secondary"><?= esc($row['lingkup_materi'] ?? $row['lingkup'] ?? '-') ?></td>
                                     
-                                    <td>
+                                    <td class="teks-kognitif">
                                         <?php if(!empty($row['aktivitas_tarl'])): ?>
                                             <span class="text-muted small">Materi Tersedia:</span><br>
                                             <?= esc($row['aktivitas_tarl']) ?>
@@ -442,6 +442,79 @@ Format JSON persis seperti ini:
                 btnAi.disabled = false;
                 btnAi.innerHTML = originalText;
                 tbody.style.opacity = '1';
+            }
+        });
+
+        // ====================================================================
+        // TRIGGER SIMPAN ATP KE DATABASE
+        // ====================================================================
+        document.querySelector('.btn-success').addEventListener('click', async function() {
+            const btnSave = this;
+            const tbody = document.getElementById('tbody-atp');
+            const rows = tbody.querySelectorAll('tr');
+            
+            if (rows.length === 0 || rows[0].innerText.includes('Belum ada data')) {
+                alert("Tidak ada data untuk disimpan."); return;
+            }
+
+            // 1. Kumpulkan semua data dari tabel HTML
+            let dataAtp = [];
+            let rombelId = document.querySelector('select[name="rombel_id"]').value;
+
+            rows.forEach((tr, index) => {
+                let cpId = tr.getAttribute('data-cpid');
+                if (!cpId) return;
+
+                // Ambil teks aktivitas kognitif (Abaikan span HTML-nya)
+                let selKognitif = tr.querySelector('.teks-kognitif');
+                let teksKognitif = selKognitif ? selKognitif.innerText.replace('Materi Tersedia:\n', '').trim() : '';
+                if(teksKognitif === 'Menunggu AI...') teksKognitif = '';
+
+                // Kumpulkan DPL yang dicentang
+                let dplTerpilih = [];
+                tr.querySelectorAll('input[id^="dpl_"]:checked').forEach(chk => dplTerpilih.push(chk.value));
+
+                // Kumpulkan Panca Cinta yang dicentang
+                let pilarTerpilih = [];
+                tr.querySelectorAll('input[id^="pc_"]:checked').forEach(chk => pilarTerpilih.push(chk.value));
+
+                dataAtp.push({
+                    cp_detail_id: cpId,
+                    urutan: index + 1, // Urutan berdasarkan posisi baris saat ini
+                    aktivitas_kognitif: teksKognitif,
+                    dpl: dplTerpilih.join(','), // Gabungkan dengan koma (Contoh: DPL1,DPL3)
+                    pilar: pilarTerpilih.join(',')
+                });
+            });
+
+            // 2. Kirim ke Controller
+            btnSave.disabled = true;
+            let originalText = btnSave.innerHTML;
+            btnSave.innerHTML = '⏳ Sedang Menyimpan...';
+
+            const formData = new FormData();
+            formData.append('rombel_id', rombelId);
+            formData.append('data_atp', JSON.stringify(dataAtp));
+
+            try {
+                const response = await fetch("<?= base_url('guru/atp/simpan') ?>", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    alert("✅ " + result.message);
+                } else {
+                    alert("⚠️ Gagal: " + result.message);
+                }
+            } catch (error) {
+                console.error(error);
+                alert("⚠️ Terjadi kesalahan koneksi saat menyimpan data.");
+            } finally {
+                btnSave.disabled = false;
+                btnSave.innerHTML = originalText;
             }
         });
     </script>
