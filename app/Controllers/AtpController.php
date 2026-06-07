@@ -391,41 +391,44 @@ class AtpController extends BaseController
                 }
             }
 
-            // ==============================================================
-            // 5d. DISTRIBUSI TANGGAL KE TABEL ATP (DENGAN PENAMBAHAN BARIS JIKA SISA)
-            // ==============================================================
-            $totalTgl = count($listTanggal);
-            $totalAtp = count($dataAtp);
+        // ==============================================================
+        // 5d. DISTRIBUSI TANGGAL KE TABEL ATP & HITUNG TOTAL JP
+        // ==============================================================
+        
+        $totalAtp = count($dataAtp);
+        $totalTgl = count($listTanggal);
+        $totalJpAtp = 0;
 
-            // Masukkan tanggal ke baris ATP yang sudah ada
+        // Jika data Analisis CP sudah ada, kita distribusikan
+        if ($totalAtp > 0) {
+            
+            // SKENARIO A: Distribusi tanggal ke materi yang ada (Jika Materi > Jadwal, otomatis 'Jadwal Habis')
             foreach ($dataAtp as $idx => &$row) {
                 $row['nomor_atp'] = $tingkatKelas . '.' . ($idx + 1);
-                // PERBAIKAN: Teks diubah menjadi 'Jadwal habis'
-                $row['tanggal'] = $listTanggal[$idx] ?? 'Jadwal habis';
+                $row['tanggal']   = $listTanggal[$idx] ?? 'Jadwal Habis / Belum Diatur';
+                
+                // Hitung total JP sekaligus di sini agar lebih efisien
+                $totalJpAtp += (int)($row['estimasi_jp'] ?? $row['jp'] ?? 0);
             }
+            unset($row); // WAJIB untuk memutuskan referensi PHP
 
-            // PERBAIKAN: Jika masih ada sisa tanggal (tanggal > materi), tambahkan baris baru
+            // SKENARIO B: Jika masih ada sisa tanggal jadwal (Jadwal > Materi), tambahkan baris kosong
             if ($totalTgl > $totalAtp) {
                 for ($i = $totalAtp; $i < $totalTgl; $i++) {
                     $dataAtp[] = [
-                        'nomor_atp' => $tingkatKelas . '.' . ($i + 1),
-                        'tanggal' => $listTanggal[$i],
-                        'tujuan_pembelajaran' => '', // Baris kosong untuk diisi mandiri
-                        'lingkup_materi' => '',
-                        'aktivitas_tarl' => '',
-                        'estimasi_jp' => 0
+                        'nomor_atp'           => $tingkatKelas . '.' . ($i + 1),
+                        'tanggal'             => $listTanggal[$i],
+                        'tujuan_pembelajaran' => '', 
+                        'lingkup_materi'      => '',
+                        'aktivitas_tarl'      => '',
+                        'estimasi_jp'         => 0,  
+                        'kognitif'            => '', 
+                        'dimensi'             => '',
+                        'pilar'               => ''
                     ];
                 }
             }
         }
-// ==============================================================
-        // 🌟 TAMBAHAN: Hitung Total JP Target ATP di Controller
-        // ==============================================================
-        $totalJpAtp = 0;
-        if (!empty($dataAtp)) {
-            foreach ($dataAtp as $row) {
-                $totalJpAtp += (int)($row['estimasi_jp'] ?? $row['jp'] ?? 0);
-            }
         }
 
         // ==============================================================
