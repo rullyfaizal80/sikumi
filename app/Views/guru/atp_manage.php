@@ -100,7 +100,9 @@
         <div class="card shadow border-top border-success border-3">
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
                 <h6 class="font-weight-bold my-0">Tabel Distribusi ATP - Rombel <?= esc($namaRombelAktif) ?></h6>
-                <button class="btn btn-sm btn-outline-success font-weight-bold">✨ AI Generate Kognitif & Sikap</button>
+                <button type="button" id="btn-eksekusi-ai-atp" class="btn btn-sm btn-outline-success font-weight-bold">
+                     ✨ AI Generate Kognitif & Sikap
+                </button>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -248,6 +250,169 @@
                 }
             });
         }
+    </script>
+    <script>
+        // ====================================================================
+        // TRIGGER AI: PENGURUTAN PEDAGOGIS & PEMETAAN KBC (JSON MODE)
+        // ====================================================================
+        document.getElementById('btn-eksekusi-ai-atp').addEventListener('click', async function() {
+            const btnAi = this;
+            const tbody = document.getElementById('tbody-atp');
+            const allRows = Array.from(tbody.querySelectorAll('tr'));
+            
+            // 1. VALIDASI DATA KOSONG
+            if (allRows.length === 0 || allRows[0].innerText.includes('Belum ada data')) {
+                alert("Tabel ATP kosong. Tidak ada yang bisa dianalisis.");
+                return;
+            }
+
+            // 2. VALIDASI BEBAN JP
+            let totalJpInput = 0;
+            let dataAtpMentah = [];
+            
+            allRows.forEach((tr, index) => {
+                // Pastikan baris memiliki data (bukan baris sisa jadwal kosong)
+                let tpTeks = tr.cells[3].innerText.trim();
+                let lingkupTeks = tr.cells[4].innerText.trim();
+                let jpTeks = tr.cells[8].innerText.trim();
+                let jp = parseInt(jpTeks) || 0;
+                
+                if (tpTeks !== '') {
+                    totalJpInput += jp;
+                    dataAtpMentah.push({
+                        id_asli: index,
+                        tp: tpTeks,
+                        lingkup: lingkupTeks,
+                        jp: jp
+                    });
+                }
+            });
+
+            // Simulasi Target JP Semester (Jika belum ada dari Controller)
+            // Bapak bisa mengganti angka 0 di bawah ini dengan variabel PHP jika sudah ditarik dari Kaldik
+            const targetJpSemester = parseInt("<?= $totalJpTersedia ?? 0 ?>") || totalJpInput; 
+            
+            if (totalJpInput !== targetJpSemester && targetJpSemester > 0) {
+                let konfirmasi = confirm(`⚠️ VALIDASI JP: Total JP di tabel (${totalJpInput} JP) tidak sama dengan Target JP Kaldik (${targetJpSemester} JP).\n\nApakah Anda tetap ingin melanjutkan proses AI?`);
+                if (!konfirmasi) return;
+            }
+
+            // 3. SUSUN PROMPT UNTUK AI
+            let promptUser = `Anda adalah Pakar Kurikulum Merdeka (Deep Learning) dan KBC Kemenag.
+Tugas Anda menganalisis daftar Tujuan Pembelajaran (TP) berikut:
+
+`;
+            dataAtpMentah.forEach(r => {
+                promptUser += `[ID: ${r.id_asli}] TP: ${r.tp} (Materi: ${r.lingkup})\n`;
+            });
+
+            promptUser += `
+INSTRUKSI WAJIB:
+1. Urutkan ID secara pedagogis (dari materi dasar hingga materi lanjutan/kompleks).
+2. Tentukan Aktivitas Kognitif (contoh: Mengidentifikasi, Menganalisis, Mencipta).
+3. Petakan maksimal 3 DPL (Dimensi Profil Lulusan) yang relevan. Pilihan: DPL1, DPL2, DPL3, DPL4, DPL5, DPL6, DPL7, DPL8.
+4. Petakan maksimal 2 Pilar Panca Cinta yang relevan. Pilihan: P1, P2, P3, P4, P5.
+
+ATURAN FORMAT BALASAN (SANGAT KETAT):
+Jawab HANYA menggunakan format JSON Array murni. JANGAN gunakan tag markdown (\`\`\`json). JANGAN ada teks pengantar.
+Format JSON persis seperti ini:
+[
+  {"id_asli": 0, "aktivitas_kognitif": "Mengamati, Menjelaskan", "dpl": ["DPL1", "DPL3"], "pilar": ["P1", "P2"]},
+  {"id_asli": 1, "aktivitas_kognitif": "Menganalisis, Mengevaluasi", "dpl": ["DPL3", "DPL5"], "pilar": ["P4"]}
+]`;
+
+            // 4. PROSES LOADING
+            btnAi.disabled = true;
+            let originalText = btnAi.innerHTML;
+            btnAi.innerHTML = '⏳ AI Sedang Menganalisis & Menyusun...';
+            tbody.style.opacity = '0.5';
+
+            const formData = new FormData(); 
+            formData.append('message', promptUser);
+            
+            try {
+                // Panggil Controller AI yang sudah Bapak buat sebelumnya
+                const response = await fetch("<?= base_url('ai/analyze_cp') ?>", { 
+                    method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } 
+                });
+                const resData = await response.json();
+                
+                if (resData.status === 'success') {
+                    // Bersihkan response dari markdown jika AI membandel
+                    let cleanJsonStr = resData.reply.replace(/```json/g, '').replace(/```/g, '').trim();
+                    let aiResult = JSON.parse(cleanJsonStr);
+                    
+                    // Kosongkan Tabel Sementara
+                    tbody.innerHTML = '';
+                    
+                    // 5. TERAPKAN HASIL AI KE DALAM TABEL (REORDERING & CHECKING)
+                    aiResult.forEach(item => {
+                        let targetRow = allRows[item.id_asli];
+                        if (!targetRow) return;
+
+                        // A. Isi Aktivitas Kognitif
+                        targetRow.cells[5].innerHTML = `<span class="text-success font-weight-bold">${item.aktivitas_kognitif}</span>`;
+                        
+                        // B. Centang DPL Otomatis
+                        if(Array.isArray(item.dpl)) {
+                            item.dpl.forEach(kodeDpl => {
+                                let chk = targetRow.querySelector(`input[value="${kodeDpl}"]`);
+                                if(chk) chk.checked = true;
+                            });
+                        }
+
+                        // C. Centang Panca Cinta Otomatis
+                        if(Array.isArray(item.pilar)) {
+                            item.pilar.forEach(kodePilar => {
+                                let chk = targetRow.querySelector(`input[value="${kodePilar}"]`);
+                                if(chk) chk.checked = true;
+                            });
+                        }
+
+                        // D. Masukkan kembali ke tabel dengan urutan baru
+                        tbody.appendChild(targetRow);
+                        
+                        // Hapus row yang sudah diproses dari array asli
+                        allRows[item.id_asli] = null; 
+                    });
+
+                    // Masukkan sisa baris yang mungkin tidak ikut terproses AI (misal baris kosong sisa jadwal)
+                    allRows.forEach(sisaRow => {
+                        if (sisaRow) tbody.appendChild(sisaRow);
+                    });
+
+                    // 6. RAPIKAN KEMBALI TANGGAL & NOMOR URUT (Seperti fitur moveRow)
+                    let newlyOrderedRows = tbody.querySelectorAll("tr");
+                    newlyOrderedRows.forEach((r, idx) => {
+                        let cellTgl = r.querySelector('.cell-tanggal');
+                        let cellNo = r.querySelector('.cell-no');
+                        
+                        if (cellTgl && arrTanggal[idx]) {
+                            cellTgl.innerText = arrTanggal[idx];
+                        }
+                        if (cellNo) {
+                            cellNo.innerText = tingkatKelas + "." + (idx + 1);
+                        }
+                        
+                        // Beri efek highlight sukses
+                        r.style.backgroundColor = "#e8f5e9"; 
+                        setTimeout(() => { r.style.backgroundColor = ""; }, 1500);
+                    });
+
+                    alert("✅ AI Berhasil mengurutkan materi dan memetakan Profil Lulusan & Panca Cinta!");
+
+                } else {
+                    alert("⚠️ AI Gagal: " + (resData.reply || resData.message));
+                }
+            } catch (error) {
+                console.error(error);
+                alert("⚠️ Kesalahan parsing atau koneksi AI. Pastikan AI menjawab dengan format JSON yang benar.");
+            } finally {
+                btnAi.disabled = false;
+                btnAi.innerHTML = originalText;
+                tbody.style.opacity = '1';
+            }
+        });
     </script>
 </body>
 </html>
