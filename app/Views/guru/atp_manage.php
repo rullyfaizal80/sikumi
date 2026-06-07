@@ -266,7 +266,7 @@
                 return;
             }
 
-            // 2. VALIDASI BEBAN JP
+            /* // 2. VALIDASI BEBAN JP
             let totalJpInput = 0;
             let dataAtpMentah = [];
             
@@ -295,6 +295,37 @@
             if (totalJpInput !== targetJpSemester && targetJpSemester > 0) {
                 let konfirmasi = confirm(`⚠️ VALIDASI JP: Total JP di tabel (${totalJpInput} JP) tidak sama dengan Target JP Kaldik (${targetJpSemester} JP).\n\nApakah Anda tetap ingin melanjutkan proses AI?`);
                 if (!konfirmasi) return;
+            } */
+
+            // 2. VALIDASI BEBAN JP
+            let totalJpInput = 0;
+            let dataAtpMentah = [];
+            
+            allRows.forEach((tr, index) => {
+                // Pastikan baris memiliki data (bukan baris sisa jadwal kosong)
+                let tpTeks = tr.cells[3].innerText.trim();
+                let lingkupTeks = tr.cells[4].innerText.trim();
+                let jpTeks = tr.cells[8].innerText.trim();
+                let jp = parseInt(jpTeks) || 0;
+                
+                if (tpTeks !== '') {
+                    totalJpInput += jp;
+                    dataAtpMentah.push({
+                        id_asli: index,
+                        tp: tpTeks,
+                        lingkup: lingkupTeks,
+                        jp: jp
+                    });
+                }
+            });
+
+            // Simulasi Target JP Semester (Jika belum ada dari Controller)
+            const targetJpSemester = parseInt("<?= $totalJpTersedia ?? 0 ?>") || totalJpInput; 
+            
+            // 🌟 PERBAIKAN: Gunakan alert dan return mutlak agar tidak bisa dilanjutkan
+            if (totalJpInput !== targetJpSemester && targetJpSemester > 0) {
+                alert(`❌ PROSES DIBATALKAN: Total JP materi (${totalJpInput} JP) belum sesuai dengan alokasi JP Kalender (${targetJpSemester} JP).\n\nSilakan sesuaikan jumlah JP pada tabel terlebih dahulu agar sama dengan target.`);
+                return; // Proses akan langsung berhenti di sini, tombol akan kembali normal
             }
 
             // 3. SUSUN PROMPT UNTUK AI

@@ -452,10 +452,25 @@ class AtpController extends BaseController
             'titiMangsa'        => $titiMangsa['value'] ?? date('d F Y'),
             'kepalaNama'        => $kepalaSekolah['value'] ?? '-',
             'namaGuruCetak'     => $namaGuruCetak,
-            'listProfilLulusan' => ['DPL 1'=>'Keimanan dan ketakwaan terhadap Tuhan Yang Maha Esa','DPL 2'=>'Kewargaan','DPL 3'=>'Penalaran Kritis','DPL 4'=>'Kreativitas','DPL 5'=>'Kolaborasi','DPL6'=>'Kemandirian','DPL7'=>'Kesehatan','DPL8'=>'Komunikasi'],
-            'listPancaCinta'    => ['Pilar 1'=>'Cinta kepada Allah SWT dan Rasul-Nya','Pilar 2'=>'Cinta kepada Ilmu','Pilar 3'=>'Cinta kepada Diri dan Sesama','Pilar 4'=>'Cinta kepada Alam dan Lingkungan','Pilar 5'=>'Cinta kepada Bangsa, Tanah Air, dan Negara']
+            'listProfilLulusan' => [
+                'DPL1' => 'Keimanan dan ketakwaan terhadap Tuhan Yang Maha Esa',
+                'DPL2' => 'Kewargaan',
+                'DPL3' => 'Penalaran Kritis',
+                'DPL4' => 'Kreativitas',
+                'DPL5' => 'Kolaborasi',
+                'DPL6' => 'Kemandirian',
+                'DPL7' => 'Kesehatan',
+                'DPL8' => 'Komunikasi'
+            ],
+            'listPancaCinta'    => [
+                'P1' => 'Cinta kepada Allah SWT dan Rasul-Nya',
+                'P2' => 'Cinta kepada Ilmu',
+                'P3' => 'Cinta kepada Diri dan Sesama',
+                'P4' => 'Cinta kepada Alam dan Lingkungan',
+                'P5' => 'Cinta kepada Bangsa, Tanah Air, dan Negara'
+            ]
         ];
-
+        
         return view('guru/atp_manage', $data);
     }
 }
