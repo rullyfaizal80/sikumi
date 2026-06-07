@@ -41,7 +41,9 @@
                 <p class="text-muted mb-0">Integrasi Kurikulum Merdeka (Deep Learning) & KBC Kemenag</p>
             </div>
             <div>
-                <button class="btn btn-primary btn-sm font-weight-bold shadow-sm me-2">🖨️ Cetak ATP</button>
+                <a href="<?= base_url('guru/atp?rombel_id='.$selectedRombelId.'&mapel_id='.$selectedMapelId.'&print=true') ?>" target="_blank" class="btn btn-secondary btn-sm font-weight-bold shadow-sm">
+                    🖨️ Cetak ATP
+                </a>
                 <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm font-weight-bold shadow-sm">🏠 Dashboard</a>
             </div>
         </div>
@@ -128,7 +130,7 @@
                                 </td></tr>
                             <?php else: ?>
                                 <?php foreach($dataAtp as $idx => $row): ?>
-                                <tr data-cpid="<?= esc($row['id']) ?>">
+                                <tr data-cpid="<?= esc($row['id'] ?? $row['cp_detail_id'] ?? $row['id_cp'] ?? '') ?>">
                                     <td class="text-center align-middle bg-light">
                                         <div class="d-flex flex-column gap-1 align-items-center">
                                             <button type="button" class="btn btn-sm btn-move" onclick="moveRow(this, 'up')" title="Geser ke Atas">▲</button>
@@ -198,16 +200,14 @@
                         </tbody>
                     </table>
                 </div>
-            </div>
-            
+            </div>            
             <?php if(!empty($dataAtp)): ?>
             <div class="card-footer bg-white text-end py-3">
+                <button type="button" class="btn btn-danger font-weight-bold shadow-sm px-4 me-2 btn-reset-atp">🔄 Reset ke Awal</button>
                 <button type="button" class="btn btn-success font-weight-bold shadow-sm px-4">💾 Simpan Susunan ATP</button>
             </div>
-            <?php endif; ?>
-            
+            <?php endif; ?>            
         </div>
-
     </div>
 
     <script>
@@ -523,6 +523,63 @@ Format JSON persis seperti ini:
             } finally {
                 btnSave.disabled = false;
                 btnSave.innerHTML = originalText;
+            }
+        });
+
+        // ====================================================================
+        // TRIGGER RESET ATP KE AWAL (HAPUS DARI DATABASE)
+        // ====================================================================
+        document.querySelector('.btn-reset-atp').addEventListener('click', async function() {
+            // Berikan peringatan agar tidak terklik secara tidak sengaja
+            if (!confirm("⚠️ PERINGATAN: Apakah Anda yakin ingin mereset susunan ini?\nSemua data ATP, Centang DPL, dan Panca Cinta untuk kelas ini akan dihapus permanen dan kembali ke urutan awal Analisis CP!")) {
+                return;
+            }
+
+            const btnReset = this;
+            const tbody = document.getElementById('tbody-atp');
+            const rows = tbody.querySelectorAll('tr');
+            
+            if (rows.length === 0 || rows[0].innerText.includes('Belum ada data')) {
+                alert("Tidak ada data untuk di-reset."); return;
+            }
+
+            // Ambil ID Rombel dan kumpulan ID CP yang sedang tampil
+            let rombelId = document.querySelector('select[name="rombel_id"]').value;
+            let cpIds = [];
+            rows.forEach((tr) => {
+                let cpId = tr.getAttribute('data-cpid');
+                if (cpId) cpIds.push(cpId);
+            });
+
+            btnReset.disabled = true;
+            let originalText = btnReset.innerHTML;
+            btnReset.innerHTML = '⏳ Mereset...';
+
+            const formData = new FormData();
+            formData.append('rombel_id', rombelId);
+            formData.append('cp_ids', JSON.stringify(cpIds));
+
+            try {
+                const response = await fetch("<?= base_url('guru/atp/reset') ?>", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    alert("✅ " + result.message);
+                    // Reload halaman otomatis agar tabel kembali ke urutan Analisis CP
+                    window.location.reload(); 
+                } else {
+                    alert("⚠️ Gagal: " + result.message);
+                }
+            } catch (error) {
+                console.error(error);
+                alert("⚠️ Terjadi kesalahan koneksi saat mereset data.");
+            } finally {
+                btnReset.disabled = false;
+                btnReset.innerHTML = originalText;
             }
         });
     </script>

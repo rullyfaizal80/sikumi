@@ -482,44 +482,95 @@ class AtpController extends BaseController
         }
 
         // ==============================================================
-        // 6. RENDER KE VIEW
+        // 6. RENDER KE VIEW (DAN AMBIL DATA SEKOLAH / GURU UNTUK CETAK)
         // ==============================================================
+        // 🌟 PERBAIKAN: Gunakan kolom 'key' dan tambahkan prefix 'kaldik_'
+        $namaMadrasah  = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_lembaga_nama')->get()->getRowArray() : null;
+        $titiMangsa    = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_titi_mangsa')->get()->getRowArray() : null;
+        $kepalaSekolah = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_nama')->get()->getRowArray() : null;
+        $npkKepala     = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_npk')->get()->getRowArray() : null;
+
+        // Tarik NPK Guru dari tabel teacher_profiles
+        $guruNpk = '.....................................';
+        if ($db->tableExists('teacher_profiles')) {
+            $guruProfile = $db->table('teacher_profiles')->where('user_id', $userId)->get()->getRowArray();
+            if ($guruProfile && !empty($guruProfile['nip'])) {
+                $guruNpk = $guruProfile['nip'];
+            }
+        }
+
+        // 🌟 TAMBAHKAN KODE INI: Tarik Nama Guru dari tabel users
+        $namaGuruCetak = '.....................................';
+        if ($db->tableExists('users')) {
+            $guruData = $db->table('users')->where('id', $userId)->get()->getRowArray();
+            if ($guruData) {
+                // Otomatis mencari kolom fullname, name, atau username di tabel users
+                $namaGuruCetak = $guruData['fullname'] ?? $guruData['name'] ?? $guruData['username'] ?? 'Nama Guru Belum Diatur';
+            }
+        }
+
+        // Cari Nama Mapel yang sedang dipilih
+        $selectedMapelName = '-';
+        if (!empty($daftarMapel)) {
+            foreach ($daftarMapel as $m) {
+                $mId = $m['id'] ?? $m['subject_id'] ?? $m['mapel_id'] ?? null;
+                if ($mId == $selectedMapelId) {
+                    $selectedMapelName = $m['subject_name'] ?? $m['nama_mapel'] ?? '-';
+                    break;
+                }
+            }
+        }
+
+        $listProfilLulusan = [
+            'DPL1' => 'Keimanan dan ketakwaan terhadap Tuhan Yang Maha Esa',
+            'DPL2' => 'Kewargaan',
+            'DPL3' => 'Penalaran Kritis',
+            'DPL4' => 'Kreativitas',
+            'DPL5' => 'Kolaborasi',
+            'DPL6' => 'Kemandirian',
+            'DPL7' => 'Kesehatan',
+            'DPL8' => 'Komunikasi'
+        ];
+
+        $listPancaCinta = [
+            'P1' => 'Cinta kepada Allah SWT dan Rasul-Nya',
+            'P2' => 'Cinta kepada Ilmu',
+            'P3' => 'Cinta kepada Diri dan Sesama',
+            'P4' => 'Cinta kepada Alam dan Lingkungan',
+            'P5' => 'Cinta kepada Bangsa, Tanah Air, dan Negara'
+        ];
+
         $data = [
             'tahunAktif'       => $tahunAktif,
             'daftarRombel'     => $daftarRombel,
             'daftarMapel'      => $daftarMapel,
             'selectedRombelId' => $selectedRombelId,
             'selectedMapelId'  => $selectedMapelId,
+            'selectedMapelName'=> $selectedMapelName, // 🌟 Pastikan masuk
             'tingkatKelas'     => $tingkatKelas,
             'namaRombelAktif'  => $namaRombelAktif,
             'dataAtp'          => $dataAtp,
             
-            // 🌟 INI DIA 2 VARIABEL BARU UNTUK ANALISIS WAKTU
             'totalJpTersedia'  => $totalJpTersedia ?? 0,
-            'totalJpAtp'       => $totalJpAtp,
+            'totalJpAtp'       => $totalJpAtp ?? 0,
             
-            'namaMadrasah'      => $namaMadrasah['value'] ?? 'MIMHa',
-            'titiMangsa'        => $titiMangsa['value'] ?? date('d F Y'),
-            'kepalaNama'        => $kepalaSekolah['value'] ?? '-',
-            'namaGuruCetak'     => $namaGuruCetak,
-            'listProfilLulusan' => [
-                'DPL1' => 'Keimanan dan ketakwaan terhadap Tuhan Yang Maha Esa',
-                'DPL2' => 'Kewargaan',
-                'DPL3' => 'Penalaran Kritis',
-                'DPL4' => 'Kreativitas',
-                'DPL5' => 'Kolaborasi',
-                'DPL6' => 'Kemandirian',
-                'DPL7' => 'Kesehatan',
-                'DPL8' => 'Komunikasi'
-            ],
-            'listPancaCinta'    => [
-                'P1' => 'Cinta kepada Allah SWT dan Rasul-Nya',
-                'P2' => 'Cinta kepada Ilmu',
-                'P3' => 'Cinta kepada Diri dan Sesama',
-                'P4' => 'Cinta kepada Alam dan Lingkungan',
-                'P5' => 'Cinta kepada Bangsa, Tanah Air, dan Negara'
-            ]
+            // 🌟 Data Identitas untuk Cetak
+            'namaMadrasah'     => $namaMadrasah ? $namaMadrasah['value'] : 'MTs MIFTAHUL HUDA (MIMHa)',
+            'titiMangsa'       => $titiMangsa ? $titiMangsa['value'] : 'Bandung, ' . date('d F Y'),
+            'kepalaNama'       => $kepalaSekolah ? $kepalaSekolah['value'] : 'Rully Faizal, S.T.',
+            'kepalaNpk'        => $npkKepala ? $npkKepala['value'] : '-',
+            'guruNpk'          => $guruNpk,
+            'namaGuruCetak'    => $namaGuruCetak,
+            'userId'           => $userId,
+            
+            'listProfilLulusan'=> $listProfilLulusan,
+            'listPancaCinta'   => $listPancaCinta
         ];
+
+        // JIKA ADA PARAMETER ?print=true DI URL, ARAHKAN KE HALAMAN CETAK
+        if ($this->request->getGet('print') === 'true') {
+            return view('guru/print_atp', $data);
+        }
 
         return view('guru/atp_manage', $data);
     }
@@ -585,6 +636,48 @@ class AtpController extends BaseController
         }
 
         return $this->response->setJSON(['status' => 'success', 'message' => 'Susunan ATP berhasil disimpan permanen!']);
+    }
+
+    // ==============================================================
+    // FUNGSI UNTUK MERESET DATA ATP DARI DATABASE
+    // ==============================================================
+    public function resetAtp()
+    {
+        $db = \Config\Database::connect();
+        $request = \Config\Services::request();
+
+        if (!$request->isAJAX()) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Akses tidak sah.']);
+        }
+
+        $rombelId = $request->getPost('rombel_id');
+        $cpIdsJson = $request->getPost('cp_ids');
+        
+        if (empty($rombelId) || empty($cpIdsJson)) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Data tidak lengkap.']);
+        }
+
+        $cpIds = json_decode($cpIdsJson, true);
+
+        if (empty($cpIds)) {
+             return $this->response->setJSON(['status' => 'error', 'message' => 'Tidak ada data untuk dihapus.']);
+        }
+
+        $db->transStart();
+
+        // Menghapus data dari tabel kurikulum_atp secara spesifik untuk kelas & TP tersebut
+        $db->table('kurikulum_atp')
+           ->where('rombel_id', $rombelId)
+           ->whereIn('cp_detail_id', $cpIds)
+           ->delete();
+
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Gagal mereset data di database.']);
+        }
+
+        return $this->response->setJSON(['status' => 'success', 'message' => 'Susunan ATP berhasil dikembalikan ke posisi semula!']);
     }
 
 }

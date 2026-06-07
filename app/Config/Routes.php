@@ -180,9 +180,6 @@ $routes->post('admin/kaldik/category/store', 'KaldikController::storeCategory');
 $routes->post('admin/kaldik/category/update', 'KaldikController::updateCategory');
 $routes->get('admin/kaldik/category/delete/(:num)', 'KaldikController::deleteCategory/$1');
 
-// =========================================================================
-// ROUTE MODUL ALUR TUJUAN PEMBELAJARAN (ATP)
-// =========================================================================
 $routes->get('guru/atp', 'AtpController::index');
-
 $routes->post('guru/atp/simpan', 'AtpController::simpanAtp');
+$routes->post('guru/atp/reset', 'AtpController::resetAtp');

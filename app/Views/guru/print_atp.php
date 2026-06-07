@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Print Analisis CP - SiKuMi</title>
+    <title>Print ATP - SiKuMi</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Times New Roman', Times, serif; color: #000; margin: 0; padding: 20px 0; background-color: #525659; }
@@ -83,12 +83,11 @@
     </div>
 
     <div class="a4-paper">
-        <!-- HEADER KOP SURAT -->
         <div class="header-container">
             <div class="header-content">
                 <img src="<?= base_url('assets/img/logo_kaldik1.png') ?>" alt="Logo Yayasan">
                 <div class="header-text">
-                    <h5>ANALISIS CAPAIAN PEMBELAJARAN (CP) & TUJUAN PEMBELAJARAN</h5>
+                    <h5>ALUR TUJUAN PEMBELAJARAN (ATP)</h5>
                     <h5 style="font-size: 18px; margin-top: 2px;"><?= strtoupper(esc($namaMadrasah ?? 'MTs MIFTAHUL HUDA (MIMHa)')) ?></h5>
                     <h6>TAHUN PELAJARAN <?= $tahunAktif ? esc($tahunAktif['academic_year']) : '-' ?></h6>
                     <span class="badge-semester">
@@ -99,77 +98,78 @@
             </div>
         </div>
 
-        <!-- INFORMASI MAPEL -->
         <table class="info-table">
-            <tr><td width="120">Mata Pelajaran</td><td width="10">:</td><td><?= esc($namaMapelAktif ?? '-') ?></td></tr>
-            <tr><td>Fase / Kelas</td><td>:</td><td><?= esc($namaKelasAktif ?? '-') ?></td></tr>
+            <tr><td width="120">Mata Pelajaran</td><td width="10">:</td><td><?= esc($selectedMapelName ?? '-') ?></td></tr>
+            <tr><td>Tingkat / Kelas</td><td>:</td><td><?= esc($namaRombelAktif ?? '-') ?></td></tr>
             <tr><td>Guru Pengampu</td><td>:</td><td><?= esc($namaGuruCetak) ?></td></tr>
         </table>
 
-        <!-- ============================================================== -->
-        <!-- BAGIAN A: TABEL DESKRIPSI CP (DRAFT ELEMEN)                    -->
-        <!-- ============================================================== -->
-        <div class="section-title">A. DESKRIPSI CAPAIAN PEMBELAJARAN (CP)</div>
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
                         <th width="5%">No</th>
-                        <th width="20%">Elemen CP</th>
-                        <th width="75%">Deskripsi Capaian Pembelajaran</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if(empty($draftElemen)): ?>
-                        <tr><td colspan="3" class="text-center">Belum ada deskripsi elemen CP.</td></tr>
-                    <?php else: ?>
-                        <?php foreach($draftElemen as $no => $d): ?>
-                        <tr>
-                            <td class="text-center"><?= $no+1 ?></td>
-                            <td class="font-weight-bold" dir="auto"><?= esc($d['nama_elemen']) ?></td>
-                            <td dir="auto" style="text-align: justify;"><?= nl2br(esc($d['deskripsi_cp'])) ?></td>
-                        </tr>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-
-        <!-- ============================================================== -->
-        <!-- BAGIAN B: TABEL ANALISIS TP & KKTP                             -->
-        <!-- ============================================================== -->
-        <div class="section-title">B. ANALISIS TUJUAN PEMBELAJARAN (TP) & KKTP</div>
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th width="4%">No</th>
-                        <th width="15%">Elemen CP</th>
-                        <th width="22%">Tujuan Pembelajaran (TP)</th>
+                        <th width="18%">Tujuan Pembelajaran</th>
                         <th width="16%">Lingkup Materi</th>
-                        <th width="23%">Kriteria Ketercapaian TP (KKTP)</th>
-                        <th width="15%">Aktivitas Pembelajaran</th>
+                        <th width="16%">Aktivitas Kognitif</th>
+                        <th width="15%">Profil Lulusan (DPL)</th>
+                        <th width="15%">Panca Cinta</th>
                         <th width="5%">JP</th>
+                        <th width="10%">Tanggal Pelaksanaan</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php 
                     $totalJp = 0;
-                    if(empty($analisisData)): 
+                    if(empty($dataAtp)): 
                     ?>
-                        <tr><td colspan="7" class="text-center">Belum ada data analisis CP.</td></tr>
+                        <tr><td colspan="8" class="text-center">Belum ada data ATP untuk kelas ini.</td></tr>
                     <?php else: ?>
-                        <?php foreach($analisisData as $no => $dt): 
-                            $totalJp += (int)$dt['estimasi_jp'];
+                        <?php foreach($dataAtp as $idx => $row): 
+                            $totalJp += (int)($row['estimasi_jp'] ?? $row['jp'] ?? 0);
                         ?>
                         <tr>
-                            <td class="text-center"><?= $no+1 ?></td>
-                            <td class="font-weight-bold" dir="auto"><?= esc($dt['elemen_cp']) ?></td>
-                            <td dir="auto"><?= esc($dt['tujuan_pembelajaran']) ?></td>
-                            <td dir="auto"><?= esc($dt['lingkup_materi']) ?></td>
-                            <td dir="auto"><?= nl2br(esc($dt['kktp'])) ?></td>
-                            <td dir="auto"><?= esc($dt['aktivitas_tarl']) ?></td>
-                            <td class="text-center font-weight-bold"><?= esc($dt['estimasi_jp']) ?></td>
+                            <td class="text-center"><?= esc($tingkatKelas) . '.' . ($idx + 1) ?></td>
+                            <td dir="auto" style="text-align: justify;"><?= esc($row['tujuan_pembelajaran'] ?? $row['tp'] ?? '-') ?></td>
+                            <td dir="auto"><?= esc($row['lingkup_materi'] ?? $row['lingkup'] ?? '-') ?></td>
+                            <td dir="auto"><?= esc($row['aktivitas_tarl'] ?? $row['aktivitas_kognitif'] ?? '-') ?></td>
+                            
+                            <td style="font-size: 10px; text-align: left; padding: 6px 8px;">
+                                <?php 
+                                    $dpl = $row['dpl_terpilih'] ?? [];
+                                    if (is_string($dpl)) $dpl = array_filter(explode(',', $dpl));
+                                    if (!empty($dpl)) {
+                                        foreach($dpl as $kode) {
+                                            $kode = trim($kode);
+                                            $teks = $listProfilLulusan[$kode] ?? '';
+                                            echo "<div style='margin-bottom: 4px;'><b>{$kode}</b>: {$teks}</div>";
+                                        }
+                                    } else {
+                                        echo '<div class="text-center">-</div>';
+                                    }
+                                ?>
+                            </td>
+
+                            <td style="font-size: 10px; text-align: left; padding: 6px 8px;">
+                                <?php 
+                                    $pc = $row['panca_cinta_terpilih'] ?? [];
+                                    if (is_string($pc)) $pc = array_filter(explode(',', $pc));
+                                    if (!empty($pc)) {
+                                        foreach($pc as $kode) {
+                                            $kode = trim($kode);
+                                            $teks = $listPancaCinta[$kode] ?? '';
+                                            echo "<div style='margin-bottom: 4px;'><b>{$kode}</b>: {$teks}</div>";
+                                        }
+                                    } else {
+                                        echo '<div class="text-center">-</div>';
+                                    }
+                                ?>
+                            </td>
+
+                            <td class="text-center font-weight-bold"><?= esc($row['estimasi_jp'] ?? $row['jp'] ?? 0) ?></td>
+                            <td class="text-center font-weight-bold <?= (strpos($row['tanggal'] ?? '', 'Habis') !== false) ? 'text-danger' : '' ?>">
+                                <?= esc($row['tanggal'] ?? 'Jadwal Habis') ?>
+                            </td>
                         </tr>
                         <?php endforeach; ?>
                     <?php endif; ?>
@@ -178,12 +178,12 @@
                     <tr style="background-color: #f4f4f4; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
                         <td colspan="6" class="text-right" style="font-weight: bold; padding-right: 15px; vertical-align: middle;">TOTAL ALOKASI JP:</td>
                         <td class="text-center font-weight-bold" style="font-size: 13px;"><?= $totalJp ?></td>
+                        <td></td>
                     </tr>
                 </tfoot>
             </table>
         </div>
 
-        <!-- TANDA TANGAN -->
         <div class="d-flex justify-content-between signature-section">
             <div class="text-center" style="width: 250px; line-height: 1;">
                 <p class="mb-0">Mengetahui,</p>
