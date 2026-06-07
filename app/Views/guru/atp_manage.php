@@ -162,8 +162,12 @@
                                     <td>
                                         <div class="checklist-box">
                                             <?php foreach($listProfilLulusan as $kode => $teks): ?>
+                                            <?php 
+                                                // Cek apakah kode ini ada di array dpl_terpilih
+                                                $isChecked = (!empty($row['dpl_terpilih']) && in_array($kode, $row['dpl_terpilih'])) ? 'checked' : ''; 
+                                            ?>
                                             <div class="custom-check">
-                                                <input type="checkbox" id="dpl_<?= $idx ?>_<?= $kode ?>" value="<?= $kode ?>">
+                                                <input type="checkbox" id="dpl_<?= $idx ?>_<?= $kode ?>" value="<?= $kode ?>" <?= $isChecked ?>>
                                                 <label for="dpl_<?= $idx ?>_<?= $kode ?>"><b><?= $kode ?></b>: <?= $teks ?></label>
                                             </div>
                                             <?php endforeach; ?>
@@ -173,8 +177,12 @@
                                     <td>
                                         <div class="checklist-box">
                                             <?php foreach($listPancaCinta as $kode => $teks): ?>
+                                            <?php 
+                                                // Cek apakah kode ini ada di array panca_cinta_terpilih
+                                                $isChecked = (!empty($row['panca_cinta_terpilih']) && in_array($kode, $row['panca_cinta_terpilih'])) ? 'checked' : ''; 
+                                            ?>
                                             <div class="custom-check">
-                                                <input type="checkbox" id="pc_<?= $idx ?>_<?= $kode ?>" value="<?= $kode ?>">
+                                                <input type="checkbox" id="pc_<?= $idx ?>_<?= $kode ?>" value="<?= $kode ?>" <?= $isChecked ?>>
                                                 <label for="pc_<?= $idx ?>_<?= $kode ?>"><b><?= $kode ?></b>: <?= $teks ?></label>
                                             </div>
                                             <?php endforeach; ?>

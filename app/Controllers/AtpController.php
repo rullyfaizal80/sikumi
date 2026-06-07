@@ -160,6 +160,56 @@ class AtpController extends BaseController
              $dataAtp = $builder->get()->getResultArray();
         }
 
+        // ... (Kode sebelumnya yang mengambil data mentah dari Analisis CP ke variabel $dataAtp) ...
+
+        // ==============================================================
+        // 🌟 SINKRONISASI DENGAN DATABASE ATP (Tarik Urutan & Centang Tersimpan)
+        // ==============================================================
+        if (!empty($dataAtp) && !empty($selectedRombelId)) {
+            // Ambil semua ID CP Detail yang sedang dimuat
+            $cpIds = array_column($dataAtp, 'id');
+            
+            // Cari data simpanan di tabel kurikulum_atp
+            $savedAtpQuery = $db->table('kurikulum_atp')
+                                ->where('rombel_id', $selectedRombelId)
+                                ->whereIn('cp_detail_id', $cpIds)
+                                ->get()->getResultArray();
+            
+            $savedAtpMap = [];
+            foreach ($savedAtpQuery as $s) {
+                $savedAtpMap[$s['cp_detail_id']] = $s;
+            }
+
+            // Gabungkan data mentah dengan data tersimpan
+            foreach ($dataAtp as &$row) {
+                $cpId = $row['id'];
+                if (isset($savedAtpMap[$cpId])) {
+                    // Jika sudah pernah disimpan, timpa datanya
+                    $row['urutan'] = $savedAtpMap[$cpId]['urutan'];
+                    $row['aktivitas_tarl'] = $savedAtpMap[$cpId]['aktivitas_kognitif'];
+                    
+                    // Pecah string "DPL1,DPL3" menjadi Array agar mudah dicentang di View
+                    $row['dpl_terpilih'] = explode(',', $savedAtpMap[$cpId]['dpl_terpilih'] ?? '');
+                    $row['panca_cinta_terpilih'] = explode(',', $savedAtpMap[$cpId]['panca_cinta_terpilih'] ?? '');
+                } else {
+                    // Jika belum pernah disimpan (Baru ditambahkan), taruh di paling bawah
+                    $row['urutan'] = 9999;
+                    $row['dpl_terpilih'] = [];
+                    $row['panca_cinta_terpilih'] = [];
+                }
+            }
+            unset($row);
+
+            // URUTKAN ULANG ARRAY berdasarkan kolom 'urutan'
+            usort($dataAtp, function($a, $b) {
+                return $a['urutan'] <=> $b['urutan'];
+            });
+        }
+
+        // ==============================================================
+        // 5. LOAD TANGGAL JADWAL & HITUNG TOTAL JP MINIMAL...
+        // ==============================================================
+
         // ==============================================================
         // 5. LOAD TANGGAL JADWAL & HITUNG TOTAL JP MINIMAL (CERDAS & AMAN)
         // ==============================================================
