@@ -144,20 +144,38 @@
     </div>
 
     <script>
-        // Logika untuk memunculkan tombol "Gabung Modul" jika lebih dari 1 checkbox dipilih
+        // Logika untuk memunculkan tombol "Gabung Modul" dan melempar data
         const checkboxes = document.querySelectorAll('.tp-checkbox');
         const btnGabung = document.getElementById('btnGabungModul');
 
+        function updateTombolGabung() {
+            let checkedBoxes = document.querySelectorAll('.tp-checkbox:checked');
+            let checkedCount = checkedBoxes.length;
+            
+            if(checkedCount >= 1) { // 1 TP pun boleh dibuatkan modul
+                btnGabung.style.display = 'inline-block';
+                btnGabung.innerHTML = `📝 Susun 1 Modul untuk ${checkedCount} TP Terpilih`;
+                
+                // Kumpulkan ID ATP yang dicentang
+                let selectedIds = [];
+                checkedBoxes.forEach(chk => selectedIds.push(chk.value));
+                
+                // Ubah fungsi klik tombol untuk melempar array ID ke halaman Create
+                btnGabung.onclick = function() {
+                    let urlParams = new URLSearchParams();
+                    urlParams.append('atp_ids', selectedIds.join(','));
+                    urlParams.append('rombel_id', '<?= $selectedRombelId ?>');
+                    urlParams.append('mapel_id', '<?= $selectedMapelId ?>');
+                    
+                    window.location.href = "<?= base_url('guru/modul-ajar/create') ?>?" + urlParams.toString();
+                };
+            } else {
+                btnGabung.style.display = 'none';
+            }
+        }
+
         checkboxes.forEach(chk => {
-            chk.addEventListener('change', function() {
-                let checkedCount = document.querySelectorAll('.tp-checkbox:checked').length;
-                if(checkedCount >= 2) {
-                    btnGabung.style.display = 'inline-block';
-                    btnGabung.innerHTML = `🔗 Buat 1 Modul untuk ${checkedCount} TP Terpilih`;
-                } else {
-                    btnGabung.style.display = 'none';
-                }
-            });
+            chk.addEventListener('change', updateTombolGabung);
         });
     </script>
 </body>

@@ -304,4 +304,80 @@ class ModulAjarController extends BaseController
 
         return view('guru/modul_ajar_manage', $data);
     }
+
+    // ==============================================================
+    // HALAMAN CREATE MODUL AJAR (AUTO-FILL DARI ATP)
+    // ==============================================================
+    public function create()
+    {
+        $db = \Config\Database::connect();
+        $request = \Config\Services::request();
+
+        $atpIdsStr = $request->getGet('atp_ids');
+        $rombelId = $request->getGet('rombel_id');
+        $mapelId = $request->getGet('mapel_id');
+
+        if (empty($atpIdsStr)) {
+            return redirect()->to(base_url('guru/modul-ajar'))->with('error', 'Pilih minimal 1 TP untuk dibuatkan Modul.');
+        }
+
+        $atpIds = explode(',', $atpIdsStr);
+        $userId = session()->get('user_id') ?? (function_exists('user_id') ? user_id() : 0);
+
+        // Tarik data detail CP/ATP yang dipilih
+        $builder = $db->table('kurikulum_atp a')
+                      ->select('a.*, d.tujuan_pembelajaran, d.lingkup_materi, d.estimasi_jp, h.elemen_cp')
+                      ->join('kurikulum_cp_details d', 'd.id = a.cp_detail_id')
+                      ->join('kurikulum_cp_headers h', 'h.id = d.header_id')
+                      ->whereIn('a.id', $atpIds)
+                      ->orderBy('a.urutan', 'ASC');
+        
+        $selectedAtpData = $builder->get()->getResultArray();
+
+        // ---------------------------------------------------------
+        // LOGIKA PENGGABUNGAN (MERGE) DATA OTOMATIS
+        // ---------------------------------------------------------
+        $totalJp = 0;
+        $gabunganMateri = [];
+        $gabunganDpl = [];
+        $gabunganPilar = [];
+
+        foreach ($selectedAtpData as $row) {
+            $totalJp += (int)$row['estimasi_jp'];
+            
+            if (!in_array($row['lingkup_materi'], $gabunganMateri)) {
+                $gabunganMateri[] = $row['lingkup_materi'];
+            }
+
+            // Pecah dan kumpulkan DPL (Misal dari "DPL1,DPL3")
+            if (!empty($row['dpl'])) {
+                $dpls = explode(',', $row['dpl']);
+                foreach ($dpls as $d) { if (!in_array(trim($d), $gabunganDpl)) $gabunganDpl[] = trim($d); }
+            }
+
+            // Pecah dan kumpulkan Pilar (Misal dari "P1,P4")
+            if (!empty($row['pilar'])) {
+                $pilars = explode(',', $row['pilar']);
+                foreach ($pilars as $p) { if (!in_array(trim($p), $gabunganPilar)) $gabunganPilar[] = trim($p); }
+            }
+        }
+
+        $data = [
+            'rombelId'        => $rombelId,
+            'mapelId'         => $mapelId,
+            'atpIdsStr'       => $atpIdsStr, // Bawa kembali sebagai string tersembunyi untuk proses Save
+            'selectedAtpData' => $selectedAtpData,
+            'totalJp'         => $totalJp,
+            'gabunganMateri'  => implode('; ', $gabunganMateri),
+            'gabunganDpl'     => $gabunganDpl,
+            'gabunganPilar'   => $gabunganPilar,
+            
+            // Referensi Teks Lengkap (Sama seperti Analisis CP)
+            'listProfilLulusan' => ['DPL1'=>'Keimanan dan ketakwaan terhadap Tuhan YME','DPL2'=>'Kewargaan','DPL3'=>'Penalaran Kritis','DPL4'=>'Kreativitas','DPL5'=>'Kolaborasi','DPL6'=>'Kemandirian','DPL7'=>'Kesehatan','DPL8'=>'Komunikasi'],
+            'listPancaCinta'    => ['P1'=>'Cinta kepada Allah SWT dan Rasul-Nya','P2'=>'Cinta kepada Ilmu','P3'=>'Cinta kepada Diri dan Sesama','P4'=>'Cinta kepada Alam dan Lingkungan','P5'=>'Cinta kepada Bangsa, Tanah Air, dan Negara']
+        ];
+
+        return view('guru/modul_ajar_create', $data);
+    }
+
 }

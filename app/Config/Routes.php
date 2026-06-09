@@ -185,4 +185,4 @@ $routes->post('guru/atp/simpan', 'AtpController::simpanAtp');
 $routes->post('guru/atp/reset', 'AtpController::resetAtp');
 
 $routes->get('guru/modul-ajar', 'ModulAjarController::index');
-
+$routes->get('guru/modul-ajar/create', 'ModulAjarController::create');
