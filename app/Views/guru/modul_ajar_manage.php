@@ -23,7 +23,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h3 class="font-weight-bold mb-1" style="color: #FF9F00;">📚 Manajemen Modul Ajar</h3>
-                <p class="text-muted mb-0">Penyusunan Modul Berdasarkan Alur Tujuan Pembelajaran (ATP)</p>
+                <p class="text-muted mb-0">Penyusunan Modul Ajar Berdasarkan Alur Tujuan Pembelajaran (ATP)</p>
             </div>
             <div>
                 <button class="btn btn-primary btn-sm font-weight-bold shadow-sm me-2">🖨️ Cetak Rekap Modul</button>
@@ -107,26 +107,31 @@
                                 
                                 <?php if(!$isDone): ?>
                                 <div class="form-check m-0">
-                                    <input class="form-check-input checkbox-gabung tp-checkbox" type="checkbox" value="<?= $tp['atp_id'] ?>" data-jp="<?= $tp['estimasi_jp'] ?>">
+                                    <input class="form-check-input checkbox-gabung tp-checkbox" type="checkbox" value="<?= $tp['atp_id'] ?? $tp['cp_detail_id'] ?>" data-jp="<?= $tp['estimasi_jp'] ?>">
                                 </div>
                                 <?php endif; ?>
                             </div>
-
-                            <div class="card-body pt-1">
-                                <h6 class="font-weight-bold text-primary mb-1"><?= esc($tp['lingkup_materi']) ?></h6>
-                                <p class="small text-justify mb-2" style="line-height: 1.4;">
-                                    <?= esc($tp['tp']) ?>
-                                </p>
-                                <div class="text-muted small font-weight-bold">
-                                    <i class="bi bi-stopwatch"></i> Estimasi: <?= esc($tp['estimasi_jp']) ?> Jam Pelajaran
+                            
+                            <div class="card-body pt-2 d-flex flex-column">
+                                
+                                <div class="flex-grow-1">
+                                    <h6 class="font-weight-bold text-primary mb-1"><?= esc($tp['lingkup_materi']) ?></h6>
+                                    <p class="small text-justify mb-3" style="line-height: 1.4;">
+                                        <?= esc($tp['tp']) ?>
+                                    </p>
+                                </div>
+                                
+                                <div class="d-flex justify-content-between align-items-center text-muted small font-weight-bold border-top pt-2 mt-auto">
+                                    <span><i class="bi bi-calendar-event text-danger"></i> <?= esc($tp['tanggal']) ?></span>
+                                    <span><i class="bi bi-stopwatch text-success"></i> <?= esc($tp['estimasi_jp']) ?> JP</span>
                                 </div>
                             </div>
 
-                            <div class="card-footer bg-light border-top-0 py-2 text-end rounded-bottom">
+                            <div class="card-footer bg-white border-top-0 py-2 text-end rounded-bottom">
                                 <?php if($isDone): ?>
-                                    <button class="btn btn-outline-success btn-sm font-weight-bold w-100">👁️ Lihat / Edit Modul</button>
+                                    <button class="btn btn-outline-success btn-sm font-weight-bold w-100">👁️ Lihat / Edit Modul Ajar</button>
                                 <?php else: ?>
-                                    <button class="btn btn-primary btn-sm font-weight-bold w-100">📝 Susun Modul Baru</button>
+                                    <button class="btn btn-outline-primary btn-sm font-weight-bold w-100">📝 Susun Modul Ajar Baru</button>
                                 <?php endif; ?>
                             </div>
 

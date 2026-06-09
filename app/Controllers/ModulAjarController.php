@@ -133,35 +133,154 @@ class ModulAjarController extends BaseController
             // LANGKAH 5: Jika Header ditemukan, kumpulkan ID-nya dan tarik Detailnya
             if (!empty($headers)) {
                 
-                // Ekstrak semua ID Header menjadi array (misal: [10, 11, 12])
                 $headerIds = array_column($headers, 'id');
                 
-                // Gunakan kurikulum_cp_details sebagai tabel dasar
+                // ==============================================================
+                // TAMBAHAN: TARIK TANGGAL (SIMULASI HEB BERDASARKAN ALUR 6 TAHAP)
+                // ==============================================================
+                $listTanggal = [];
+                
+                // TAHAP 1 & 2: Deteksi Hari Mengajar Guru
+                $teachingDays = [];
+                if ($jadwalAktif && $db->tableExists('class_schedules') && $db->tableExists('schedule_time_slots')) {
+                    $csFields = $db->getFieldNames('class_schedules');
+                    $kolomSubjectId = in_array('subject_id', $csFields) ? 'subject_id' : 'mapel_id';
+                    $kolomCombinedId = in_array('combined_subject_id', $csFields) ? 'combined_subject_id' : null;
+                    
+                    // Bersihkan awalan S_ atau C dari Dropdown
+                    $searchMapelId = $selectedMapelId;
+                    if (strpos($searchMapelId, 'C') === 0) $searchMapelId = substr($searchMapelId, 1);
+                    elseif (strpos($searchMapelId, 'S_') === 0) $searchMapelId = substr($searchMapelId, 2);
+
+                    $builderJadwal = $db->table('class_schedules cs')
+                                      ->select('ts.day_name')
+                                      ->join('schedule_time_slots ts', 'ts.id = cs.slot_id', 'left')
+                                      ->where('cs.version_id', $jadwalAktif['id'])
+                                      ->where('cs.rombel_id', $selectedRombelId);
+                                      
+                    if (strpos($selectedMapelId, 'C') === 0 && $kolomCombinedId) {
+                        $builderJadwal->where("cs.{$kolomCombinedId}", $searchMapelId);
+                    } else {
+                        $builderJadwal->where("cs.{$kolomSubjectId}", $searchMapelId);
+                    }
+
+                    $hariJadwal = $builderJadwal->groupBy('ts.day_name')->get()->getResultArray();
+                    
+                    // Konversi hari Indonesia ke format angka PHP (1=Senin, 7=Minggu)
+                    $mapHariIndo = ['senin'=>1, 'selasa'=>2, 'rabu'=>3, 'kamis'=>4, 'jumat'=>5, 'sabtu'=>6, 'minggu'=>7];
+                    foreach ($hariJadwal as $hj) {
+                        $hari = strtolower($hj['day_name'] ?? '');
+                        if (isset($mapHariIndo[$hari])) {
+                            $teachingDays[] = $mapHariIndo[$hari]; 
+                        }
+                    }
+                }
+
+                // TAHAP 3 & 4: Simulasi Kalender Semester & Cek Hari Libur
+                if (!empty($teachingDays) && $tahunAktif) {
+                    $semester = strtolower($tahunAktif['semester'] ?? 'ganjil');
+                    $tahunSplit = explode('/', $tahunAktif['name'] ?? date('Y'));
+                    $tahunAwal = (int)$tahunSplit[0];
+                    $tahunAkhir = isset($tahunSplit[1]) ? (int)$tahunSplit[1] : $tahunAwal + 1;
+
+                    // Tentukan rentang waktu berdasar semester
+                    if (strpos($semester, 'genap') !== false) {
+                        $startDate = strtotime("$tahunAkhir-01-01");
+                        $endDate = strtotime("$tahunAkhir-06-30");
+                    } else {
+                        $startDate = strtotime("$tahunAwal-07-01");
+                        $endDate = strtotime("$tahunAwal-12-31");
+                    }
+
+                    // Ambil rentang libur khusus tingkat kelas ini
+                    $libur = [];
+                    if ($db->tableExists('academic_calendars')) {
+                        $dataLibur = $db->table('academic_calendars')
+                                        ->where('academic_year_id', $tahunAktif['id'])
+                                        ->where('class_id', $masterClassId)
+                                        ->get()->getResultArray();
+                        foreach ($dataLibur as $dl) {
+                            $libur[] = ['start' => strtotime($dl['start_date']), 'end' => strtotime($dl['end_date'])];
+                        }
+                    }
+
+                    $rawHebDates = [];
+                    $currentDate = $startDate;
+                    
+                    // Looping dari awal semester sampai akhir semester
+                    while ($currentDate <= $endDate) {
+                        $dayOfWeek = (int)date('N', $currentDate);
+                        
+                        if (in_array($dayOfWeek, $teachingDays)) {
+                            $isLibur = false;
+                            foreach ($libur as $l) {
+                                if ($currentDate >= $l['start'] && $currentDate <= $l['end']) {
+                                    $isLibur = true;
+                                    break;
+                                }
+                            }
+                            if (!$isLibur) {
+                                $rawHebDates[] = $currentDate; // Lolos = Masuk Hari Efektif Belajar
+                            }
+                        }
+                        $currentDate = strtotime('+1 day', $currentDate);
+                    }
+
+                    // TAHAP 5: Pengelompokan Mingguan & Pemformatan Tulisan
+                    $groupedWeeks = [];
+                    foreach ($rawHebDates as $timestamp) {
+                        $weekKey = date('o-W', $timestamp); // Kelompokkan berdasarkan Minggu Ke-berapa
+                        $groupedWeeks[$weekKey][] = $timestamp;
+                    }
+
+                    $bulanIndo = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+                    foreach ($groupedWeeks as $week => $dates) {
+                        $bln = $bulanIndo[(int)date('n', end($dates)) - 1]; // Pakai bulan di tanggal terakhir
+                        $thn = date('Y', end($dates));
+                        
+                        if (count($dates) == 1) {
+                            $tgl = date('j', $dates[0]);
+                            $listTanggal[] = "$tgl $bln $thn";
+                        } elseif (count($dates) == 2) {
+                            $tgl1 = date('j', $dates[0]);
+                            $tgl2 = date('j', $dates[1]);
+                            $listTanggal[] = "$tgl1 dan $tgl2 $bln $thn"; // Format: "10 dan 12 Agu 2026"
+                        } else {
+                            $tglAwal = date('j', $dates[0]);
+                            $tglAkhir = date('j', end($dates));
+                            $listTanggal[] = "$tglAwal s.d $tglAkhir $bln $thn"; // Format jika > 2 hari dlm seminggu
+                        }
+                    }
+                }
+
+                // ==============================================================
+                // TAHAP 6: DISTRIBUSI KE BARIS TABEL (CARD)
+                // ==============================================================
                 $builder = $db->table('kurikulum_cp_details d')
                               ->select('d.id as cp_detail_id, d.tujuan_pembelajaran as tp, d.lingkup_materi, d.estimasi_jp');
                 
-                // Jika tabel kurikulum_atp ada, LEFT JOIN untuk mengambil id dan urutan
                 if ($db->tableExists('kurikulum_atp')) {
                     $builder->select('a.id as atp_id, a.urutan')
                             ->join('kurikulum_atp a', "a.cp_detail_id = d.id AND (a.rombel_id = {$selectedRombelId} OR a.rombel_id IS NULL)", 'left')
-                            ->orderBy('a.urutan', 'ASC'); // Urutkan berdasarkan susunan ATP
+                            ->orderBy('a.urutan', 'ASC'); 
                 }
 
-                // PERBAIKAN: Gunakan whereIn untuk menarik TP dari BANYAK Header sekaligus
                 $dataAtpTersimpan = $builder->whereIn('d.header_id', $headerIds)
-                                            ->orderBy('d.id', 'ASC') // Fallback jika urutan ATP kosong
+                                            ->orderBy('d.id', 'ASC') 
                                             ->get()->getResultArray();
 
-                // Format Nomor TP (Tingkat + Urutan) & Hitung Total JP
+                $angkaTingkat = preg_replace('/[^0-9]/', '', $tingkatKelas);
+                if (empty($angkaTingkat)) $angkaTingkat = 7;
+
                 foreach($dataAtpTersimpan as $idx => &$row) {
-                    // Jika kolom urutan dari tabel ATP kosong, pakai urutan array asli
                     $urutan = (!empty($row['urutan'])) ? $row['urutan'] : ($idx + 1);
                     
-                    $row['nomor_atp'] = $tingkatKelas . '.' . $urutan;
-                    
-                    // Suntikkan nilai default lewat PHP agar tabel/view tidak error
+                    $row['nomor_atp'] = $angkaTingkat . '.' . $urutan; 
                     $row['status_modul'] = 0; 
                     $row['modul_id'] = null;
+                    
+                    // Eksekusi Tahap 6: Memasukkan hasil jadwal ke data
+                    $row['tanggal'] = $listTanggal[$idx] ?? 'Jadwal Habis / Belum Diatur';
                     
                     $totalJpAtp += (int)($row['estimasi_jp'] ?? 0);
                 }
