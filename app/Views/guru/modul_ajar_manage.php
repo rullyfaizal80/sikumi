@@ -129,9 +129,15 @@
 
                             <div class="card-footer bg-white border-top-0 py-2 text-end rounded-bottom">
                                 <?php if($isDone): ?>
-                                    <button class="btn btn-outline-success btn-sm font-weight-bold w-100">👁️ Lihat / Edit Modul Ajar</button>
+                                    <button class="btn btn-outline-success btn-sm font-weight-bold w-100">👁️ Lihat / Edit Modul</button>
                                 <?php else: ?>
-                                    <button class="btn btn-outline-primary btn-sm font-weight-bold w-100">📝 Susun Modul Ajar Baru</button>
+                                    <?php 
+                                        $idLemparan = $tp['atp_id'] ?? $tp['cp_detail_id'];
+                                        $urlCreate = base_url("guru/modul-ajar/create?atp_ids={$idLemparan}&rombel_id={$selectedRombelId}&mapel_id={$selectedMapelId}");
+                                    ?>
+                                    <a href="<?= $urlCreate ?>" class="btn btn-outline-primary btn-sm font-weight-bold w-100">
+                                        📝 Susun Modul Ajar Baru
+                                    </a>
                                 <?php endif; ?>
                             </div>
 

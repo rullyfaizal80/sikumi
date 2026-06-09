@@ -54,21 +54,21 @@
                             <div class="row mb-3">
                                 <label class="col-sm-4 col-form-label small font-weight-bold text-muted">Mata Pelajaran</label>
                                 <div class="col-sm-8">
-                                    <input type="text" class="form-control form-control-sm auto-filled" value="<?= esc($selectedAtpData[0]['elemen_cp'] ?? 'Informatika') ?>" readonly>
+                                    <input type="text" class="form-control form-control-sm auto-filled" value="<?= esc($namaMapelAktif) ?>" readonly>
                                 </div>
                             </div>
 
                             <div class="row mb-3">
                                 <label class="col-sm-4 col-form-label small font-weight-bold text-muted">Total Alokasi Waktu</label>
                                 <div class="col-sm-8">
-                                    <input type="text" class="form-control form-control-sm auto-filled text-success" value="<?= $totalJp ?> JP (Hasil Penggabungan ATP)" readonly>
+                                    <input type="text" class="form-control form-control-sm auto-filled text-success" value="<?= $totalJp ?> JP" readonly>
                                 </div>
                             </div>
 
                             <div class="row mb-3">
                                 <label class="col-sm-4 col-form-label small font-weight-bold text-primary">Pertemuan Ke- *</label>
                                 <div class="col-sm-8">
-                                    <input type="text" name="pertemuan_ke" class="form-control form-control-sm border-primary" placeholder="Contoh: 1, atau 1-2" required>
+                                    <input type="number" name="pertemuan_ke" class="form-control form-control-sm border-primary" min="1" step="1" placeholder="Misal: 1" required>
                                 </div>
                             </div>
                         </div>
@@ -85,7 +85,7 @@
                             <div class="mb-3">
                                 <?php foreach($selectedAtpData as $idx => $tp): ?>
                                     <div class="box-tp small">
-                                        <b>TP <?= $tp['nomor_atp'] ?? ($idx+1) ?>:</b> <?= esc($tp['tujuan_pembelajaran']) ?>
+                                        <b>TP <?= esc($tp['nomor_atp'] ?? ($idx+1)) ?>:</b> <?= esc($tp['tujuan_pembelajaran']) ?>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
@@ -93,7 +93,7 @@
                             <div class="row">
                                 <div class="col-md-6">
                                     <label class="small font-weight-bold text-muted mb-2">Dimensi Profil Lulusan (DPL)</label>
-                                    <div class="border p-2 rounded bg-light" style="max-height: 150px; overflow-y: auto;">
+                                    <div class="border p-2 rounded bg-light">
                                         <?php foreach($listProfilLulusan as $kode => $teks): ?>
                                             <?php $isChecked = in_array($kode, $gabunganDpl) ? 'checked' : ''; ?>
                                             <div class="form-check custom-checkbox">
@@ -105,7 +105,7 @@
                                 </div>
                                 <div class="col-md-6">
                                     <label class="small font-weight-bold text-muted mb-2">Lima Pilar Panca Cinta</label>
-                                    <div class="border p-2 rounded bg-light" style="max-height: 150px; overflow-y: auto;">
+                                    <div class="border p-2 rounded bg-light">
                                         <?php foreach($listPancaCinta as $kode => $teks): ?>
                                             <?php $isChecked = in_array($kode, $gabunganPilar) ? 'checked' : ''; ?>
                                             <div class="form-check custom-checkbox">

@@ -322,20 +322,32 @@ class ModulAjarController extends BaseController
         }
 
         $atpIds = explode(',', $atpIdsStr);
-        $userId = session()->get('user_id') ?? (function_exists('user_id') ? user_id() : 0);
+        
+        // ---------------------------------------------------------
+        // PERBAIKAN: AMBIL NAMA MAPEL DARI DATABASE
+        // ---------------------------------------------------------
+        $namaMapelAktif = 'Mata Pelajaran';
+        if ($db->tableExists('schedule_combined_subjects') && strpos($mapelId, 'C') === 0) {
+            $cId = substr($mapelId, 1);
+            $cm = $db->table('schedule_combined_subjects')->where('id', $cId)->get()->getRowArray();
+            if ($cm) $namaMapelAktif = '🗂️ [Gabungan] ' . $cm['combined_name'];
+        } elseif ($db->tableExists('master_subjects')) {
+            $sId = (strpos($mapelId, 'S_') === 0) ? substr($mapelId, 2) : $mapelId;
+            $sm = $db->table('master_subjects')->where('id', $sId)->get()->getRowArray();
+            if ($sm) $namaMapelAktif = $sm['subject_name'];
+        }
 
         // Tarik data detail CP/ATP yang dipilih
         $builder = $db->table('kurikulum_atp a')
-                      ->select('a.*, d.tujuan_pembelajaran, d.lingkup_materi, d.estimasi_jp, h.elemen_cp')
+                      ->select('a.*, d.tujuan_pembelajaran, d.lingkup_materi, d.estimasi_jp')
                       ->join('kurikulum_cp_details d', 'd.id = a.cp_detail_id')
-                      ->join('kurikulum_cp_headers h', 'h.id = d.header_id')
                       ->whereIn('a.id', $atpIds)
                       ->orderBy('a.urutan', 'ASC');
         
         $selectedAtpData = $builder->get()->getResultArray();
 
         // ---------------------------------------------------------
-        // LOGIKA PENGGABUNGAN (MERGE) DATA OTOMATIS
+        // LOGIKA PENGGABUNGAN & PEMBERSIHAN STRING (AUTO-CHECK)
         // ---------------------------------------------------------
         $totalJp = 0;
         $gabunganMateri = [];
@@ -349,30 +361,37 @@ class ModulAjarController extends BaseController
                 $gabunganMateri[] = $row['lingkup_materi'];
             }
 
-            // Pecah dan kumpulkan DPL (Misal dari "DPL1,DPL3")
-            if (!empty($row['dpl'])) {
-                $dpls = explode(',', $row['dpl']);
-                foreach ($dpls as $d) { if (!in_array(trim($d), $gabunganDpl)) $gabunganDpl[] = trim($d); }
+            // PERBAIKAN FATAL: Menggunakan nama kolom asli di database (dpl_terpilih)
+            if (!empty($row['dpl_terpilih'])) {
+                $dpls = explode(',', $row['dpl_terpilih']);
+                foreach ($dpls as $d) { 
+                    $cleanD = strtoupper(preg_replace('/\s+/', '', $d)); 
+                    if (!in_array($cleanD, $gabunganDpl)) $gabunganDpl[] = $cleanD; 
+                }
             }
 
-            // Pecah dan kumpulkan Pilar (Misal dari "P1,P4")
-            if (!empty($row['pilar'])) {
-                $pilars = explode(',', $row['pilar']);
-                foreach ($pilars as $p) { if (!in_array(trim($p), $gabunganPilar)) $gabunganPilar[] = trim($p); }
+            // PERBAIKAN FATAL: Menggunakan nama kolom asli di database (panca_cinta_terpilih)
+            if (!empty($row['panca_cinta_terpilih'])) {
+                $pilars = explode(',', $row['panca_cinta_terpilih']);
+                foreach ($pilars as $p) { 
+                    $cleanP = strtoupper(preg_replace('/\s+/', '', $p)); 
+                    if (!in_array($cleanP, $gabunganPilar)) $gabunganPilar[] = $cleanP; 
+                }
             }
         }
 
         $data = [
             'rombelId'        => $rombelId,
             'mapelId'         => $mapelId,
-            'atpIdsStr'       => $atpIdsStr, // Bawa kembali sebagai string tersembunyi untuk proses Save
+            'namaMapelAktif'  => $namaMapelAktif,
+            'atpIdsStr'       => $atpIdsStr, 
             'selectedAtpData' => $selectedAtpData,
             'totalJp'         => $totalJp,
             'gabunganMateri'  => implode('; ', $gabunganMateri),
             'gabunganDpl'     => $gabunganDpl,
             'gabunganPilar'   => $gabunganPilar,
             
-            // Referensi Teks Lengkap (Sama seperti Analisis CP)
+            // Kunci array dibuat solid tanpa spasi agar auto-check akurat
             'listProfilLulusan' => ['DPL1'=>'Keimanan dan ketakwaan terhadap Tuhan YME','DPL2'=>'Kewargaan','DPL3'=>'Penalaran Kritis','DPL4'=>'Kreativitas','DPL5'=>'Kolaborasi','DPL6'=>'Kemandirian','DPL7'=>'Kesehatan','DPL8'=>'Komunikasi'],
             'listPancaCinta'    => ['P1'=>'Cinta kepada Allah SWT dan Rasul-Nya','P2'=>'Cinta kepada Ilmu','P3'=>'Cinta kepada Diri dan Sesama','P4'=>'Cinta kepada Alam dan Lingkungan','P5'=>'Cinta kepada Bangsa, Tanah Air, dan Negara']
         ];
