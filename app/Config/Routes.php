@@ -189,3 +189,6 @@ $routes->get('guru/modul-ajar/create', 'ModulAjarController::create');
 
 $routes->post('guru/modul-ajar/store', 'ModulAjarController::store');
 $routes->post('guru/modul-ajar/reset', 'ModulAjarController::resetModul');
+
+$routes->get('guru/kktp', 'KktpController::index');
+$routes->post('guru/kktp/simpan', 'KktpController::simpan');
