@@ -31,29 +31,6 @@
 <body class="layout-fixed">
     <div class="wrapper p-4">
         
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h3 class="font-weight-bold mb-1" style="color: #FF9F00;">📝 Form Penyusunan Modul Ajar</h3>
-                <p class="text-muted mb-0">Insersi Kurikulum Berbasis Cinta (KBC) & Deep Learning</p>
-            </div>
-            <div>
-                <?php if(!empty($modulId)): ?>
-                    <button type="button" class="btn btn-danger btn-sm font-weight-bold shadow-sm me-1" onclick="if(confirm('Yakin ingin mereset/menghapus modul ini? Seluruh isian akan hilang dan TP akan kembali ke status Belum Dibuat.')) document.getElementById('formReset').submit();">🗑️ Reset Modul</button>
-                <?php endif; ?>
-                
-                <a href="<?= base_url("guru/modul-ajar?rombel_id={$rombelId}&mapel_id={$mapelId}") ?>" class="btn btn-secondary btn-sm font-weight-bold shadow-sm me-1">⬅️ Batal</a>
-                <button type="submit" form="formModul" class="btn btn-primary btn-sm font-weight-bold shadow-sm">💾 Simpan Modul</button>
-            </div>
-        </div>
-
-        <?php if(!empty($modulId)): ?>
-        <form id="formReset" action="<?= base_url('guru/modul-ajar/reset') ?>" method="POST" style="display:none;">
-            <input type="hidden" name="modul_id" value="<?= esc($modulId) ?>">
-            <input type="hidden" name="rombel_id" value="<?= esc($rombelId) ?>">
-            <input type="hidden" name="mapel_id" value="<?= esc($mapelId) ?>">
-        </form>
-        <?php endif; ?>
-        
         <form id="formModul" action="<?= base_url('guru/modul-ajar/store') ?>" method="POST">
             <input type="hidden" name="modul_id" value="<?= esc($modulId) ?>">
             <input type="hidden" name="rombel_id" value="<?= esc($rombelId) ?>">
@@ -61,13 +38,24 @@
             <input type="hidden" name="atp_ids" value="<?= esc($atpIdsStr) ?>">
             <input type="hidden" name="alokasi_jp" value="<?= esc($totalJp) ?>">
 
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h3 class="font-weight-bold mb-1" style="color: #FF9F00;">📝 Form Penyusunan Modul Ajar</h3>
+                    <p class="text-muted mb-0">Insersi Kurikulum Berbasis Cinta (KBC) & Deep Learning</p>
+                </div>
+                <div>
+                    <?php if(!empty($modulId)): ?>
+                        <button type="button" class="btn btn-danger btn-sm font-weight-bold shadow-sm me-1" onclick="if(confirm('Yakin ingin mereset/menghapus modul ini? Seluruh isian akan hilang dan TP akan kembali ke status Belum Dibuat.')) document.getElementById('formReset').submit();">🗑️ Reset Modul</button>
+                    <?php endif; ?>
+                    
+                    <a href="<?= base_url("guru/modul-ajar?rombel_id={$rombelId}&mapel_id={$mapelId}") ?>" class="btn btn-secondary btn-sm font-weight-bold shadow-sm me-1">⬅️ Batal</a>
+                    <button type="submit" class="btn btn-primary btn-sm font-weight-bold shadow-sm">💾 Simpan Modul</button>
+                </div>
+            </div>
+
             <div class="row">
-                <!-- ========================================== -->
-                <!-- KOLOM KIRI (Bagian A, B, C)                  -->
-                <!-- ========================================== -->
                 <div class="col-lg-6">
                     
-                    <!-- BAGIAN A -->
                     <div class="card shadow-sm mb-4 border-0">
                         <div class="card-body">
                             <div class="form-section-title">🗂️ BAGIAN A: Identitas Modul</div>
@@ -94,6 +82,13 @@
                             </div>
 
                             <div class="row mb-3 align-items-center">
+                                <label class="col-sm-4 small font-weight-bold text-muted mb-0">Tanggal Pelaksanaan <span class="text-danger">*</span></label>
+                                <div class="col-sm-8">
+                                    <input type="text" name="tanggal_pelaksanaan" class="form-control form-control-sm font-weight-bold text-primary bg-white" value="<?= esc($tanggalPelaksanaan) ?>" placeholder="Contoh: 12 Jan 2026, 19 Jan 2026" required>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3 align-items-center">
                                 <label class="col-sm-4 small font-weight-bold text-muted mb-0">Alokasi Waktu <span class="text-danger">*</span></label>
                                 <div class="col-sm-8 d-flex align-items-center">
                                     <input type="text" class="form-control form-control-sm auto-filled text-center font-weight-bold text-muted me-2" style="width: 70px;" value="<?= $totalJp ?> JP" readonly>
@@ -116,7 +111,6 @@
                         </div>
                     </div>
 
-                    <!-- BAGIAN B -->
                     <div class="card shadow-sm mb-4 border-0">
                         <div class="card-body">
                             <div class="form-section-title">🎯 BAGIAN B: Identifikasi</div>
@@ -164,7 +158,6 @@
                         </div>
                     </div>
 
-                    <!-- BAGIAN C -->
                     <div class="card shadow-sm mb-4 border-0">
                         <div class="card-body">
                             <div class="form-section-title">💡 BAGIAN C: Desain Pembelajaran</div>
@@ -215,14 +208,8 @@
                         </div>
                     </div>
 
-                </div> <!-- Tutup Kolom Kiri -->
-
-                <!-- ========================================== -->
-                <!-- KOLOM KANAN (Bagian D, E, F)                 -->
-                <!-- ========================================== -->
-                <div class="col-lg-6">
+                </div> <div class="col-lg-6">
                     
-                    <!-- BAGIAN D -->
                     <div class="card shadow-sm mb-4 border-0">
                         <div class="card-body">
                             <div class="form-section-title">🏃‍♂️ BAGIAN D: Pengalaman Belajar</div>
@@ -231,7 +218,7 @@
                                 <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
                                     <label class="small font-weight-bold text-dark mb-0">1. Kegiatan Awal <span class="text-danger">*</span></label>
                                     <div class="d-flex align-items-center">
-                                        <input type="number" name="kegiatan[awal][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($kegiatan['awal']['menit'] ?? '10') ?>" required>
+                                        <input type="number" name="kegiatan[awal][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($menitAwal) ?>" required>
                                         <span class="small text-dark font-weight-bold ms-2">Menit</span>
                                     </div>
                                 </div>
@@ -242,7 +229,7 @@
                                 <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
                                     <label class="small font-weight-bold text-dark mb-0">2. Kegiatan Inti <span class="text-danger">*</span></label>
                                     <div class="d-flex align-items-center">
-                                        <input type="number" name="kegiatan[inti][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($kegiatan['inti']['menit'] ?? '40') ?>" required>
+                                        <input type="number" name="kegiatan[inti][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($menitInti) ?>" required>
                                         <span class="small text-dark font-weight-bold ms-2">Menit</span>
                                     </div>
                                 </div>
@@ -263,7 +250,7 @@
                                 <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
                                     <label class="small font-weight-bold text-dark mb-0">3. Kegiatan Penutup <span class="text-danger">*</span></label>
                                     <div class="d-flex align-items-center">
-                                        <input type="number" name="kegiatan[penutup][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($kegiatan['penutup']['menit'] ?? '10') ?>" required>
+                                        <input type="number" name="kegiatan[penutup][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($menitPenutup) ?>" required>
                                         <span class="small text-dark font-weight-bold ms-2">Menit</span>
                                     </div>
                                 </div>
@@ -272,7 +259,6 @@
                         </div>
                     </div>
 
-                    <!-- BAGIAN E: Asesmen Pembelajaran -->
                     <div class="card shadow-sm mb-4 border-0">
                         <div class="card-body">
                             <div class="form-section-title">📊 BAGIAN E: Asesmen Pembelajaran</div>
@@ -294,7 +280,6 @@
                         </div>
                     </div>
 
-                    <!-- BAGIAN F: Lampiran -->
                     <div class="card shadow-sm mb-4 border-0">
                         <div class="card-body">
                             <div class="form-section-title">📎 BAGIAN F: Lampiran</div>
@@ -326,9 +311,14 @@
                         </div>
                     </div>
 
-                </div> <!-- Tutup Kolom Kanan -->
-            </div>
+                </div> </div>
+        </form> <?php if(!empty($modulId)): ?>
+        <form id="formReset" action="<?= base_url('guru/modul-ajar/reset') ?>" method="POST" style="display:none;">
+            <input type="hidden" name="modul_id" value="<?= esc($modulId) ?>">
+            <input type="hidden" name="rombel_id" value="<?= esc($rombelId) ?>">
+            <input type="hidden" name="mapel_id" value="<?= esc($mapelId) ?>">
         </form>
+        <?php endif; ?>
 
     </div>
 </body>

@@ -89,7 +89,47 @@
                     <p class="small">Silakan kembali ke menu ATP dan simpan susunan materi Anda terlebih dahulu.</p>
                 </div>
             <?php else: ?>
-                <?php foreach($dataAtpTersimpan as $idx => $tp): ?>
+                
+                <?php 
+                // ==================================================
+                // SIHIR KELOMPOK: Menyatukan TP yang Digabung
+                // ==================================================
+                $groupedAtp = [];
+                foreach($dataAtpTersimpan as $item) { 
+                    if (!empty($item['modul_id'])) {
+                        $key = 'modul_' . $item['modul_id'];
+                        if (!isset($groupedAtp[$key])) {
+                            $groupedAtp[$key] = $item;
+                            $groupedAtp[$key]['atp_ids_array'] = [$item['atp_id'] ?? $item['cp_detail_id']];
+                            $groupedAtp[$key]['nomor_atp_array'] = [$item['nomor_atp']]; // Simpan Label TP
+                            $groupedAtp[$key]['tanggal_array'] = [$item['tanggal']];     // Simpan Tanggal
+                            $groupedAtp[$key]['tujuan_pembelajaran'] = "• " . $item['tp'];
+                        } else {
+                            $groupedAtp[$key]['tujuan_pembelajaran'] .= "<br>• " . $item['tp'];
+                            $groupedAtp[$key]['atp_ids_array'][] = $item['atp_id'] ?? $item['cp_detail_id'];
+                            $groupedAtp[$key]['nomor_atp_array'][] = $item['nomor_atp'];
+                            $groupedAtp[$key]['tanggal_array'][] = $item['tanggal'];
+                            $groupedAtp[$key]['estimasi_jp'] += $item['estimasi_jp']; 
+                        }
+                    } else {
+                        $item['atp_ids_array'] = [$item['atp_id'] ?? $item['cp_detail_id']];
+                        $item['nomor_atp_array'] = [$item['nomor_atp']];
+                        $item['tanggal_array'] = [$item['tanggal']];
+                        $item['tujuan_pembelajaran'] = $item['tp'];
+                        $groupedAtp['single_' . ($item['atp_id'] ?? $item['cp_detail_id'])] = $item;
+                    }
+                }
+
+                // Logika Penentuan is_merged yang lebih presisi
+                foreach($groupedAtp as &$g) {
+                    $g['is_merged'] = (count($g['atp_ids_array']) > 1);
+                    $g['label_gabungan'] = implode(', ', $g['nomor_atp_array']);
+                    $g['label_tanggal'] = implode('; ', array_unique($g['tanggal_array']));
+                }
+                unset($g);
+                ?>
+
+                <?php foreach($groupedAtp as $tp): ?>
                     <?php $isDone = !empty($tp['status_modul']) && $tp['status_modul'] == 1; ?>
                     
                     <div class="col-md-6 col-lg-4 mb-4">
@@ -97,7 +137,8 @@
                             
                             <div class="card-header bg-white d-flex justify-content-between align-items-center py-2 border-bottom-0">
                                 <div>
-                                    <span class="badge bg-dark">TP <?= esc($tp['nomor_atp']) ?></span>
+                                    <span class="badge bg-dark">TP <?= esc($tp['nomor_atp']) ?> <?= $tp['is_merged'] ? ' dkk' : '' ?></span>
+                                    
                                     <?php if($isDone): ?>
                                         <span class="modul-badge bg-success text-white ms-1"><i class="bi bi-check-circle"></i> Sudah Dibuat</span>
                                     <?php else: ?>
@@ -107,7 +148,7 @@
                                 
                                 <?php if(!$isDone): ?>
                                 <div class="form-check m-0">
-                                    <input class="form-check-input checkbox-gabung tp-checkbox" type="checkbox" value="<?= $tp['atp_id'] ?? $tp['cp_detail_id'] ?>" data-jp="<?= $tp['estimasi_jp'] ?>">
+                                    <input class="form-check-input checkbox-gabung tp-checkbox" type="checkbox" value="<?= $tp['atp_id'] ?? $tp['cp_detail_id'] ?>" data-tgl="<?= esc($tp['tanggal']) ?>">
                                 </div>
                                 <?php endif; ?>
                             </div>
@@ -115,9 +156,14 @@
                             <div class="card-body pt-2 d-flex flex-column">
                                 
                                 <div class="flex-grow-1">
+                                    <?php if($tp['is_merged']): ?>
+                                        <span class="badge bg-info text-dark mb-2 shadow-sm"><i class="bi bi-link-45deg"></i> Gabungan TP: <?= esc($tp['label_gabungan']) ?></span>
+                                    <?php endif; ?>
+                                    
                                     <h6 class="font-weight-bold text-primary mb-1"><?= esc($tp['lingkup_materi']) ?></h6>
+                                    
                                     <p class="small text-justify mb-3" style="line-height: 1.4;">
-                                        <?= esc($tp['tp']) ?>
+                                        <?= $tp['is_merged'] ? $tp['tujuan_pembelajaran'] : esc($tp['tp']) ?>
                                     </p>
                                 </div>
                                 
@@ -128,20 +174,17 @@
                             </div>
 
                             <div class="card-footer bg-white border-top-0 py-2 text-end rounded-bottom">
+                                <?php 
+                                    $idLemparan = implode(',', $tp['atp_ids_array']);
+                                    $tglLemparan = urlencode($tp['label_tanggal']);
+                                ?>
                                 <?php if($isDone): ?>
-                                    <!-- PERBAIKAN: Tombol Lihat / Edit langsung mengarah ke halaman Form -->
-                                    <?php 
-                                        $idLemparan = $tp['atp_id'] ?? $tp['cp_detail_id'];
-                                        $urlEdit = base_url("guru/modul-ajar/create?atp_ids={$idLemparan}&rombel_id={$selectedRombelId}&mapel_id={$selectedMapelId}");
-                                    ?>
+                                    <?php $urlEdit = base_url("guru/modul-ajar/create?atp_ids={$idLemparan}&rombel_id={$selectedRombelId}&mapel_id={$selectedMapelId}&tgl={$tglLemparan}"); ?>
                                     <a href="<?= $urlEdit ?>" class="btn btn-outline-success btn-sm font-weight-bold w-100">
                                         👁️ Lihat / Edit Modul
                                     </a>
                                 <?php else: ?>
-                                    <?php 
-                                        $idLemparan = $tp['atp_id'] ?? $tp['cp_detail_id'];
-                                        $urlCreate = base_url("guru/modul-ajar/create?atp_ids={$idLemparan}&rombel_id={$selectedRombelId}&mapel_id={$selectedMapelId}");
-                                    ?>
+                                    <?php $urlCreate = base_url("guru/modul-ajar/create?atp_ids={$idLemparan}&rombel_id={$selectedRombelId}&mapel_id={$selectedMapelId}&tgl={$tglLemparan}"); ?>
                                     <a href="<?= $urlCreate ?>" class="btn btn-outline-primary btn-sm font-weight-bold w-100">
                                         📝 Susun Modul Ajar Baru
                                     </a>
@@ -157,8 +200,6 @@
     </div>
 
     <script>
-        
-        // Logika untuk memunculkan tombol "Gabung Modul" dan melempar data
         const checkboxes = document.querySelectorAll('.tp-checkbox');
         const btnGabung = document.getElementById('btnGabungModul');
 
@@ -166,20 +207,27 @@
             let checkedBoxes = document.querySelectorAll('.tp-checkbox:checked');
             let checkedCount = checkedBoxes.length;
             
-            if(checkedCount >= 1) { // 1 TP pun boleh dibuatkan modul
+            if(checkedCount >= 1) { 
                 btnGabung.style.display = 'inline-block';
                 btnGabung.innerHTML = `📝 Susun 1 Modul untuk ${checkedCount} TP Terpilih`;
                 
-                // Kumpulkan ID ATP yang dicentang
                 let selectedIds = [];
-                checkedBoxes.forEach(chk => selectedIds.push(chk.value));
+                let selectedTgls = [];
                 
-                // Ubah fungsi klik tombol untuk melempar array ID ke halaman Create
+                checkedBoxes.forEach(chk => {
+                    selectedIds.push(chk.value);
+                    let tgl = chk.getAttribute('data-tgl');
+                    if(tgl && !selectedTgls.includes(tgl)) {
+                        selectedTgls.push(tgl); // Menampung tanggal yang unik
+                    }
+                });
+                
                 btnGabung.onclick = function() {
                     let urlParams = new URLSearchParams();
                     urlParams.append('atp_ids', selectedIds.join(','));
                     urlParams.append('rombel_id', '<?= $selectedRombelId ?>');
                     urlParams.append('mapel_id', '<?= $selectedMapelId ?>');
+                    urlParams.append('tgl', selectedTgls.join('; ')); // Lempar tanggal
                     
                     window.location.href = "<?= base_url('guru/modul-ajar/create') ?>?" + urlParams.toString();
                 };
@@ -192,8 +240,8 @@
             chk.addEventListener('change', updateTombolGabung);
         });
     </script>
+    
     <?php if(session()->getFlashdata('success')): ?>
-        <!-- Posisikan tag script di dalam if PHP agar VS Code tidak bingung -->
         <script>
             alert("✅ <?= session()->getFlashdata('success') ?>");
         </script>

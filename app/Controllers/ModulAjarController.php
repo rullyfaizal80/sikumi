@@ -10,9 +10,6 @@ class ModulAjarController extends BaseController
     {
         $db = \Config\Database::connect();
         
-        // =====================================================================
-        // 1. DETEKSI HAK AKSES & USER ID (Persis AtpController)
-        // =====================================================================
         $uri = $this->request->getUri();
         $segment = $uri->getSegment(1); 
         $isGuru = (strtolower($segment) === 'guru');
@@ -24,9 +21,6 @@ class ModulAjarController extends BaseController
 
         $selectedTeacherId = $userId;
 
-        // ==============================================================
-        // 2. DINAMISASI ROMBEL
-        // ==============================================================
         $tahunAktif = $db->tableExists('academic_years') ? $db->table('academic_years')->where('is_active', 1)->get()->getRowArray() : null;
         $daftarRombel = [];
         
@@ -56,9 +50,6 @@ class ModulAjarController extends BaseController
             }
         }
 
-        // ==============================================================
-        // 3. DINAMISASI MAPEL GURU (Termasuk Gabungan)
-        // ==============================================================
         $daftarMapel = [];
         $jadwalAktif = null;
         $kolomSubjectId = 'subject_id';
@@ -105,15 +96,11 @@ class ModulAjarController extends BaseController
 
         $selectedMapelId = $this->request->getGet('mapel_id') ?? (!empty($daftarMapel) ? $daftarMapel[0]['id'] : null);
 
-        // ==============================================================
-        // 4. LOAD DATA CP & ATP (MENDUKUNG MULTI-ELEMEN HEADER)
-        // ==============================================================
         $dataAtpTersimpan = [];
         $totalJpAtp = 0;
 
         if ($tahunAktif && $selectedTeacherId && $db->tableExists('kurikulum_cp_headers') && $db->tableExists('kurikulum_cp_details')) {
             
-            // Konversi format ID Mapel dari Dropdown (1 / C1) menjadi format DB (S_1 / C_1)
             $dbMapelId = '';
             if (strpos($selectedMapelId, 'C') === 0) {
                 $dbMapelId = 'C_' . substr($selectedMapelId, 1);
@@ -121,8 +108,6 @@ class ModulAjarController extends BaseController
                 $dbMapelId = (strpos($selectedMapelId, 'S_') === 0) ? $selectedMapelId : 'S_' . $selectedMapelId;
             }
 
-            // LANGKAH 4: Cari SEMUA Header yang cocok (Karena 1 Mapel bisa punya banyak Elemen)
-            // PERBAIKAN: Gunakan getResultArray() bukan getRowArray()
             $headers = $db->table('kurikulum_cp_headers')
                           ->where('academic_year_id', $tahunAktif['id'])
                           ->where('master_class_id', $masterClassId)
@@ -130,24 +115,17 @@ class ModulAjarController extends BaseController
                           ->where('teacher_id', $selectedTeacherId)
                           ->get()->getResultArray();
 
-            // LANGKAH 5: Jika Header ditemukan, kumpulkan ID-nya dan tarik Detailnya
             if (!empty($headers)) {
-                
                 $headerIds = array_column($headers, 'id');
                 
-                // ==============================================================
-                // TAMBAHAN: TARIK TANGGAL (SIMULASI HEB BERDASARKAN ALUR 6 TAHAP)
-                // ==============================================================
                 $listTanggal = [];
-                
-                // TAHAP 1 & 2: Deteksi Hari Mengajar Guru
                 $teachingDays = [];
+                
                 if ($jadwalAktif && $db->tableExists('class_schedules') && $db->tableExists('schedule_time_slots')) {
                     $csFields = $db->getFieldNames('class_schedules');
                     $kolomSubjectId = in_array('subject_id', $csFields) ? 'subject_id' : 'mapel_id';
                     $kolomCombinedId = in_array('combined_subject_id', $csFields) ? 'combined_subject_id' : null;
                     
-                    // Bersihkan awalan S_ atau C dari Dropdown
                     $searchMapelId = $selectedMapelId;
                     if (strpos($searchMapelId, 'C') === 0) $searchMapelId = substr($searchMapelId, 1);
                     elseif (strpos($searchMapelId, 'S_') === 0) $searchMapelId = substr($searchMapelId, 2);
@@ -166,7 +144,6 @@ class ModulAjarController extends BaseController
 
                     $hariJadwal = $builderJadwal->groupBy('ts.day_name')->get()->getResultArray();
                     
-                    // Konversi hari Indonesia ke format angka PHP (1=Senin, 7=Minggu)
                     $mapHariIndo = ['senin'=>1, 'selasa'=>2, 'rabu'=>3, 'kamis'=>4, 'jumat'=>5, 'sabtu'=>6, 'minggu'=>7];
                     foreach ($hariJadwal as $hj) {
                         $hari = strtolower($hj['day_name'] ?? '');
@@ -176,14 +153,12 @@ class ModulAjarController extends BaseController
                     }
                 }
 
-                // TAHAP 3 & 4: Simulasi Kalender Semester & Cek Hari Libur
                 if (!empty($teachingDays) && $tahunAktif) {
                     $semester = strtolower($tahunAktif['semester'] ?? 'ganjil');
                     $tahunSplit = explode('/', $tahunAktif['name'] ?? date('Y'));
                     $tahunAwal = (int)$tahunSplit[0];
                     $tahunAkhir = isset($tahunSplit[1]) ? (int)$tahunSplit[1] : $tahunAwal + 1;
 
-                    // Tentukan rentang waktu berdasar semester
                     if (strpos($semester, 'genap') !== false) {
                         $startDate = strtotime("$tahunAkhir-01-01");
                         $endDate = strtotime("$tahunAkhir-06-30");
@@ -192,7 +167,6 @@ class ModulAjarController extends BaseController
                         $endDate = strtotime("$tahunAwal-12-31");
                     }
 
-                    // Ambil rentang libur khusus tingkat kelas ini
                     $libur = [];
                     if ($db->tableExists('academic_calendars')) {
                         $dataLibur = $db->table('academic_calendars')
@@ -207,7 +181,6 @@ class ModulAjarController extends BaseController
                     $rawHebDates = [];
                     $currentDate = $startDate;
                     
-                    // Looping dari awal semester sampai akhir semester
                     while ($currentDate <= $endDate) {
                         $dayOfWeek = (int)date('N', $currentDate);
                         
@@ -220,22 +193,21 @@ class ModulAjarController extends BaseController
                                 }
                             }
                             if (!$isLibur) {
-                                $rawHebDates[] = $currentDate; // Lolos = Masuk Hari Efektif Belajar
+                                $rawHebDates[] = $currentDate; 
                             }
                         }
                         $currentDate = strtotime('+1 day', $currentDate);
                     }
 
-                    // TAHAP 5: Pengelompokan Mingguan & Pemformatan Tulisan
                     $groupedWeeks = [];
                     foreach ($rawHebDates as $timestamp) {
-                        $weekKey = date('o-W', $timestamp); // Kelompokkan berdasarkan Minggu Ke-berapa
+                        $weekKey = date('o-W', $timestamp); 
                         $groupedWeeks[$weekKey][] = $timestamp;
                     }
 
                     $bulanIndo = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
                     foreach ($groupedWeeks as $week => $dates) {
-                        $bln = $bulanIndo[(int)date('n', end($dates)) - 1]; // Pakai bulan di tanggal terakhir
+                        $bln = $bulanIndo[(int)date('n', end($dates)) - 1]; 
                         $thn = date('Y', end($dates));
                         
                         if (count($dates) == 1) {
@@ -244,26 +216,20 @@ class ModulAjarController extends BaseController
                         } elseif (count($dates) == 2) {
                             $tgl1 = date('j', $dates[0]);
                             $tgl2 = date('j', $dates[1]);
-                            $listTanggal[] = "$tgl1 dan $tgl2 $bln $thn"; // Format: "10 dan 12 Agu 2026"
+                            $listTanggal[] = "$tgl1 dan $tgl2 $bln $thn"; 
                         } else {
                             $tglAwal = date('j', $dates[0]);
                             $tglAkhir = date('j', end($dates));
-                            $listTanggal[] = "$tglAwal s.d $tglAkhir $bln $thn"; // Format jika > 2 hari dlm seminggu
+                            $listTanggal[] = "$tglAwal s.d $tglAkhir $bln $thn"; 
                         }
                     }
                 }
 
-                // ==============================================================
-                // TAHAP 6: DISTRIBUSI KE BARIS TABEL (CARD)
-                // ==============================================================
                 $builder = $db->table('kurikulum_cp_details d')
-                              ->select('d.id as cp_detail_id, d.tujuan_pembelajaran as tp, d.lingkup_materi, d.estimasi_jp');
-                
-                if ($db->tableExists('kurikulum_atp')) {
-                    $builder->select('a.id as atp_id, a.urutan')
-                            ->join('kurikulum_atp a', "a.cp_detail_id = d.id AND (a.rombel_id = {$selectedRombelId} OR a.rombel_id IS NULL)", 'left')
-                            ->orderBy('a.urutan', 'ASC'); 
-                }
+                              ->select('d.id as cp_detail_id, d.tujuan_pembelajaran as tp, d.lingkup_materi, d.estimasi_jp')
+                              ->select('a.id as atp_id, a.urutan, a.modul_id')
+                              ->join('kurikulum_atp a', "a.cp_detail_id = d.id AND (a.rombel_id = {$selectedRombelId} OR a.rombel_id IS NULL)", 'left')
+                              ->orderBy('a.urutan', 'ASC'); 
 
                 $dataAtpTersimpan = $builder->whereIn('d.header_id', $headerIds)
                                             ->orderBy('d.id', 'ASC') 
@@ -274,21 +240,18 @@ class ModulAjarController extends BaseController
 
                 foreach($dataAtpTersimpan as $idx => &$row) {
                     $urutan = (!empty($row['urutan'])) ? $row['urutan'] : ($idx + 1);
-                    
                     $row['nomor_atp'] = $angkaTingkat . '.' . $urutan; 
-                    $row['status_modul'] = 0; 
-                    $row['modul_id'] = null;
                     
-                    // Eksekusi Tahap 6: Memasukkan hasil jadwal ke data
-                    $row['tanggal'] = $listTanggal[$idx] ?? 'Jadwal Habis / Belum Diatur';
+                    $row['modul_id'] = $row['modul_id'] ?? null;
+                    $row['status_modul'] = !empty($row['modul_id']) ? 1 : 0; 
                     
+                    $row['tanggal'] = $listTanggal[$idx] ?? 'Belum Diatur';
                     $totalJpAtp += (int)($row['estimasi_jp'] ?? 0);
                 }
                 unset($row);
             }
         }
 
-        // Dummy Target JP Sementara
         $totalJpTersedia = 0; 
 
         $data = [
@@ -305,9 +268,6 @@ class ModulAjarController extends BaseController
         return view('guru/modul_ajar_manage', $data);
     }
 
-    // ==============================================================
-    // HALAMAN CREATE / EDIT MODUL AJAR
-    // ==============================================================
     public function create()
     {
         $db = \Config\Database::connect();
@@ -316,6 +276,10 @@ class ModulAjarController extends BaseController
         $atpIdsStr = $request->getGet('atp_ids');
         $rombelId = $request->getGet('rombel_id');
         $mapelId = $request->getGet('mapel_id');
+        
+        // PERBAIKAN: Menangkap parameter tanggal dari URL
+        $tglStr = $request->getGet('tgl');
+        $tanggalPelaksanaan = $tglStr ? str_replace(';', ',', urldecode($tglStr)) : '';
 
         if (empty($atpIdsStr)) {
             return redirect()->to(base_url('guru/modul-ajar'))->with('error', 'Pilih minimal 1 TP untuk dibuatkan Modul.');
@@ -339,7 +303,6 @@ class ModulAjarController extends BaseController
             if ($rombelData) $namaRombel = ($rombelData['class_name'] ?? '') . ' - ' . ($rombelData['rombel_name'] ?? '');
         }
         
-        // PERBAIKAN: Pemecahan Mapel Kebal C_ atau C
         $namaMapelAktif = 'Mata Pelajaran';
         if ($db->tableExists('schedule_combined_subjects') && strpos($mapelId, 'C') === 0) {
             $cId = preg_replace('/^C_?/', '', $mapelId); 
@@ -384,7 +347,6 @@ class ModulAjarController extends BaseController
             }
         }
 
-        // PERBAIKAN: JIKA MODUL SUDAH ADA, TARIK DATANYA (FUNGSI EDIT/LIHAT)
         $modulId = $selectedAtpData[0]['modul_id'] ?? null;
         $modulData = [];
         $kegiatan = [];
@@ -394,10 +356,23 @@ class ModulAjarController extends BaseController
             if (!empty($modulData['kegiatan_pembelajaran'])) {
                 $kegiatan = json_decode($modulData['kegiatan_pembelajaran'], true);
             }
-            // Timpa Centangan dari yang sudah tersimpan
-            if (!empty($modulData['dpl_terpilih'])) $gabunganDpl = explode(',', $modulData['dpl_terpilih']);
-            if (!empty($modulData['panca_cinta_terpilih'])) $gabunganPilar = explode(',', $modulData['panca_cinta_terpilih']);
+            
+            // Menggunakan Tanggal dari DB jika modul pernah disimpan
+            if (!empty($modulData['tanggal_pelaksanaan'])) {
+                $tanggalPelaksanaan = $modulData['tanggal_pelaksanaan'];
+            }
         }
+
+        $menitPerJp = $modulData['menit_per_jp'] ?? 30;
+        $totalWaktu = $totalJp * $menitPerJp;
+
+        $defaultAwal = round($totalWaktu / 6);
+        $defaultPenutup = round($totalWaktu / 6);
+        $defaultInti = $totalWaktu - $defaultAwal - $defaultPenutup; 
+
+        $menitAwal = $kegiatan['awal']['menit'] ?? $defaultAwal;
+        $menitInti = $kegiatan['inti']['menit'] ?? $defaultInti;
+        $menitPenutup = $kegiatan['penutup']['menit'] ?? $defaultPenutup;
 
         $data = [
             'rombelId'        => $rombelId,
@@ -406,27 +381,31 @@ class ModulAjarController extends BaseController
             'namaRombel'      => $namaRombel,    
             'namaMapelAktif'  => $namaMapelAktif,
             'atpIdsStr'       => $atpIdsStr, 
+            'tanggalPelaksanaan'=> $tanggalPelaksanaan,
             'selectedAtpData' => $selectedAtpData,
             'totalJp'         => $totalJp,
             'gabunganMateri'  => implode('; ', $gabunganMateri),
+            
+            // --- DUA BARIS INI YANG SEBELUMNYA TERLEWAT ---
             'gabunganDpl'     => $gabunganDpl,
             'gabunganPilar'   => $gabunganPilar,
+            // ----------------------------------------------
             
-            // Variabel Data Edit
             'modulId'         => $modulId,
             'modulData'       => $modulData,
             'kegiatan'        => $kegiatan,
+            'menitAwal'       => $menitAwal,
+            'menitInti'       => $menitInti,
+            'menitPenutup'    => $menitPenutup,
             
             'listProfilLulusan' => ['DPL1'=>'Keimanan dan ketakwaan terhadap Tuhan YME','DPL2'=>'Kewargaan','DPL3'=>'Penalaran Kritis','DPL4'=>'Kreativitas','DPL5'=>'Kolaborasi','DPL6'=>'Kemandirian','DPL7'=>'Kesehatan','DPL8'=>'Komunikasi'],
             'listPancaCinta'    => ['P1'=>'Topik 1 : Cinta Allah dan Rasul-Nya','P2'=>'Topik 2 : Cinta Ilmu','P3'=>'Topik 3 : Cinta Lingkungan','P4'=>'Topik 4 : Cinta Diri dan Sesama Manusia','P5'=>'Topik 5 : Cinta Tanah Air']
         ];
 
         return view('guru/modul_ajar_create', $data);
+    
     }
 
-    // ==============================================================
-    // FUNGSI MENYIMPAN (SAVE / UPDATE)
-    // ==============================================================
     public function store()
     {
         $db = \Config\Database::connect();
@@ -437,7 +416,6 @@ class ModulAjarController extends BaseController
         $atpIdsStr = $request->getPost('atp_ids');
         $modulId = $request->getPost('modul_id');
 
-        // PERBAIKAN 1: Standarisasi Prefix Mapel (S_ untuk Reguler, C_ untuk Gabungan)
         if (strpos($rawMapelId, 'C') === 0) {
             $cleanId = preg_replace('/^C_?/', '', $rawMapelId);
             $finalMapelId = 'C_' . $cleanId;
@@ -446,27 +424,31 @@ class ModulAjarController extends BaseController
             $finalMapelId = 'S_' . $cleanId;
         }
 
-        // PERBAIKAN 2: Pastikan ID ATP bersih dari spasi agar query Update Badge berhasil
-        $atpIds = array_filter(array_map('trim', explode(',', $atpIdsStr)));
+        $cleanAtpIds = [];
+        if (!empty($atpIdsStr)) {
+            $exp = explode(',', $atpIdsStr);
+            foreach ($exp as $id) {
+                if (trim($id) !== '') {
+                    $cleanAtpIds[] = (int) trim($id);
+                }
+            }
+        }
 
         $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
         $rombel = $db->table('class_rombel')->where('id', $rombelId)->get()->getRowArray();
         $userId = session()->get('user_id') ?? (function_exists('user_id') ? user_id() : 0);
 
-        // PERBAIKAN 3: Validasi ketat wajib isi dari sisi Server (Backend)
         $kegiatan = $request->getPost('kegiatan');
-        if ($kegiatan['awal']['menit'] == '' || $kegiatan['inti']['menit'] == '' || $kegiatan['penutup']['menit'] == '') {
-            return redirect()->back()->with('error', 'Gagal: Semua kolom Menit pada Langkah Pembelajaran WAJIB diisi!');
-        }
         $kegiatanJson = json_encode($kegiatan);
 
         $dataModul = [
             'academic_year_id'       => $tahunAktif['id'] ?? 0,
             'master_class_id'        => $rombel['master_class_id'] ?? 0,
-            'mapel_id'               => $finalMapelId, // Simpan dengan S_ atau C_
+            'mapel_id'               => $finalMapelId,
             'rombel_id'              => $rombelId,
             'teacher_id'             => $userId,
             'pertemuan_ke'           => $request->getPost('pertemuan_ke'),
+            'tanggal_pelaksanaan'    => $request->getPost('tanggal_pelaksanaan'), // Disimpan ke database
             'alokasi_jp'             => $request->getPost('alokasi_jp'),
             'menit_per_jp'           => $request->getPost('menit_per_jp'),
             'kesiapan_murid'         => $request->getPost('kesiapan_murid'),
@@ -491,18 +473,23 @@ class ModulAjarController extends BaseController
 
         $db->transStart();
 
-        // Proses Update / Insert Modul
         if (!empty($modulId)) {
             $db->table('kurikulum_modul_ajar')->where('id', $modulId)->update($dataModul);
         } else {
             $dataModul['created_at'] = date('Y-m-d H:i:s');
             $db->table('kurikulum_modul_ajar')->insert($dataModul);
             $modulId = $db->insertID();
+            
+            if (empty($modulId) || $modulId == 0) {
+                $lastRow = $db->table('kurikulum_modul_ajar')->orderBy('id', 'DESC')->get()->getRowArray();
+                $modulId = $lastRow['id'];
+            }
         }
 
-        // Proses Update Status ATP (Mengubah Badge "Belum Dibuat" jadi "Sudah Dibuat")
-        if (!empty($atpIds)) {
-            $db->table('kurikulum_atp')->whereIn('id', $atpIds)->update(['modul_id' => $modulId]);
+        if (!empty($cleanAtpIds) && !empty($modulId)) {
+            foreach($cleanAtpIds as $aId) {
+                $db->query("UPDATE kurikulum_atp SET modul_id = ? WHERE id = ?", [$modulId, $aId]);
+            }
         }
 
         $db->transComplete();
@@ -511,14 +498,10 @@ class ModulAjarController extends BaseController
             return redirect()->back()->with('error', 'Sistem Gagal menyimpan Modul Ajar.');
         }
 
-        // Kembalikan menggunakan rawMapelId agar dropdown di halaman manage tetap selaras
         return redirect()->to(base_url("guru/modul-ajar?rombel_id={$rombelId}&mapel_id={$rawMapelId}"))
                          ->with('success', 'Modul Ajar KBC berhasil disimpan dengan sukses!');
     }
 
-    // ==============================================================
-    // FUNGSI RESET / HAPUS MODUL AJAR (DARI DALAM FORM)
-    // ==============================================================
     public function resetModul()
     {
         $db = \Config\Database::connect();
@@ -530,13 +513,12 @@ class ModulAjarController extends BaseController
         
         if (!empty($modulId)) {
             $db->transStart();
-            $db->table('kurikulum_atp')->where('modul_id', $modulId)->update(['modul_id' => null]);
-            $db->table('kurikulum_modul_ajar')->where('id', $modulId)->delete();
+            $db->query("UPDATE kurikulum_atp SET modul_id = NULL WHERE modul_id = ?", [$modulId]);
+            $db->query("DELETE FROM kurikulum_modul_ajar WHERE id = ?", [$modulId]);
             $db->transComplete();
         }
 
         return redirect()->to(base_url("guru/modul-ajar?rombel_id={$rombelId}&mapel_id={$mapelId}"))
                          ->with('success', 'Modul Ajar berhasil direset / dihapus.');
     }
-
 }
