@@ -322,9 +322,36 @@ class ModulAjarController extends BaseController
         }
 
         $atpIds = explode(',', $atpIdsStr);
+
+        // ---------------------------------------------------------
+        // TARIK NAMA MADRASAH DARI SETTING
+        // ---------------------------------------------------------
+        $namaMadrasah = 'MTs / Sekolah';
+        if ($db->tableExists('settings')) {
+            $settingMadrasah = $db->table('settings')->where('key', 'kaldik_lembaga_nama')->get()->getRowArray();
+            if ($settingMadrasah && !empty($settingMadrasah['value'])) {
+                $namaMadrasah = $settingMadrasah['value'];
+            }
+        }
+
+        // ---------------------------------------------------------
+        // TARIK NAMA ROMBEL
+        // ---------------------------------------------------------
+        $namaRombel = 'Rombel Tidak Diketahui';
+        if ($db->tableExists('class_rombel')) {
+            $rombelData = $db->table('class_rombel cr')
+                             ->select('cr.rombel_name, mc.class_name')
+                             ->join('master_classes mc', 'mc.id = cr.master_class_id', 'left')
+                             ->where('cr.id', $rombelId)
+                             ->get()->getRowArray();
+            if ($rombelData) {
+                // Hasil misal: "7 - 7A" atau "8 - 8B"
+                $namaRombel = ($rombelData['class_name'] ?? '') . ' - ' . ($rombelData['rombel_name'] ?? '');
+            }
+        }
         
         // ---------------------------------------------------------
-        // PERBAIKAN: AMBIL NAMA MAPEL DARI DATABASE
+        // AMBIL NAMA MAPEL DARI DATABASE
         // ---------------------------------------------------------
         $namaMapelAktif = 'Mata Pelajaran';
         if ($db->tableExists('schedule_combined_subjects') && strpos($mapelId, 'C') === 0) {
@@ -337,7 +364,9 @@ class ModulAjarController extends BaseController
             if ($sm) $namaMapelAktif = $sm['subject_name'];
         }
 
-        // Tarik data detail CP/ATP yang dipilih
+        // ---------------------------------------------------------
+        // BAGIAN YANG HILANG: TARIK DATA DETAIL CP/ATP
+        // ---------------------------------------------------------
         $builder = $db->table('kurikulum_atp a')
                       ->select('a.*, d.tujuan_pembelajaran, d.lingkup_materi, d.estimasi_jp')
                       ->join('kurikulum_cp_details d', 'd.id = a.cp_detail_id')
@@ -361,7 +390,7 @@ class ModulAjarController extends BaseController
                 $gabunganMateri[] = $row['lingkup_materi'];
             }
 
-            // PERBAIKAN FATAL: Menggunakan nama kolom asli di database (dpl_terpilih)
+            // Pembersihan spasi DPL (dari kolom dpl_terpilih)
             if (!empty($row['dpl_terpilih'])) {
                 $dpls = explode(',', $row['dpl_terpilih']);
                 foreach ($dpls as $d) { 
@@ -370,7 +399,7 @@ class ModulAjarController extends BaseController
                 }
             }
 
-            // PERBAIKAN FATAL: Menggunakan nama kolom asli di database (panca_cinta_terpilih)
+            // Pembersihan spasi Pilar (dari kolom panca_cinta_terpilih)
             if (!empty($row['panca_cinta_terpilih'])) {
                 $pilars = explode(',', $row['panca_cinta_terpilih']);
                 foreach ($pilars as $p) { 
@@ -383,6 +412,8 @@ class ModulAjarController extends BaseController
         $data = [
             'rombelId'        => $rombelId,
             'mapelId'         => $mapelId,
+            'namaMadrasah'    => $namaMadrasah,  
+            'namaRombel'      => $namaRombel,    
             'namaMapelAktif'  => $namaMapelAktif,
             'atpIdsStr'       => $atpIdsStr, 
             'selectedAtpData' => $selectedAtpData,
@@ -391,9 +422,15 @@ class ModulAjarController extends BaseController
             'gabunganDpl'     => $gabunganDpl,
             'gabunganPilar'   => $gabunganPilar,
             
-            // Kunci array dibuat solid tanpa spasi agar auto-check akurat
             'listProfilLulusan' => ['DPL1'=>'Keimanan dan ketakwaan terhadap Tuhan YME','DPL2'=>'Kewargaan','DPL3'=>'Penalaran Kritis','DPL4'=>'Kreativitas','DPL5'=>'Kolaborasi','DPL6'=>'Kemandirian','DPL7'=>'Kesehatan','DPL8'=>'Komunikasi'],
-            'listPancaCinta'    => ['P1'=>'Cinta kepada Allah SWT dan Rasul-Nya','P2'=>'Cinta kepada Ilmu','P3'=>'Cinta kepada Diri dan Sesama','P4'=>'Cinta kepada Alam dan Lingkungan','P5'=>'Cinta kepada Bangsa, Tanah Air, dan Negara']
+
+            'listPancaCinta'    => [
+                'P1' => 'Topik 1 : Cinta Allah dan Rasul-Nya',
+                'P2' => 'Topik 2 : Cinta Ilmu',
+                'P3' => 'Topik 3 : Cinta Lingkungan', 
+                'P4' => 'Topik 4 : Cinta Diri dan Sesama Manusia',
+                'P5' => 'Topik 5 : Cinta Tanah Air'
+            ]
         ];
 
         return view('guru/modul_ajar_create', $data);

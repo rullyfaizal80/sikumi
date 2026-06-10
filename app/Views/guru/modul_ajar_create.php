@@ -15,6 +15,19 @@
         .auto-filled { background-color: #e9ecef; cursor: not-allowed; font-weight: 600; }
         .custom-checkbox label { font-size: 13px; font-weight: 500; cursor: pointer; }
         .box-tp { background: #f8f9fa; border-left: 4px solid #28a745; padding: 10px; margin-bottom: 10px; }
+        
+        /* PERBAIKAN: Membuat teks keterangan (placeholder) di dalam inputan jauh lebih muda/pudar */
+        .form-control::placeholder {
+            color: #adb5bd !important; 
+            opacity: 0.8 !important;
+            font-style: italic;
+            font-weight: 400;
+        }
+        
+        /* PERBAIKAN: Class khusus untuk catatan di luar inputan agar warnanya senada (muda) */
+        .text-pudar {
+            color: #adb5bd !important;
+        }
     </style>
 </head>
 <body class="layout-fixed">
@@ -38,134 +51,272 @@
             <input type="hidden" name="alokasi_jp" value="<?= esc($totalJp) ?>">
 
             <div class="row">
+                <!-- ========================================== -->
+                <!-- KOLOM KIRI (Bagian A, B, C)                  -->
+                <!-- ========================================== -->
                 <div class="col-lg-6">
                     
+                    <!-- BAGIAN A -->
                     <div class="card shadow-sm mb-4 border-0">
                         <div class="card-body">
-                            <div class="form-section-title">🗂️ BAGIAN A: Identitas Modul (Otomatis)</div>
+                            <div class="form-section-title">🗂️ BAGIAN A: Identitas Modul</div>
                             
-                            <div class="row mb-3">
-                                <label class="col-sm-4 col-form-label small font-weight-bold text-muted">Satuan Pendidikan</label>
+                            <div class="row mb-3 align-items-center">
+                                <label class="col-sm-4 small font-weight-bold text-muted mb-0">Satuan Pendidikan</label>
                                 <div class="col-sm-8">
-                                    <input type="text" class="form-control form-control-sm auto-filled" value="MIMHa Tsanawiyah Informatika" readonly>
+                                    <input type="text" class="form-control form-control-sm auto-filled text-muted" value="<?= esc($namaMadrasah) ?>" readonly>
                                 </div>
                             </div>
                             
-                            <div class="row mb-3">
-                                <label class="col-sm-4 col-form-label small font-weight-bold text-muted">Mata Pelajaran</label>
+                            <div class="row mb-3 align-items-center">
+                                <label class="col-sm-4 small font-weight-bold text-muted mb-0">Mata Pelajaran</label>
                                 <div class="col-sm-8">
-                                    <input type="text" class="form-control form-control-sm auto-filled" value="<?= esc($namaMapelAktif) ?>" readonly>
+                                    <input type="text" class="form-control form-control-sm auto-filled text-muted" value="<?= esc($namaMapelAktif) ?>" readonly>
                                 </div>
                             </div>
 
-                            <div class="row mb-3">
-                                <label class="col-sm-4 col-form-label small font-weight-bold text-muted">Total Alokasi Waktu</label>
+                            <div class="row mb-3 align-items-center">
+                                <label class="col-sm-4 small font-weight-bold text-muted mb-0">Rombel</label>
                                 <div class="col-sm-8">
-                                    <input type="text" class="form-control form-control-sm auto-filled text-success" value="<?= $totalJp ?> JP" readonly>
+                                    <input type="text" class="form-control form-control-sm auto-filled text-muted" value="<?= esc($namaRombel) ?>" readonly>
                                 </div>
                             </div>
 
-                            <div class="row mb-3">
-                                <label class="col-sm-4 col-form-label small font-weight-bold text-primary">Pertemuan Ke- *</label>
+                            <div class="row mb-3 align-items-center">
+                                <label class="col-sm-4 small font-weight-bold text-muted mb-0">Alokasi Waktu <span class="text-danger">*</span></label>
+                                <div class="col-sm-8 d-flex align-items-center">
+                                    <input type="text" class="form-control form-control-sm auto-filled text-center font-weight-bold text-muted me-2" style="width: 70px;" value="<?= $totalJp ?> JP" readonly>
+                                    <span class="small text-muted me-2 font-weight-bold">x</span>
+                                    
+                                    <input type="number" name="menit_per_jp" class="form-control form-control-sm text-center font-weight-bold" style="width: 80px;" value="30" min="10" required>
+                                    <span class="small text-muted ms-2">Menit</span>
+                                </div>
+                            </div>
+
+                            <div class="row mb-0 align-items-start">
+                                <label class="col-sm-4 small font-weight-bold text-dark mt-2 mb-0">Pertemuan Ke- <span class="text-danger">*</span></label>
                                 <div class="col-sm-8">
-                                    <input type="number" name="pertemuan_ke" class="form-control form-control-sm border-primary" min="1" step="1" placeholder="Misal: 1" required>
+                                    <input type="number" name="pertemuan_ke" class="form-control form-control-sm" min="1" step="1" placeholder="Contoh: 1" required>
+                                    <div class="mt-1">
+                                        <small class="text-pudar" style="font-size: 11px;"><i>Catatan: Angka pertemuan tidak boleh sama dengan modul yang sudah Anda simpan sebelumnya.</i></small>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
+                    <!-- BAGIAN B -->
                     <div class="card shadow-sm mb-4 border-0">
                         <div class="card-body">
-                            <div class="form-section-title">🎯 BAGIAN B: Pemetaan Kurikulum</div>
+                            <div class="form-section-title">🎯 BAGIAN B: Identifikasi</div>
                             
-                            <label class="small font-weight-bold text-muted">Materi Pelajaran (Otomatis Gabungan)</label>
-                            <textarea class="form-control form-control-sm auto-filled mb-3" rows="2" readonly><?= esc($gabunganMateri) ?></textarea>
-
-                            <label class="small font-weight-bold text-muted">Tujuan Pembelajaran yang Terkait</label>
                             <div class="mb-3">
-                                <?php foreach($selectedAtpData as $idx => $tp): ?>
-                                    <div class="box-tp small">
-                                        <b>TP <?= esc($tp['nomor_atp'] ?? ($idx+1)) ?>:</b> <?= esc($tp['tujuan_pembelajaran']) ?>
-                                    </div>
-                                <?php endforeach; ?>
+                                <label class="small font-weight-bold text-dark">Kesiapan Murid <span class="text-danger">*</span></label>
+                                <textarea name="kesiapan_murid" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan kondisi/keadaan murid yang berkaitan dengan aspek pengetahuan, fisik, mental, sosial, dan/atau spiritual)" required></textarea>
                             </div>
 
-                            <div class="row">
+                            <div class="mb-3">
+                                <label class="small font-weight-bold text-dark">Materi Pembelajaran <span class="text-danger">*</span></label>
+                                <textarea name="materi_pembelajaran" class="form-control form-control-sm" rows="2" placeholder="(Tuliskan materi yang akan diajarkan)" required><?= esc($gabunganMateri) ?></textarea>
+                            </div>
+
+                            <div class="row mb-3">
                                 <div class="col-md-6">
-                                    <label class="small font-weight-bold text-muted mb-2">Dimensi Profil Lulusan (DPL)</label>
+                                    <label class="small font-weight-bold text-dark mb-2">Dimensi Profil Lulusan <span class="text-danger">*</span></label>
                                     <div class="border p-2 rounded bg-light">
                                         <?php foreach($listProfilLulusan as $kode => $teks): ?>
                                             <?php $isChecked = in_array($kode, $gabunganDpl) ? 'checked' : ''; ?>
                                             <div class="form-check custom-checkbox">
                                                 <input class="form-check-input" type="checkbox" name="dpl[]" value="<?= $kode ?>" id="<?= $kode ?>" <?= $isChecked ?>>
-                                                <label class="form-check-label" for="<?= $kode ?>"><?= $kode ?> - <?= $teks ?></label>
+                                                <label class="form-check-label text-muted" for="<?= $kode ?>"><?= $kode ?> - <?= $teks ?></label>
                                             </div>
                                         <?php endforeach; ?>
                                     </div>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="small font-weight-bold text-muted mb-2">Lima Pilar Panca Cinta</label>
+                                    <label class="small font-weight-bold text-dark mb-2">Topik Panca Cinta <span class="text-danger">*</span></label>
                                     <div class="border p-2 rounded bg-light">
                                         <?php foreach($listPancaCinta as $kode => $teks): ?>
                                             <?php $isChecked = in_array($kode, $gabunganPilar) ? 'checked' : ''; ?>
                                             <div class="form-check custom-checkbox">
                                                 <input class="form-check-input" type="checkbox" name="pilar[]" value="<?= $kode ?>" id="<?= $kode ?>" <?= $isChecked ?>>
-                                                <label class="form-check-label" for="<?= $kode ?>"><?= $teks ?></label>
+                                                <label class="form-check-label text-muted" for="<?= $kode ?>"><?= $teks ?></label>
                                             </div>
                                         <?php endforeach; ?>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                </div>
-
-                <div class="col-lg-6">
-                    
-                    <div class="card shadow-sm mb-4 border-0">
-                        <div class="card-body">
-                            <div class="form-section-title">💡 BAGIAN C: Desain Kontekstual & Insersi KBC</div>
-                            
-                            <div class="mb-3">
-                                <label class="small font-weight-bold text-primary">Karakteristik Peserta Didik (Opsional)</label>
-                                <textarea name="karakteristik_siswa" class="form-control form-control-sm" rows="2" placeholder="Contoh: Peserta didik kelas VIII yang aktif dalam pembiasaan lingkungan..."></textarea>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <label class="small font-weight-bold text-primary">Lintas Disiplin Ilmu (Opsional)</label>
-                                <input type="text" name="lintas_disiplin" class="form-control form-control-sm" placeholder="Contoh: Terhubung dengan IPA dan PAI">
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="small font-weight-bold text-primary">Insersi Materi (Narasi KBC) *</label>
-                                <textarea name="insersi_kbc" class="form-control form-control-sm" rows="3" placeholder="Jelaskan bagaimana nilai Cinta Allah & Lingkungan diintegrasikan..."></textarea>
+                            <div class="mb-0">
+                                <label class="small font-weight-bold text-dark">Materi Integrasi KBC <span class="text-danger">*</span></label>
+                                <textarea name="insersi_kbc" class="form-control form-control-sm" rows="4" placeholder="(Tuliskan materi integrasi KBC (Panca Cinta) yang akan dikembangkan dan relevan dengan materi pembelajaran)" required></textarea>
                             </div>
                         </div>
                     </div>
 
+                    <!-- BAGIAN C (DIPINDAH KE KIRI) -->
                     <div class="card shadow-sm mb-4 border-0">
                         <div class="card-body">
-                            <div class="form-section-title">🏃‍♂️ BAGIAN D & E: Skenario & Evaluasi</div>
+                            <div class="form-section-title">💡 BAGIAN C: Desain Pembelajaran</div>
                             
                             <div class="mb-3">
-                                <label class="small font-weight-bold text-primary">Langkah-Langkah Kegiatan Pembelajaran *</label>
-                                <textarea name="kegiatan_pembelajaran" class="form-control form-control-sm" rows="5" placeholder="1. Pendahuluan... 2. Kegiatan Inti (Deep Learning)... 3. Penutup..."></textarea>
+                                <label class="small font-weight-bold text-dark">Capaian Pembelajaran <span class="text-danger">*</span></label>
+                                <textarea name="capaian_pembelajaran" class="form-control form-control-sm" rows="2" placeholder="(Tuliskan kalimat inti dari CP pemerintah yang sesuai dengan TP)" required></textarea>
                             </div>
 
                             <div class="mb-3">
-                                <label class="small font-weight-bold text-primary">Sumber Belajar / Media</label>
-                                <textarea name="sumber_belajar" class="form-control form-control-sm" rows="2" placeholder="Contoh: Teachable Machine, Botol Plastik, Buku Paket Informatika..."></textarea>
+                                <label class="small font-weight-bold text-dark">Lintas Disiplin Ilmu <span class="text-danger">*</span></label>
+                                <textarea name="lintas_disiplin" class="form-control form-control-sm" rows="2" placeholder="(Tuliskan keterkaitan materi ini dengan disiplin ilmu lain. Contoh: Terhubung dengan Matematika terkait logika, atau PAI terkait adab)" required></textarea>
+                            </div>
+
+                            <label class="small font-weight-bold text-dark mb-1">Tujuan Pembelajaran (Otomatis dari ATP)</label>
+                            <div class="mb-3">
+                                <?php foreach($selectedAtpData as $idx => $tp): ?>
+                                    <div class="box-tp small text-muted">
+                                        <b>TP <?= esc($tp['nomor_atp'] ?? ($idx+1)) ?>:</b> <?= esc($tp['tujuan_pembelajaran']) ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="small font-weight-bold text-dark">Topik Pembelajaran <span class="text-danger">*</span></label>
+                                <input type="text" name="topik_pembelajaran" class="form-control form-control-sm" placeholder="(Tuliskan sub-materi spesifik pada pertemuan ini. Contoh: Pengenalan Algoritma Dasar)" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="small font-weight-bold text-dark">Praktik Pedagogis <span class="text-danger">*</span></label>
+                                <textarea name="praktik_pedagogis" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan Model/Strategi/Metode pembelajaran. Contoh: Pembelajaran berbasis proyek, inkuiri, TaRL, dll)" required></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="small font-weight-bold text-dark">Kemitraan Pembelajaran <span class="text-danger">*</span></label>
+                                <textarea name="kemitraan_pembelajaran" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan kolaborasi dalam/luar sekolah. Contoh: kemitraan antar guru lintas mapel, praktisi profesional, dsb)" required></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="small font-weight-bold text-dark">Lingkungan Pembelajaran <span class="text-danger">*</span></label>
+                                <textarea name="lingkungan_pembelajaran" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan lingkungan pembelajaran yang dikembangkan. Contoh: memberikan kesempatan murid berpendapat di ruang kelas atau platform daring)" required></textarea>
                             </div>
 
                             <div class="mb-0">
-                                <label class="small font-weight-bold text-primary">Contoh Produk / Asesmen</label>
-                                <textarea name="asesmen" class="form-control form-control-sm" rows="2" placeholder="Contoh: Screenshot model AI deteksi sampah yang tingkat akurasinya > 90%"></textarea>
+                                <label class="small font-weight-bold text-dark">Pemanfaatan Digital <span class="text-danger">*</span></label>
+                                <textarea name="pemanfaatan_digital" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan pemanfaatan teknologi digital. Contoh: penggunaan Chromebook, Canva, Capcut, atau LMS Google Workspace)" required></textarea>
                             </div>
                         </div>
                     </div>
 
-                </div>
+                </div> <!-- Tutup Kolom Kiri -->
+
+                <!-- ========================================== -->
+                <!-- KOLOM KANAN (Bagian D, E, F)                 -->
+                <!-- ========================================== -->
+                <div class="col-lg-6">
+                    
+                    <!-- BAGIAN D -->
+                    <div class="card shadow-sm mb-4 border-0">
+                        <div class="card-body">
+                            <div class="form-section-title">🏃‍♂️ BAGIAN D: Pengalaman Belajar</div>
+                            
+                            <div class="mb-3 p-3 border rounded bg-white shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                                    <label class="small font-weight-bold text-dark mb-0">1. Kegiatan Awal <span class="text-danger">*</span></label>
+                                    <div class="d-flex align-items-center">
+                                        <input type="number" name="kegiatan[awal][menit]" class="form-control form-control-sm text-center" style="width: 70px;" placeholder="Misal: 15" required>
+                                        <span class="small text-dark font-weight-bold ms-2">Menit</span>
+                                    </div>
+                                </div>
+                                <textarea name="kegiatan[awal][isi]" class="form-control form-control-sm border-0 bg-light" rows="3" placeholder="(Tuliskan rincian kegiatan pendahuluan seperti berdoa, presensi, apersepsi, pemantik, dll)" required></textarea>
+                            </div>
+
+                            <div class="mb-3 p-3 border rounded bg-white shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                                    <label class="small font-weight-bold text-dark mb-0">2. Kegiatan Inti <span class="text-danger">*</span></label>
+                                    <div class="d-flex align-items-center">
+                                        <input type="number" name="kegiatan[inti][menit]" class="form-control form-control-sm text-center" style="width: 70px;" placeholder="Misal: 60" required>
+                                        <span class="small text-dark font-weight-bold ms-2">Menit</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="ps-2 border-left" style="border-left: 3px solid #dee2e6 !important;">
+                                    <label class="small font-weight-bold text-dark mb-1 mt-2">a. Memahami</label>
+                                    <textarea name="kegiatan[inti][memahami]" class="form-control form-control-sm mb-3 bg-light border-0" rows="2" placeholder="(Kegiatan eksplorasi makna, membangun konsep dasar secara bermakna / Meaningful Learning)" required></textarea>
+
+                                    <label class="small font-weight-bold text-dark mb-1">b. Mengaplikasikan</label>
+                                    <textarea name="kegiatan[inti][mengaplikasikan]" class="form-control form-control-sm mb-3 bg-light border-0" rows="2" placeholder="(Kegiatan praktik, proyek, kolaborasi, dan elaborasi / Joyful Learning)" required></textarea>
+
+                                    <label class="small font-weight-bold text-dark mb-1">c. Merefleksi</label>
+                                    <textarea name="kegiatan[inti][merefleksi]" class="form-control form-control-sm mb-1 bg-light border-0" rows="2" placeholder="(Kegiatan konfirmasi pemahaman, evaluasi proses, dan mindfulness / Mindful Learning)" required></textarea>
+                                </div>
+                            </div>
+
+                            <div class="mb-0 p-3 border rounded bg-white shadow-sm">
+                                <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                                    <label class="small font-weight-bold text-dark mb-0">3. Kegiatan Penutup <span class="text-danger">*</span></label>
+                                    <div class="d-flex align-items-center">
+                                        <input type="number" name="kegiatan[penutup][menit]" class="form-control form-control-sm text-center" style="width: 70px;" placeholder="Misal: 15" required>
+                                        <span class="small text-dark font-weight-bold ms-2">Menit</span>
+                                    </div>
+                                </div>
+                                <textarea name="kegiatan[penutup][isi]" class="form-control form-control-sm border-0 bg-light" rows="3" placeholder="(Tuliskan rincian kegiatan penutup seperti kesimpulan, tindak lanjut, dan doa penutup)" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BAGIAN E: Asesmen Pembelajaran -->
+                    <div class="card shadow-sm mb-4 border-0">
+                        <div class="card-body">
+                            <div class="form-section-title">📊 BAGIAN E: Asesmen Pembelajaran</div>
+                            
+                            <div class="mb-3">
+                                <label class="small font-weight-bold text-dark">Asesmen pada Awal Pembelajaran <span class="text-danger">*</span></label>
+                                <textarea name="asesmen_awal" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan asesmen diagnostik untuk memetakan kesiapan murid. Contoh: Kuis interaktif fisik, tanya jawab pemantik, atau pre-test)" required></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="small font-weight-bold text-dark">Asesmen pada Proses Pembelajaran <span class="text-danger">*</span></label>
+                                <textarea name="asesmen_proses" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan asesmen formatif/observasi selama kegiatan. Contoh: Penilaian sikap kolaborasi, nalar kritis, kelengkapan alat, dan kepedulian lingkungan)" required></textarea>
+                            </div>
+
+                            <div class="mb-0">
+                                <label class="small font-weight-bold text-dark">Asesmen pada Akhir Pembelajaran <span class="text-danger">*</span></label>
+                                <textarea name="asesmen_akhir" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan asesmen sumatif untuk mengukur ketercapaian TP. Contoh: Penilaian hasil akhir produk AI, post-test, atau unjuk kerja/presentasi)" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- BAGIAN F: Lampiran -->
+                    <div class="card shadow-sm mb-4 border-0">
+                        <div class="card-body">
+                            <div class="form-section-title">📎 BAGIAN F: Lampiran</div>
+                            
+                            <div class="mb-3">
+                                <label class="small font-weight-bold text-dark">Lembar Materi atau Handout <span class="text-danger">*</span></label>
+                                <textarea name="lampiran_materi" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan ringkasan materi pokok, narasi KBC, atau tautan bahan bacaan pendukung untuk murid)" required></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="small font-weight-bold text-dark">LKM (Lembar Kerja Murid) <span class="text-danger">*</span></label>
+                                <textarea name="lampiran_lkm" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan instruksi langkah kerja murid, tabel pengamatan, atau tautan ke file LKPD/LKM cetak)" required></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="small font-weight-bold text-dark">Rubrik Penilaian <span class="text-danger">*</span></label>
+                                <textarea name="lampiran_rubrik" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan kriteria skor penilaian sikap dan keterampilan. Contoh: Skor 4 jika sangat baik, Skor 3 jika cukup, dst.)" required></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="small font-weight-bold text-dark">Sumber Belajar <span class="text-danger">*</span></label>
+                                <textarea name="sumber_belajar" class="form-control form-control-sm" rows="2" placeholder="(Tuliskan referensi belajar utama. Contoh: Website Teachable Machine, Buku Paket Informatika Kelas 8, Lingkungan Madrasah)" required></textarea>
+                            </div>
+
+                            <div class="mb-0">
+                                <label class="small font-weight-bold text-dark">Contoh Produk <span class="text-danger">*</span></label>
+                                <textarea name="contoh_produk" class="form-control form-control-sm" rows="2" placeholder="(Deskripsikan wujud hasil belajar siswa. Contoh: Tangkapan layar model AI pendeteksi sampah atau tautan hasil karya murid)" required></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                </div> <!-- Tutup Kolom Kanan -->
             </div>
         </form>
 
