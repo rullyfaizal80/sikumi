@@ -193,7 +193,16 @@
         });
     </script>
     <?php if(session()->getFlashdata('success')): ?>
+        <!-- Posisikan tag script di dalam if PHP agar VS Code tidak bingung -->
+        <script>
             alert("✅ <?= session()->getFlashdata('success') ?>");
-        <?php endif; ?>
+        </script>
+    <?php endif; ?>
+    
+    <?php if(session()->getFlashdata('error')): ?>
+        <script>
+            alert("❌ <?= session()->getFlashdata('error') ?>");
+        </script>
+    <?php endif; ?>
 </body>
 </html>

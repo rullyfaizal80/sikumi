@@ -192,3 +192,4 @@ $routes->post('guru/modul-ajar/reset', 'ModulAjarController::resetModul');
 
 $routes->get('guru/kktp', 'KktpController::index');
 $routes->post('guru/kktp/simpan', 'KktpController::simpan');
+$routes->post('guru/kktp/reset', 'KktpController::reset');

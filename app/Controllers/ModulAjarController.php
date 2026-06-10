@@ -433,32 +433,43 @@ class ModulAjarController extends BaseController
         $request = \Config\Services::request();
 
         $rombelId = $request->getPost('rombel_id');
-        $mapelId = $request->getPost('mapel_id');
+        $rawMapelId = $request->getPost('mapel_id');
         $atpIdsStr = $request->getPost('atp_ids');
-        $atpIds = explode(',', $atpIdsStr);
-        $modulId = $request->getPost('modul_id'); // Deteksi Edit
+        $modulId = $request->getPost('modul_id');
+
+        // PERBAIKAN 1: Standarisasi Prefix Mapel (S_ untuk Reguler, C_ untuk Gabungan)
+        if (strpos($rawMapelId, 'C') === 0) {
+            $cleanId = preg_replace('/^C_?/', '', $rawMapelId);
+            $finalMapelId = 'C_' . $cleanId;
+        } else {
+            $cleanId = preg_replace('/^S_?/', '', $rawMapelId);
+            $finalMapelId = 'S_' . $cleanId;
+        }
+
+        // PERBAIKAN 2: Pastikan ID ATP bersih dari spasi agar query Update Badge berhasil
+        $atpIds = array_filter(array_map('trim', explode(',', $atpIdsStr)));
 
         $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
         $rombel = $db->table('class_rombel')->where('id', $rombelId)->get()->getRowArray();
         $userId = session()->get('user_id') ?? (function_exists('user_id') ? user_id() : 0);
 
-        $dpl = $request->getPost('dpl') ? implode(',', $request->getPost('dpl')) : '';
-        $pilar = $request->getPost('pilar') ? implode(',', $request->getPost('pilar')) : '';
-        $kegiatanJson = json_encode($request->getPost('kegiatan'));
+        // PERBAIKAN 3: Validasi ketat wajib isi dari sisi Server (Backend)
+        $kegiatan = $request->getPost('kegiatan');
+        if ($kegiatan['awal']['menit'] == '' || $kegiatan['inti']['menit'] == '' || $kegiatan['penutup']['menit'] == '') {
+            return redirect()->back()->with('error', 'Gagal: Semua kolom Menit pada Langkah Pembelajaran WAJIB diisi!');
+        }
+        $kegiatanJson = json_encode($kegiatan);
 
         $dataModul = [
             'academic_year_id'       => $tahunAktif['id'] ?? 0,
             'master_class_id'        => $rombel['master_class_id'] ?? 0,
-            'mapel_id'               => $mapelId,
+            'mapel_id'               => $finalMapelId, // Simpan dengan S_ atau C_
             'rombel_id'              => $rombelId,
             'teacher_id'             => $userId,
             'pertemuan_ke'           => $request->getPost('pertemuan_ke'),
             'alokasi_jp'             => $request->getPost('alokasi_jp'),
             'menit_per_jp'           => $request->getPost('menit_per_jp'),
             'kesiapan_murid'         => $request->getPost('kesiapan_murid'),
-            'materi_pembelajaran'    => $request->getPost('materi_pembelajaran'),
-            'dpl_terpilih'           => $dpl,
-            'panca_cinta_terpilih'   => $pilar,
             'insersi_kbc'            => $request->getPost('insersi_kbc'),
             'capaian_pembelajaran'   => $request->getPost('capaian_pembelajaran'),
             'lintas_disiplin'        => $request->getPost('lintas_disiplin'),
@@ -480,7 +491,7 @@ class ModulAjarController extends BaseController
 
         $db->transStart();
 
-        // PERBAIKAN: Mencegah Duplicate Save
+        // Proses Update / Insert Modul
         if (!empty($modulId)) {
             $db->table('kurikulum_modul_ajar')->where('id', $modulId)->update($dataModul);
         } else {
@@ -489,6 +500,7 @@ class ModulAjarController extends BaseController
             $modulId = $db->insertID();
         }
 
+        // Proses Update Status ATP (Mengubah Badge "Belum Dibuat" jadi "Sudah Dibuat")
         if (!empty($atpIds)) {
             $db->table('kurikulum_atp')->whereIn('id', $atpIds)->update(['modul_id' => $modulId]);
         }
@@ -496,10 +508,11 @@ class ModulAjarController extends BaseController
         $db->transComplete();
 
         if ($db->transStatus() === FALSE) {
-            return redirect()->back()->with('error', 'Gagal menyimpan Modul Ajar.');
+            return redirect()->back()->with('error', 'Sistem Gagal menyimpan Modul Ajar.');
         }
 
-        return redirect()->to(base_url("guru/modul-ajar?rombel_id={$rombelId}&mapel_id={$mapelId}"))
+        // Kembalikan menggunakan rawMapelId agar dropdown di halaman manage tetap selaras
+        return redirect()->to(base_url("guru/modul-ajar?rombel_id={$rombelId}&mapel_id={$rawMapelId}"))
                          ->with('success', 'Modul Ajar KBC berhasil disimpan dengan sukses!');
     }
 

@@ -126,9 +126,9 @@
                                 <textarea name="kesiapan_murid" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan kondisi/keadaan murid yang berkaitan dengan aspek pengetahuan, fisik, mental, sosial, dan/atau spiritual)" required><?= esc($modulData['kesiapan_murid'] ?? '') ?></textarea>
                             </div>
 
-                            <div class="mb-3">
+                           <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Materi Pembelajaran <span class="text-danger">*</span></label>
-                                <textarea name="materi_pembelajaran" class="form-control form-control-sm" rows="2" placeholder="(Tuliskan materi yang akan diajarkan)" required><?= esc($modulData['materi_pembelajaran'] ?? $gabunganMateri) ?></textarea>
+                                <textarea class="form-control form-control-sm auto-filled text-muted" rows="2" readonly><?= esc($gabunganMateri) ?></textarea>
                             </div>
 
                             <div class="row mb-3">
@@ -138,7 +138,7 @@
                                         <?php foreach($listProfilLulusan as $kode => $teks): ?>
                                             <?php $isChecked = in_array($kode, $gabunganDpl) ? 'checked' : ''; ?>
                                             <div class="form-check custom-checkbox">
-                                                <input class="form-check-input" type="checkbox" name="dpl[]" value="<?= $kode ?>" id="<?= $kode ?>" <?= $isChecked ?>>
+                                                <input class="form-check-input" type="checkbox" id="<?= $kode ?>" <?= $isChecked ?> disabled>
                                                 <label class="form-check-label text-muted" for="<?= $kode ?>"><?= $kode ?> - <?= $teks ?></label>
                                             </div>
                                         <?php endforeach; ?>
@@ -150,14 +150,13 @@
                                         <?php foreach($listPancaCinta as $kode => $teks): ?>
                                             <?php $isChecked = in_array($kode, $gabunganPilar) ? 'checked' : ''; ?>
                                             <div class="form-check custom-checkbox">
-                                                <input class="form-check-input" type="checkbox" name="pilar[]" value="<?= $kode ?>" id="<?= $kode ?>" <?= $isChecked ?>>
+                                                <input class="form-check-input" type="checkbox" id="<?= $kode ?>" <?= $isChecked ?> disabled>
                                                 <label class="form-check-label text-muted" for="<?= $kode ?>"><?= $teks ?></label>
                                             </div>
                                         <?php endforeach; ?>
                                     </div>
                                 </div>
                             </div>
-
                             <div class="mb-0">
                                 <label class="small font-weight-bold text-dark">Materi Integrasi KBC <span class="text-danger">*</span></label>
                                 <textarea name="insersi_kbc" class="form-control form-control-sm" rows="4" placeholder="(Tuliskan materi integrasi KBC (Panca Cinta) yang akan dikembangkan dan relevan dengan materi pembelajaran)" required><?= esc($modulData['insersi_kbc'] ?? '') ?></textarea>
@@ -232,7 +231,7 @@
                                 <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
                                     <label class="small font-weight-bold text-dark mb-0">1. Kegiatan Awal <span class="text-danger">*</span></label>
                                     <div class="d-flex align-items-center">
-                                        <input type="number" name="kegiatan[awal][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($kegiatan['awal']['menit'] ?? '') ?>" placeholder="Misal: 15" required>
+                                        <input type="number" name="kegiatan[awal][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($kegiatan['awal']['menit'] ?? '10') ?>" required>
                                         <span class="small text-dark font-weight-bold ms-2">Menit</span>
                                     </div>
                                 </div>
@@ -243,7 +242,7 @@
                                 <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
                                     <label class="small font-weight-bold text-dark mb-0">2. Kegiatan Inti <span class="text-danger">*</span></label>
                                     <div class="d-flex align-items-center">
-                                        <input type="number" name="kegiatan[inti][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($kegiatan['inti']['menit'] ?? '') ?>" placeholder="Misal: 60" required>
+                                        <input type="number" name="kegiatan[inti][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($kegiatan['inti']['menit'] ?? '40') ?>" required>
                                         <span class="small text-dark font-weight-bold ms-2">Menit</span>
                                     </div>
                                 </div>
@@ -264,7 +263,7 @@
                                 <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
                                     <label class="small font-weight-bold text-dark mb-0">3. Kegiatan Penutup <span class="text-danger">*</span></label>
                                     <div class="d-flex align-items-center">
-                                        <input type="number" name="kegiatan[penutup][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($kegiatan['penutup']['menit'] ?? '') ?>" placeholder="Misal: 15" required>
+                                        <input type="number" name="kegiatan[penutup][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($kegiatan['penutup']['menit'] ?? '10') ?>" required>
                                         <span class="small text-dark font-weight-bold ms-2">Menit</span>
                                     </div>
                                 </div>
