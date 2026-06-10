@@ -129,7 +129,14 @@
 
                             <div class="card-footer bg-white border-top-0 py-2 text-end rounded-bottom">
                                 <?php if($isDone): ?>
-                                    <button class="btn btn-outline-success btn-sm font-weight-bold w-100">👁️ Lihat / Edit Modul</button>
+                                    <!-- PERBAIKAN: Tombol Lihat / Edit langsung mengarah ke halaman Form -->
+                                    <?php 
+                                        $idLemparan = $tp['atp_id'] ?? $tp['cp_detail_id'];
+                                        $urlEdit = base_url("guru/modul-ajar/create?atp_ids={$idLemparan}&rombel_id={$selectedRombelId}&mapel_id={$selectedMapelId}");
+                                    ?>
+                                    <a href="<?= $urlEdit ?>" class="btn btn-outline-success btn-sm font-weight-bold w-100">
+                                        👁️ Lihat / Edit Modul
+                                    </a>
                                 <?php else: ?>
                                     <?php 
                                         $idLemparan = $tp['atp_id'] ?? $tp['cp_detail_id'];
@@ -150,6 +157,7 @@
     </div>
 
     <script>
+        
         // Logika untuk memunculkan tombol "Gabung Modul" dan melempar data
         const checkboxes = document.querySelectorAll('.tp-checkbox');
         const btnGabung = document.getElementById('btnGabungModul');
@@ -184,5 +192,8 @@
             chk.addEventListener('change', updateTombolGabung);
         });
     </script>
+    <?php if(session()->getFlashdata('success')): ?>
+            alert("✅ <?= session()->getFlashdata('success') ?>");
+        <?php endif; ?>
 </body>
 </html>

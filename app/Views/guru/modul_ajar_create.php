@@ -16,7 +16,6 @@
         .custom-checkbox label { font-size: 13px; font-weight: 500; cursor: pointer; }
         .box-tp { background: #f8f9fa; border-left: 4px solid #28a745; padding: 10px; margin-bottom: 10px; }
         
-        /* PERBAIKAN: Membuat teks keterangan (placeholder) di dalam inputan jauh lebih muda/pudar */
         .form-control::placeholder {
             color: #adb5bd !important; 
             opacity: 0.8 !important;
@@ -24,7 +23,6 @@
             font-weight: 400;
         }
         
-        /* PERBAIKAN: Class khusus untuk catatan di luar inputan agar warnanya senada (muda) */
         .text-pudar {
             color: #adb5bd !important;
         }
@@ -39,12 +37,25 @@
                 <p class="text-muted mb-0">Insersi Kurikulum Berbasis Cinta (KBC) & Deep Learning</p>
             </div>
             <div>
-                <a href="<?= base_url('guru/modul-ajar') ?>" class="btn btn-secondary btn-sm font-weight-bold shadow-sm">⬅️ Batal / Kembali</a>
-                <button type="button" class="btn btn-primary btn-sm font-weight-bold shadow-sm" onclick="document.getElementById('formModul').submit();">💾 Simpan Modul</button>
+                <?php if(!empty($modulId)): ?>
+                    <button type="button" class="btn btn-danger btn-sm font-weight-bold shadow-sm me-1" onclick="if(confirm('Yakin ingin mereset/menghapus modul ini? Seluruh isian akan hilang dan TP akan kembali ke status Belum Dibuat.')) document.getElementById('formReset').submit();">🗑️ Reset Modul</button>
+                <?php endif; ?>
+                
+                <a href="<?= base_url("guru/modul-ajar?rombel_id={$rombelId}&mapel_id={$mapelId}") ?>" class="btn btn-secondary btn-sm font-weight-bold shadow-sm me-1">⬅️ Batal</a>
+                <button type="submit" form="formModul" class="btn btn-primary btn-sm font-weight-bold shadow-sm">💾 Simpan Modul</button>
             </div>
         </div>
 
+        <?php if(!empty($modulId)): ?>
+        <form id="formReset" action="<?= base_url('guru/modul-ajar/reset') ?>" method="POST" style="display:none;">
+            <input type="hidden" name="modul_id" value="<?= esc($modulId) ?>">
+            <input type="hidden" name="rombel_id" value="<?= esc($rombelId) ?>">
+            <input type="hidden" name="mapel_id" value="<?= esc($mapelId) ?>">
+        </form>
+        <?php endif; ?>
+        
         <form id="formModul" action="<?= base_url('guru/modul-ajar/store') ?>" method="POST">
+            <input type="hidden" name="modul_id" value="<?= esc($modulId) ?>">
             <input type="hidden" name="rombel_id" value="<?= esc($rombelId) ?>">
             <input type="hidden" name="mapel_id" value="<?= esc($mapelId) ?>">
             <input type="hidden" name="atp_ids" value="<?= esc($atpIdsStr) ?>">
@@ -88,7 +99,7 @@
                                     <input type="text" class="form-control form-control-sm auto-filled text-center font-weight-bold text-muted me-2" style="width: 70px;" value="<?= $totalJp ?> JP" readonly>
                                     <span class="small text-muted me-2 font-weight-bold">x</span>
                                     
-                                    <input type="number" name="menit_per_jp" class="form-control form-control-sm text-center font-weight-bold" style="width: 80px;" value="30" min="10" required>
+                                    <input type="number" name="menit_per_jp" class="form-control form-control-sm text-center font-weight-bold" style="width: 80px;" value="<?= esc($modulData['menit_per_jp'] ?? '30') ?>" min="10" required>
                                     <span class="small text-muted ms-2">Menit</span>
                                 </div>
                             </div>
@@ -96,7 +107,7 @@
                             <div class="row mb-0 align-items-start">
                                 <label class="col-sm-4 small font-weight-bold text-dark mt-2 mb-0">Pertemuan Ke- <span class="text-danger">*</span></label>
                                 <div class="col-sm-8">
-                                    <input type="number" name="pertemuan_ke" class="form-control form-control-sm" min="1" step="1" placeholder="Contoh: 1" required>
+                                    <input type="text" name="pertemuan_ke" class="form-control form-control-sm" value="<?= esc($modulData['pertemuan_ke'] ?? '') ?>" placeholder="Contoh: 1, atau 1-2" required>
                                     <div class="mt-1">
                                         <small class="text-pudar" style="font-size: 11px;"><i>Catatan: Angka pertemuan tidak boleh sama dengan modul yang sudah Anda simpan sebelumnya.</i></small>
                                     </div>
@@ -112,12 +123,12 @@
                             
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Kesiapan Murid <span class="text-danger">*</span></label>
-                                <textarea name="kesiapan_murid" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan kondisi/keadaan murid yang berkaitan dengan aspek pengetahuan, fisik, mental, sosial, dan/atau spiritual)" required></textarea>
+                                <textarea name="kesiapan_murid" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan kondisi/keadaan murid yang berkaitan dengan aspek pengetahuan, fisik, mental, sosial, dan/atau spiritual)" required><?= esc($modulData['kesiapan_murid'] ?? '') ?></textarea>
                             </div>
 
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Materi Pembelajaran <span class="text-danger">*</span></label>
-                                <textarea name="materi_pembelajaran" class="form-control form-control-sm" rows="2" placeholder="(Tuliskan materi yang akan diajarkan)" required><?= esc($gabunganMateri) ?></textarea>
+                                <textarea name="materi_pembelajaran" class="form-control form-control-sm" rows="2" placeholder="(Tuliskan materi yang akan diajarkan)" required><?= esc($modulData['materi_pembelajaran'] ?? $gabunganMateri) ?></textarea>
                             </div>
 
                             <div class="row mb-3">
@@ -149,24 +160,24 @@
 
                             <div class="mb-0">
                                 <label class="small font-weight-bold text-dark">Materi Integrasi KBC <span class="text-danger">*</span></label>
-                                <textarea name="insersi_kbc" class="form-control form-control-sm" rows="4" placeholder="(Tuliskan materi integrasi KBC (Panca Cinta) yang akan dikembangkan dan relevan dengan materi pembelajaran)" required></textarea>
+                                <textarea name="insersi_kbc" class="form-control form-control-sm" rows="4" placeholder="(Tuliskan materi integrasi KBC (Panca Cinta) yang akan dikembangkan dan relevan dengan materi pembelajaran)" required><?= esc($modulData['insersi_kbc'] ?? '') ?></textarea>
                             </div>
                         </div>
                     </div>
 
-                    <!-- BAGIAN C (DIPINDAH KE KIRI) -->
+                    <!-- BAGIAN C -->
                     <div class="card shadow-sm mb-4 border-0">
                         <div class="card-body">
                             <div class="form-section-title">💡 BAGIAN C: Desain Pembelajaran</div>
                             
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Capaian Pembelajaran <span class="text-danger">*</span></label>
-                                <textarea name="capaian_pembelajaran" class="form-control form-control-sm" rows="2" placeholder="(Tuliskan kalimat inti dari CP pemerintah yang sesuai dengan TP)" required></textarea>
+                                <textarea name="capaian_pembelajaran" class="form-control form-control-sm" rows="2" placeholder="(Tuliskan kalimat inti dari CP pemerintah yang sesuai dengan TP)" required><?= esc($modulData['capaian_pembelajaran'] ?? '') ?></textarea>
                             </div>
 
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Lintas Disiplin Ilmu <span class="text-danger">*</span></label>
-                                <textarea name="lintas_disiplin" class="form-control form-control-sm" rows="2" placeholder="(Tuliskan keterkaitan materi ini dengan disiplin ilmu lain. Contoh: Terhubung dengan Matematika terkait logika, atau PAI terkait adab)" required></textarea>
+                                <textarea name="lintas_disiplin" class="form-control form-control-sm" rows="2" placeholder="(Tuliskan keterkaitan materi ini dengan disiplin ilmu lain. Contoh: Terhubung dengan Matematika terkait logika, atau PAI terkait adab)" required><?= esc($modulData['lintas_disiplin'] ?? '') ?></textarea>
                             </div>
 
                             <label class="small font-weight-bold text-dark mb-1">Tujuan Pembelajaran (Otomatis dari ATP)</label>
@@ -180,27 +191,27 @@
 
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Topik Pembelajaran <span class="text-danger">*</span></label>
-                                <input type="text" name="topik_pembelajaran" class="form-control form-control-sm" placeholder="(Tuliskan sub-materi spesifik pada pertemuan ini. Contoh: Pengenalan Algoritma Dasar)" required>
+                                <input type="text" name="topik_pembelajaran" class="form-control form-control-sm" value="<?= esc($modulData['topik_pembelajaran'] ?? '') ?>" placeholder="(Tuliskan sub-materi spesifik pada pertemuan ini. Contoh: Pengenalan Algoritma Dasar)" required>
                             </div>
 
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Praktik Pedagogis <span class="text-danger">*</span></label>
-                                <textarea name="praktik_pedagogis" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan Model/Strategi/Metode pembelajaran. Contoh: Pembelajaran berbasis proyek, inkuiri, TaRL, dll)" required></textarea>
+                                <textarea name="praktik_pedagogis" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan Model/Strategi/Metode pembelajaran. Contoh: Pembelajaran berbasis proyek, inkuiri, TaRL, dll)" required><?= esc($modulData['praktik_pedagogis'] ?? '') ?></textarea>
                             </div>
 
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Kemitraan Pembelajaran <span class="text-danger">*</span></label>
-                                <textarea name="kemitraan_pembelajaran" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan kolaborasi dalam/luar sekolah. Contoh: kemitraan antar guru lintas mapel, praktisi profesional, dsb)" required></textarea>
+                                <textarea name="kemitraan_pembelajaran" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan kolaborasi dalam/luar sekolah. Contoh: kemitraan antar guru lintas mapel, praktisi profesional, dsb)" required><?= esc($modulData['kemitraan_pembelajaran'] ?? '') ?></textarea>
                             </div>
 
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Lingkungan Pembelajaran <span class="text-danger">*</span></label>
-                                <textarea name="lingkungan_pembelajaran" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan lingkungan pembelajaran yang dikembangkan. Contoh: memberikan kesempatan murid berpendapat di ruang kelas atau platform daring)" required></textarea>
+                                <textarea name="lingkungan_pembelajaran" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan lingkungan pembelajaran yang dikembangkan. Contoh: memberikan kesempatan murid berpendapat di ruang kelas atau platform daring)" required><?= esc($modulData['lingkungan_pembelajaran'] ?? '') ?></textarea>
                             </div>
 
                             <div class="mb-0">
                                 <label class="small font-weight-bold text-dark">Pemanfaatan Digital <span class="text-danger">*</span></label>
-                                <textarea name="pemanfaatan_digital" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan pemanfaatan teknologi digital. Contoh: penggunaan Chromebook, Canva, Capcut, atau LMS Google Workspace)" required></textarea>
+                                <textarea name="pemanfaatan_digital" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan pemanfaatan teknologi digital. Contoh: penggunaan Chromebook, Canva, Capcut, atau LMS Google Workspace)" required><?= esc($modulData['pemanfaatan_digital'] ?? '') ?></textarea>
                             </div>
                         </div>
                     </div>
@@ -221,31 +232,31 @@
                                 <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
                                     <label class="small font-weight-bold text-dark mb-0">1. Kegiatan Awal <span class="text-danger">*</span></label>
                                     <div class="d-flex align-items-center">
-                                        <input type="number" name="kegiatan[awal][menit]" class="form-control form-control-sm text-center" style="width: 70px;" placeholder="Misal: 15" required>
+                                        <input type="number" name="kegiatan[awal][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($kegiatan['awal']['menit'] ?? '') ?>" placeholder="Misal: 15" required>
                                         <span class="small text-dark font-weight-bold ms-2">Menit</span>
                                     </div>
                                 </div>
-                                <textarea name="kegiatan[awal][isi]" class="form-control form-control-sm border-0 bg-light" rows="3" placeholder="(Tuliskan rincian kegiatan pendahuluan seperti berdoa, presensi, apersepsi, pemantik, dll)" required></textarea>
+                                <textarea name="kegiatan[awal][isi]" class="form-control form-control-sm border-0 bg-light" rows="3" placeholder="(Tuliskan rincian kegiatan pendahuluan seperti berdoa, presensi, apersepsi, pemantik, dll)" required><?= esc($kegiatan['awal']['isi'] ?? '') ?></textarea>
                             </div>
 
                             <div class="mb-3 p-3 border rounded bg-white shadow-sm">
                                 <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
                                     <label class="small font-weight-bold text-dark mb-0">2. Kegiatan Inti <span class="text-danger">*</span></label>
                                     <div class="d-flex align-items-center">
-                                        <input type="number" name="kegiatan[inti][menit]" class="form-control form-control-sm text-center" style="width: 70px;" placeholder="Misal: 60" required>
+                                        <input type="number" name="kegiatan[inti][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($kegiatan['inti']['menit'] ?? '') ?>" placeholder="Misal: 60" required>
                                         <span class="small text-dark font-weight-bold ms-2">Menit</span>
                                     </div>
                                 </div>
                                 
                                 <div class="ps-2 border-left" style="border-left: 3px solid #dee2e6 !important;">
                                     <label class="small font-weight-bold text-dark mb-1 mt-2">a. Memahami</label>
-                                    <textarea name="kegiatan[inti][memahami]" class="form-control form-control-sm mb-3 bg-light border-0" rows="2" placeholder="(Kegiatan eksplorasi makna, membangun konsep dasar secara bermakna / Meaningful Learning)" required></textarea>
+                                    <textarea name="kegiatan[inti][memahami]" class="form-control form-control-sm mb-3 bg-light border-0" rows="2" placeholder="(Kegiatan eksplorasi makna, membangun konsep dasar secara bermakna / Meaningful Learning)" required><?= esc($kegiatan['inti']['memahami'] ?? '') ?></textarea>
 
                                     <label class="small font-weight-bold text-dark mb-1">b. Mengaplikasikan</label>
-                                    <textarea name="kegiatan[inti][mengaplikasikan]" class="form-control form-control-sm mb-3 bg-light border-0" rows="2" placeholder="(Kegiatan praktik, proyek, kolaborasi, dan elaborasi / Joyful Learning)" required></textarea>
+                                    <textarea name="kegiatan[inti][mengaplikasikan]" class="form-control form-control-sm mb-3 bg-light border-0" rows="2" placeholder="(Kegiatan praktik, proyek, kolaborasi, dan elaborasi / Joyful Learning)" required><?= esc($kegiatan['inti']['mengaplikasikan'] ?? '') ?></textarea>
 
                                     <label class="small font-weight-bold text-dark mb-1">c. Merefleksi</label>
-                                    <textarea name="kegiatan[inti][merefleksi]" class="form-control form-control-sm mb-1 bg-light border-0" rows="2" placeholder="(Kegiatan konfirmasi pemahaman, evaluasi proses, dan mindfulness / Mindful Learning)" required></textarea>
+                                    <textarea name="kegiatan[inti][merefleksi]" class="form-control form-control-sm mb-1 bg-light border-0" rows="2" placeholder="(Kegiatan konfirmasi pemahaman, evaluasi proses, dan mindfulness / Mindful Learning)" required><?= esc($kegiatan['inti']['merefleksi'] ?? '') ?></textarea>
                                 </div>
                             </div>
 
@@ -253,11 +264,11 @@
                                 <div class="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
                                     <label class="small font-weight-bold text-dark mb-0">3. Kegiatan Penutup <span class="text-danger">*</span></label>
                                     <div class="d-flex align-items-center">
-                                        <input type="number" name="kegiatan[penutup][menit]" class="form-control form-control-sm text-center" style="width: 70px;" placeholder="Misal: 15" required>
+                                        <input type="number" name="kegiatan[penutup][menit]" class="form-control form-control-sm text-center" style="width: 70px;" value="<?= esc($kegiatan['penutup']['menit'] ?? '') ?>" placeholder="Misal: 15" required>
                                         <span class="small text-dark font-weight-bold ms-2">Menit</span>
                                     </div>
                                 </div>
-                                <textarea name="kegiatan[penutup][isi]" class="form-control form-control-sm border-0 bg-light" rows="3" placeholder="(Tuliskan rincian kegiatan penutup seperti kesimpulan, tindak lanjut, dan doa penutup)" required></textarea>
+                                <textarea name="kegiatan[penutup][isi]" class="form-control form-control-sm border-0 bg-light" rows="3" placeholder="(Tuliskan rincian kegiatan penutup seperti kesimpulan, tindak lanjut, dan doa penutup)" required><?= esc($kegiatan['penutup']['isi'] ?? '') ?></textarea>
                             </div>
                         </div>
                     </div>
@@ -269,17 +280,17 @@
                             
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Asesmen pada Awal Pembelajaran <span class="text-danger">*</span></label>
-                                <textarea name="asesmen_awal" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan asesmen diagnostik untuk memetakan kesiapan murid. Contoh: Kuis interaktif fisik, tanya jawab pemantik, atau pre-test)" required></textarea>
+                                <textarea name="asesmen_awal" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan asesmen diagnostik untuk memetakan kesiapan murid. Contoh: Kuis interaktif fisik, tanya jawab pemantik, atau pre-test)" required><?= esc($modulData['asesmen_awal'] ?? '') ?></textarea>
                             </div>
 
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Asesmen pada Proses Pembelajaran <span class="text-danger">*</span></label>
-                                <textarea name="asesmen_proses" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan asesmen formatif/observasi selama kegiatan. Contoh: Penilaian sikap kolaborasi, nalar kritis, kelengkapan alat, dan kepedulian lingkungan)" required></textarea>
+                                <textarea name="asesmen_proses" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan asesmen formatif/observasi selama kegiatan. Contoh: Penilaian sikap kolaborasi, nalar kritis, kelengkapan alat, dan kepedulian lingkungan)" required><?= esc($modulData['asesmen_proses'] ?? '') ?></textarea>
                             </div>
 
                             <div class="mb-0">
                                 <label class="small font-weight-bold text-dark">Asesmen pada Akhir Pembelajaran <span class="text-danger">*</span></label>
-                                <textarea name="asesmen_akhir" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan asesmen sumatif untuk mengukur ketercapaian TP. Contoh: Penilaian hasil akhir produk AI, post-test, atau unjuk kerja/presentasi)" required></textarea>
+                                <textarea name="asesmen_akhir" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan asesmen sumatif untuk mengukur ketercapaian TP. Contoh: Penilaian hasil akhir produk AI, post-test, atau unjuk kerja/presentasi)" required><?= esc($modulData['asesmen_akhir'] ?? '') ?></textarea>
                             </div>
                         </div>
                     </div>
@@ -291,27 +302,27 @@
                             
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Lembar Materi atau Handout <span class="text-danger">*</span></label>
-                                <textarea name="lampiran_materi" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan ringkasan materi pokok, narasi KBC, atau tautan bahan bacaan pendukung untuk murid)" required></textarea>
+                                <textarea name="lampiran_materi" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan ringkasan materi pokok, narasi KBC, atau tautan bahan bacaan pendukung untuk murid)" required><?= esc($modulData['lampiran_materi'] ?? '') ?></textarea>
                             </div>
 
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">LKM (Lembar Kerja Murid) <span class="text-danger">*</span></label>
-                                <textarea name="lampiran_lkm" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan instruksi langkah kerja murid, tabel pengamatan, atau tautan ke file LKPD/LKM cetak)" required></textarea>
+                                <textarea name="lampiran_lkm" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan instruksi langkah kerja murid, tabel pengamatan, atau tautan ke file LKPD/LKM cetak)" required><?= esc($modulData['lampiran_lkm'] ?? '') ?></textarea>
                             </div>
 
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Rubrik Penilaian <span class="text-danger">*</span></label>
-                                <textarea name="lampiran_rubrik" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan kriteria skor penilaian sikap dan keterampilan. Contoh: Skor 4 jika sangat baik, Skor 3 jika cukup, dst.)" required></textarea>
+                                <textarea name="lampiran_rubrik" class="form-control form-control-sm" rows="3" placeholder="(Tuliskan kriteria skor penilaian sikap dan keterampilan. Contoh: Skor 4 jika sangat baik, Skor 3 jika cukup, dst.)" required><?= esc($modulData['lampiran_rubrik'] ?? '') ?></textarea>
                             </div>
 
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Sumber Belajar <span class="text-danger">*</span></label>
-                                <textarea name="sumber_belajar" class="form-control form-control-sm" rows="2" placeholder="(Tuliskan referensi belajar utama. Contoh: Website Teachable Machine, Buku Paket Informatika Kelas 8, Lingkungan Madrasah)" required></textarea>
+                                <textarea name="sumber_belajar" class="form-control form-control-sm" rows="2" placeholder="(Tuliskan referensi belajar utama. Contoh: Website Teachable Machine, Buku Paket Informatika Kelas 8, Lingkungan Madrasah)" required><?= esc($modulData['sumber_belajar'] ?? '') ?></textarea>
                             </div>
 
                             <div class="mb-0">
                                 <label class="small font-weight-bold text-dark">Contoh Produk <span class="text-danger">*</span></label>
-                                <textarea name="contoh_produk" class="form-control form-control-sm" rows="2" placeholder="(Deskripsikan wujud hasil belajar siswa. Contoh: Tangkapan layar model AI pendeteksi sampah atau tautan hasil karya murid)" required></textarea>
+                                <textarea name="contoh_produk" class="form-control form-control-sm" rows="2" placeholder="(Deskripsikan wujud hasil belajar siswa. Contoh: Tangkapan layar model AI pendeteksi sampah atau tautan hasil karya murid)" required><?= esc($modulData['contoh_produk'] ?? '') ?></textarea>
                             </div>
                         </div>
                     </div>

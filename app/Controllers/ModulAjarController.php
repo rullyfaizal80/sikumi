@@ -306,7 +306,7 @@ class ModulAjarController extends BaseController
     }
 
     // ==============================================================
-    // HALAMAN CREATE MODUL AJAR (AUTO-FILL DARI ATP)
+    // HALAMAN CREATE / EDIT MODUL AJAR
     // ==============================================================
     public function create()
     {
@@ -323,20 +323,12 @@ class ModulAjarController extends BaseController
 
         $atpIds = explode(',', $atpIdsStr);
 
-        // ---------------------------------------------------------
-        // TARIK NAMA MADRASAH DARI SETTING
-        // ---------------------------------------------------------
         $namaMadrasah = 'MTs / Sekolah';
         if ($db->tableExists('settings')) {
             $settingMadrasah = $db->table('settings')->where('key', 'kaldik_lembaga_nama')->get()->getRowArray();
-            if ($settingMadrasah && !empty($settingMadrasah['value'])) {
-                $namaMadrasah = $settingMadrasah['value'];
-            }
+            if ($settingMadrasah && !empty($settingMadrasah['value'])) $namaMadrasah = $settingMadrasah['value'];
         }
 
-        // ---------------------------------------------------------
-        // TARIK NAMA ROMBEL
-        // ---------------------------------------------------------
         $namaRombel = 'Rombel Tidak Diketahui';
         if ($db->tableExists('class_rombel')) {
             $rombelData = $db->table('class_rombel cr')
@@ -344,18 +336,13 @@ class ModulAjarController extends BaseController
                              ->join('master_classes mc', 'mc.id = cr.master_class_id', 'left')
                              ->where('cr.id', $rombelId)
                              ->get()->getRowArray();
-            if ($rombelData) {
-                // Hasil misal: "7 - 7A" atau "8 - 8B"
-                $namaRombel = ($rombelData['class_name'] ?? '') . ' - ' . ($rombelData['rombel_name'] ?? '');
-            }
+            if ($rombelData) $namaRombel = ($rombelData['class_name'] ?? '') . ' - ' . ($rombelData['rombel_name'] ?? '');
         }
         
-        // ---------------------------------------------------------
-        // AMBIL NAMA MAPEL DARI DATABASE
-        // ---------------------------------------------------------
+        // PERBAIKAN: Pemecahan Mapel Kebal C_ atau C
         $namaMapelAktif = 'Mata Pelajaran';
         if ($db->tableExists('schedule_combined_subjects') && strpos($mapelId, 'C') === 0) {
-            $cId = substr($mapelId, 1);
+            $cId = preg_replace('/^C_?/', '', $mapelId); 
             $cm = $db->table('schedule_combined_subjects')->where('id', $cId)->get()->getRowArray();
             if ($cm) $namaMapelAktif = '🗂️ [Gabungan] ' . $cm['combined_name'];
         } elseif ($db->tableExists('master_subjects')) {
@@ -364,9 +351,6 @@ class ModulAjarController extends BaseController
             if ($sm) $namaMapelAktif = $sm['subject_name'];
         }
 
-        // ---------------------------------------------------------
-        // BAGIAN YANG HILANG: TARIK DATA DETAIL CP/ATP
-        // ---------------------------------------------------------
         $builder = $db->table('kurikulum_atp a')
                       ->select('a.*, d.tujuan_pembelajaran, d.lingkup_materi, d.estimasi_jp')
                       ->join('kurikulum_cp_details d', 'd.id = a.cp_detail_id')
@@ -375,9 +359,6 @@ class ModulAjarController extends BaseController
         
         $selectedAtpData = $builder->get()->getResultArray();
 
-        // ---------------------------------------------------------
-        // LOGIKA PENGGABUNGAN & PEMBERSIHAN STRING (AUTO-CHECK)
-        // ---------------------------------------------------------
         $totalJp = 0;
         $gabunganMateri = [];
         $gabunganDpl = [];
@@ -385,12 +366,8 @@ class ModulAjarController extends BaseController
 
         foreach ($selectedAtpData as $row) {
             $totalJp += (int)$row['estimasi_jp'];
+            if (!in_array($row['lingkup_materi'], $gabunganMateri)) $gabunganMateri[] = $row['lingkup_materi'];
             
-            if (!in_array($row['lingkup_materi'], $gabunganMateri)) {
-                $gabunganMateri[] = $row['lingkup_materi'];
-            }
-
-            // Pembersihan spasi DPL (dari kolom dpl_terpilih)
             if (!empty($row['dpl_terpilih'])) {
                 $dpls = explode(',', $row['dpl_terpilih']);
                 foreach ($dpls as $d) { 
@@ -398,8 +375,6 @@ class ModulAjarController extends BaseController
                     if (!in_array($cleanD, $gabunganDpl)) $gabunganDpl[] = $cleanD; 
                 }
             }
-
-            // Pembersihan spasi Pilar (dari kolom panca_cinta_terpilih)
             if (!empty($row['panca_cinta_terpilih'])) {
                 $pilars = explode(',', $row['panca_cinta_terpilih']);
                 foreach ($pilars as $p) { 
@@ -407,6 +382,21 @@ class ModulAjarController extends BaseController
                     if (!in_array($cleanP, $gabunganPilar)) $gabunganPilar[] = $cleanP; 
                 }
             }
+        }
+
+        // PERBAIKAN: JIKA MODUL SUDAH ADA, TARIK DATANYA (FUNGSI EDIT/LIHAT)
+        $modulId = $selectedAtpData[0]['modul_id'] ?? null;
+        $modulData = [];
+        $kegiatan = [];
+
+        if (!empty($modulId)) {
+            $modulData = $db->table('kurikulum_modul_ajar')->where('id', $modulId)->get()->getRowArray() ?? [];
+            if (!empty($modulData['kegiatan_pembelajaran'])) {
+                $kegiatan = json_decode($modulData['kegiatan_pembelajaran'], true);
+            }
+            // Timpa Centangan dari yang sudah tersimpan
+            if (!empty($modulData['dpl_terpilih'])) $gabunganDpl = explode(',', $modulData['dpl_terpilih']);
+            if (!empty($modulData['panca_cinta_terpilih'])) $gabunganPilar = explode(',', $modulData['panca_cinta_terpilih']);
         }
 
         $data = [
@@ -422,18 +412,118 @@ class ModulAjarController extends BaseController
             'gabunganDpl'     => $gabunganDpl,
             'gabunganPilar'   => $gabunganPilar,
             
+            // Variabel Data Edit
+            'modulId'         => $modulId,
+            'modulData'       => $modulData,
+            'kegiatan'        => $kegiatan,
+            
             'listProfilLulusan' => ['DPL1'=>'Keimanan dan ketakwaan terhadap Tuhan YME','DPL2'=>'Kewargaan','DPL3'=>'Penalaran Kritis','DPL4'=>'Kreativitas','DPL5'=>'Kolaborasi','DPL6'=>'Kemandirian','DPL7'=>'Kesehatan','DPL8'=>'Komunikasi'],
-
-            'listPancaCinta'    => [
-                'P1' => 'Topik 1 : Cinta Allah dan Rasul-Nya',
-                'P2' => 'Topik 2 : Cinta Ilmu',
-                'P3' => 'Topik 3 : Cinta Lingkungan', 
-                'P4' => 'Topik 4 : Cinta Diri dan Sesama Manusia',
-                'P5' => 'Topik 5 : Cinta Tanah Air'
-            ]
+            'listPancaCinta'    => ['P1'=>'Topik 1 : Cinta Allah dan Rasul-Nya','P2'=>'Topik 2 : Cinta Ilmu','P3'=>'Topik 3 : Cinta Lingkungan','P4'=>'Topik 4 : Cinta Diri dan Sesama Manusia','P5'=>'Topik 5 : Cinta Tanah Air']
         ];
 
         return view('guru/modul_ajar_create', $data);
+    }
+
+    // ==============================================================
+    // FUNGSI MENYIMPAN (SAVE / UPDATE)
+    // ==============================================================
+    public function store()
+    {
+        $db = \Config\Database::connect();
+        $request = \Config\Services::request();
+
+        $rombelId = $request->getPost('rombel_id');
+        $mapelId = $request->getPost('mapel_id');
+        $atpIdsStr = $request->getPost('atp_ids');
+        $atpIds = explode(',', $atpIdsStr);
+        $modulId = $request->getPost('modul_id'); // Deteksi Edit
+
+        $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+        $rombel = $db->table('class_rombel')->where('id', $rombelId)->get()->getRowArray();
+        $userId = session()->get('user_id') ?? (function_exists('user_id') ? user_id() : 0);
+
+        $dpl = $request->getPost('dpl') ? implode(',', $request->getPost('dpl')) : '';
+        $pilar = $request->getPost('pilar') ? implode(',', $request->getPost('pilar')) : '';
+        $kegiatanJson = json_encode($request->getPost('kegiatan'));
+
+        $dataModul = [
+            'academic_year_id'       => $tahunAktif['id'] ?? 0,
+            'master_class_id'        => $rombel['master_class_id'] ?? 0,
+            'mapel_id'               => $mapelId,
+            'rombel_id'              => $rombelId,
+            'teacher_id'             => $userId,
+            'pertemuan_ke'           => $request->getPost('pertemuan_ke'),
+            'alokasi_jp'             => $request->getPost('alokasi_jp'),
+            'menit_per_jp'           => $request->getPost('menit_per_jp'),
+            'kesiapan_murid'         => $request->getPost('kesiapan_murid'),
+            'materi_pembelajaran'    => $request->getPost('materi_pembelajaran'),
+            'dpl_terpilih'           => $dpl,
+            'panca_cinta_terpilih'   => $pilar,
+            'insersi_kbc'            => $request->getPost('insersi_kbc'),
+            'capaian_pembelajaran'   => $request->getPost('capaian_pembelajaran'),
+            'lintas_disiplin'        => $request->getPost('lintas_disiplin'),
+            'topik_pembelajaran'     => $request->getPost('topik_pembelajaran'),
+            'praktik_pedagogis'      => $request->getPost('praktik_pedagogis'),
+            'kemitraan_pembelajaran' => $request->getPost('kemitraan_pembelajaran'),
+            'lingkungan_pembelajaran'=> $request->getPost('lingkungan_pembelajaran'),
+            'pemanfaatan_digital'    => $request->getPost('pemanfaatan_digital'),
+            'kegiatan_pembelajaran'  => $kegiatanJson,
+            'asesmen_awal'           => $request->getPost('asesmen_awal'),
+            'asesmen_proses'         => $request->getPost('asesmen_proses'),
+            'asesmen_akhir'          => $request->getPost('asesmen_akhir'),
+            'lampiran_materi'        => $request->getPost('lampiran_materi'),
+            'lampiran_lkm'           => $request->getPost('lampiran_lkm'),
+            'lampiran_rubrik'        => $request->getPost('lampiran_rubrik'),
+            'sumber_belajar'         => $request->getPost('sumber_belajar'),
+            'contoh_produk'          => $request->getPost('contoh_produk')
+        ];
+
+        $db->transStart();
+
+        // PERBAIKAN: Mencegah Duplicate Save
+        if (!empty($modulId)) {
+            $db->table('kurikulum_modul_ajar')->where('id', $modulId)->update($dataModul);
+        } else {
+            $dataModul['created_at'] = date('Y-m-d H:i:s');
+            $db->table('kurikulum_modul_ajar')->insert($dataModul);
+            $modulId = $db->insertID();
+        }
+
+        if (!empty($atpIds)) {
+            $db->table('kurikulum_atp')->whereIn('id', $atpIds)->update(['modul_id' => $modulId]);
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return redirect()->back()->with('error', 'Gagal menyimpan Modul Ajar.');
+        }
+
+        return redirect()->to(base_url("guru/modul-ajar?rombel_id={$rombelId}&mapel_id={$mapelId}"))
+                         ->with('success', 'Modul Ajar KBC berhasil disimpan dengan sukses!');
+    }
+
+    // ==============================================================
+    // FUNGSI RESET / HAPUS MODUL AJAR (DARI DALAM FORM)
+    // ==============================================================
+    public function resetModul()
+    {
+        $db = \Config\Database::connect();
+        $request = \Config\Services::request();
+
+        $modulId = $request->getPost('modul_id');
+        $rombelId = $request->getPost('rombel_id');
+        $mapelId = $request->getPost('mapel_id');
+        
+        if (!empty($modulId)) {
+            $db->transStart();
+            $db->table('kurikulum_atp')->where('modul_id', $modulId)->update(['modul_id' => null]);
+            $db->table('kurikulum_modul_ajar')->where('id', $modulId)->delete();
+            $db->transComplete();
+        }
+
+        return redirect()->to(base_url("guru/modul-ajar?rombel_id={$rombelId}&mapel_id={$mapelId}"))
+                         ->with('success', 'Modul Ajar berhasil direset / dihapus.');
     }
 
 }
