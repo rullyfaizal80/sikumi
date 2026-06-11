@@ -529,4 +529,110 @@ class ModulAjarController extends BaseController
         return redirect()->to(base_url("guru/modul-ajar?rombel_id={$rombelId}&mapel_id={$mapelId}"))
                          ->with('success', 'Modul Ajar berhasil direset / dihapus.');
     }
+
+    // ==============================================================
+    // FUNGSI SIKUMI AI GENERATOR UNTUK MODUL AJAR (GROQ LLaMA)
+    // ==============================================================
+    public function generateAi()
+    {
+        $request = \Config\Services::request();
+        if (!$request->isAJAX()) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Akses tidak sah.']);
+        }
+
+        // 1. Tangkap konteks dari Form
+        $mapel = $request->getPost('mapel');
+        $rombel = $request->getPost('rombel');
+        $materi = $request->getPost('materi');
+        $tp = $request->getPost('tp');
+        $instruksi = $request->getPost('instruksi');
+
+        // 2. Ambil Pengaturan API dari Database (Seperti AiController)
+        $db = \Config\Database::connect();
+        
+        $apiKeySetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_api_key')->get()->getRowArray() : null;
+        $apiKey = $apiKeySetting ? trim($apiKeySetting['value']) : '';
+
+        $apiProviderSetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_provider')->get()->getRowArray() : null;
+        $apiUrl = (!empty($apiProviderSetting['value'])) ? trim($apiProviderSetting['value']) : 'https://api.groq.com/openai/v1/chat/completions';
+
+        if (empty($apiKey)) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Kunci akses API belum dipasang di pengaturan database.']);
+        }
+
+        // 3. Susun Prompt (System & User)
+        $systemInstruction = "Anda adalah Ahli Kurikulum Merdeka (KBC) & Deep Learning. Tugas Anda menghasilkan konten edukatif untuk mengisi kolom modul ajar.\n"
+                           . "OUTPUT WAJIB JSON MURNI TANPA tag markdown (```json). Gunakan struktur key berikut persis:\n"
+                           . '{"capaian_pembelajaran":"","lintas_disiplin":"","topik_pembelajaran":"","praktik_pedagogis":"","kemitraan_pembelajaran":"","lingkungan_pembelajaran":"","pemanfaatan_digital":"","kegiatan_awal":"","kegiatan_inti_memahami":"","kegiatan_inti_mengaplikasikan":"","kegiatan_inti_merefleksi":"","kegiatan_penutup":"","asesmen_awal":"","asesmen_proses":"","asesmen_akhir":"","lampiran_materi":"","lampiran_lkm":"","lampiran_rubrik":"","sumber_belajar":"","contoh_produk":""}';
+
+        $userPrompt = "Bantu saya menyusun isi modul ajar untuk:\n"
+                    . "- Mata Pelajaran: $mapel\n"
+                    . "- Sasaran: Kelas/Rombel $rombel\n"
+                    . "- Materi Pokok: $materi\n"
+                    . "- Tujuan Pembelajaran:\n$tp\n\n";
+        
+        if (!empty($instruksi)) {
+            $userPrompt .= "INSTRUKSI TAMBAHAN DARI GURU:\n$instruksi\n";
+        }
+
+        // 4. SUSUN DATA UNTUK API
+        $data = [
+            'model' => 'llama-3.3-70b-versatile', 
+            'messages' => [
+                ['role' => 'system', 'content' => $systemInstruction],
+                ['role' => 'user', 'content' => $userPrompt]
+            ],
+            'temperature' => 0.6,
+            'max_tokens' => 3000
+        ];
+
+        $headers = [
+            'Authorization: Bearer ' . $apiKey,
+            'Content-Type: application/json'
+        ];
+
+        // 5. EKSEKUSI API MENGGUNAKAN cURL
+        $ch = curl_init($apiUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); 
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
+
+        $responseRaw = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        $responseData = json_decode($responseRaw, true);
+
+        // Jika kena limit (Groq API Rate Limit)
+        if ($httpCode == 429) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Kuota SiKuMi habis (Limit). Silakan tunggu beberapa saat.']);
+        }
+
+        // 6. Parsing Balasan
+        if ($httpCode >= 200 && $httpCode < 300) {
+            if (isset($responseData['choices'][0]['message']['content'])) {
+                $aiText = $responseData['choices'][0]['message']['content'];
+                
+                // Bersihkan Markdown agar bisa di-decode jadi JSON
+                $aiText = preg_replace('/
+```json\s*/', '', $aiText);
+                $aiText = preg_replace('/```\s*/', '', $aiText);
+                
+                $jsonOutput = json_decode(trim($aiText), true);
+
+                if($jsonOutput) {
+                    return $this->response->setJSON(['status' => 'success', 'data' => $jsonOutput]);
+                } else {
+                    return $this->response->setJSON(['status' => 'error', 'message' => 'Gagal membaca format data AI.']);
+                }
+            }
+        }
+
+        $errorMessage = $responseData['error']['message'] ?? 'Kesalahan dari server AI.';
+        return $this->response->setJSON(['status' => 'error', 'message' => $errorMessage]);
+    }
+
+
 }

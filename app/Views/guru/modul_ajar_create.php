@@ -44,6 +44,9 @@
                     <p class="text-muted mb-0">Insersi Kurikulum Berbasis Cinta (KBC) & Deep Learning</p>
                 </div>
                 <div>
+                    <!-- PERBAIKAN: Tombol Modal SiKuMi AI -->
+                    <button type="button" class="btn btn-info btn-sm font-weight-bold shadow-sm me-1 text-white" data-bs-toggle="modal" data-bs-target="#modalAi">🪄 SiKuMi AI</button>
+                    
                     <?php if(!empty($modulId)): ?>
                         <button type="button" class="btn btn-danger btn-sm font-weight-bold shadow-sm me-1" onclick="if(confirm('Yakin ingin mereset/menghapus modul ini? Seluruh isian akan hilang dan TP akan kembali ke status Belum Dibuat.')) document.getElementById('formReset').submit();">🗑️ Reset Modul</button>
                     <?php endif; ?>
@@ -70,14 +73,14 @@
                             <div class="row mb-3 align-items-center">
                                 <label class="col-sm-4 small font-weight-bold text-muted mb-0">Mata Pelajaran</label>
                                 <div class="col-sm-8">
-                                    <input type="text" class="form-control form-control-sm auto-filled text-muted" value="<?= esc($namaMapelAktif) ?>" readonly>
+                                    <input type="text" id="input_mapel" class="form-control form-control-sm auto-filled text-muted" value="<?= esc($namaMapelAktif) ?>" readonly>
                                 </div>
                             </div>
 
                             <div class="row mb-3 align-items-center">
                                 <label class="col-sm-4 small font-weight-bold text-muted mb-0">Rombel</label>
                                 <div class="col-sm-8">
-                                    <input type="text" class="form-control form-control-sm auto-filled text-muted" value="<?= esc($namaRombel) ?>" readonly>
+                                    <input type="text" id="input_rombel" class="form-control form-control-sm auto-filled text-muted" value="<?= esc($namaRombel) ?>" readonly>
                                 </div>
                             </div>
 
@@ -122,7 +125,7 @@
 
                            <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Materi Pembelajaran <span class="text-danger">*</span></label>
-                                <textarea class="form-control form-control-sm auto-filled text-muted" rows="2" readonly><?= esc($gabunganMateri) ?></textarea>
+                                <textarea id="input_materi" class="form-control form-control-sm auto-filled text-muted" rows="2" readonly><?= esc($gabunganMateri) ?></textarea>
                             </div>
 
                             <div class="row mb-3">
@@ -321,5 +324,129 @@
         <?php endif; ?>
 
     </div>
+
+    <!-- ======================================================= -->
+    <!-- MODAL SIKUMI AI -->
+    <!-- ======================================================= -->
+    <div class="modal fade" id="modalAi" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title font-weight-bold"><i class="bi bi-magic"></i> Generate dengan SiKuMi AI</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-light border small text-muted mb-3">
+                        Robot SiKuMi AI akan menganalisis Tujuan Pembelajaran Anda dan otomatis mengisi kolom-kolom yang <b>masih kosong</b>. Isian yang sudah Anda ketik secara manual tidak akan ditimpa/dihapus.
+                    </div>
+                    <div class="form-group mb-0">
+                        <label class="small font-weight-bold text-dark">Instruksi Tambahan (Opsional)</label>
+                        <textarea id="ai_instruksi" class="form-control" rows="4" placeholder="Contoh: Gunakan pendekatan TaRL, buat kegiatan game tebak kata di awal, dan buat rubrik untuk unjuk kerja..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary btn-sm font-weight-bold" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-info btn-sm font-weight-bold text-white shadow-sm" id="btnProsesAi" data-url="<?= base_url('guru/modul-ajar/generate-ai') ?>" onclick="prosesAi()">🚀 Mulai Generate</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
+
+    <script>
+        function prosesAi() {
+            let btn = document.getElementById('btnProsesAi');
+            let instruksi = document.getElementById('ai_instruksi').value;
+            
+            // PERBAIKAN 1: Mengambil nilai dengan aman menggunakan ID yang sudah dibuat
+            let mapel = document.getElementById('input_mapel').value;
+            let rombel = document.getElementById('input_rombel').value;
+            let materi = document.getElementById('input_materi').value;
+            
+            // Mengumpulkan Teks Tujuan Pembelajaran
+            let tpElements = document.querySelectorAll('.box-tp');
+            let tp = "";
+            tpElements.forEach(el => tp += el.innerText + "\n");
+
+            // PERBAIKAN 2: Mengambil URL dari atribut tombol agar VS Code bahagia
+            let targetUrl = btn.getAttribute('data-url');
+
+            btn.innerHTML = '⏳ Sedang Memikirkan...';
+            btn.disabled = true;
+
+            let formData = new FormData();
+            formData.append('mapel', mapel);
+            formData.append('rombel', rombel);
+            formData.append('materi', materi);
+            formData.append('tp', tp);
+            formData.append('instruksi', instruksi);
+
+            fetch(targetUrl, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(res => {
+                if(res.status === 'success') {
+                    let d = res.data;
+                    
+                    // Fungsi Cerdas: Hanya Mengisi Textarea/Input yang Kosong
+                    const fillData = (name, val) => {
+                        let el = document.querySelector(`[name="${name}"]`);
+                        if(el && el.value.trim() === '' && val) {
+                            el.value = val;
+                            // Efek kedip biru untuk penanda
+                            el.style.backgroundColor = '#e8f4fd';
+                            setTimeout(() => { el.style.backgroundColor = ''; }, 2000);
+                        }
+                    };
+                    
+                    // Eksekusi pengisian (Pemetaan 1:1)
+                    fillData('capaian_pembelajaran', d.capaian_pembelajaran);
+                    fillData('lintas_disiplin', d.lintas_disiplin);
+                    fillData('topik_pembelajaran', d.topik_pembelajaran);
+                    fillData('praktik_pedagogis', d.praktik_pedagogis);
+                    fillData('kemitraan_pembelajaran', d.kemitraan_pembelajaran);
+                    fillData('lingkungan_pembelajaran', d.lingkungan_pembelajaran);
+                    fillData('pemanfaatan_digital', d.pemanfaatan_digital);
+                    
+                    fillData('kegiatan[awal][isi]', d.kegiatan_awal);
+                    fillData('kegiatan[inti][memahami]', d.kegiatan_inti_memahami);
+                    fillData('kegiatan[inti][mengaplikasikan]', d.kegiatan_inti_mengaplikasikan);
+                    fillData('kegiatan[inti][merefleksi]', d.kegiatan_inti_merefleksi);
+                    fillData('kegiatan[penutup][isi]', d.kegiatan_penutup);
+
+                    fillData('asesmen_awal', d.asesmen_awal);
+                    fillData('asesmen_proses', d.asesmen_proses);
+                    fillData('asesmen_akhir', d.asesmen_akhir);
+
+                    fillData('lampiran_materi', d.lampiran_materi);
+                    fillData('lampiran_lkm', d.lampiran_lkm);
+                    fillData('lampiran_rubrik', d.lampiran_rubrik);
+                    fillData('sumber_belajar', d.sumber_belajar);
+                    fillData('contoh_produk', d.contoh_produk);
+
+                    // Menutup Modal 
+                    var myModalEl = document.getElementById('modalAi');
+                    var modal = bootstrap.Modal.getInstance(myModalEl);
+                    if(modal) modal.hide();
+                    
+                    alert('🪄 Voila! Kolom yang kosong telah dilengkapi oleh SiKuMi AI. Silakan periksa dan edit kembali.');
+                } else {
+                    alert('❌ Gagal: ' + res.message);
+                }
+            })
+            .catch(error => {
+                alert('Terjadi kesalahan koneksi saat memanggil AI.');
+                console.error(error);
+            })
+            .finally(() => {
+                btn.innerHTML = '🚀 Mulai Generate';
+                btn.disabled = false;
+            });
+        }
+    </script>
 </body>
 </html>
