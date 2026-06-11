@@ -12,6 +12,8 @@
         .table-kktp td { vertical-align: top; font-size: 11px; padding: 6px; }
         .editable-cell { border: 1px dashed #ccc; padding: 8px; min-height: 60px; background: #fff; border-radius: 4px; }
         .editable-cell:focus { outline: 2px solid #FF9F00; background: #fffdf5; border: 1px solid #FF9F00; }
+        /* Trik Vanilla JS Modal Backdrop */
+        .modal-vanilla-backdrop { background-color: rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
@@ -24,7 +26,10 @@
                 <p class="text-muted mb-0">Atur deskripsi rubrik penilaian untuk tiap Tujuan Pembelajaran</p>
             </div>
             <div>
-                <button type="button" class="btn btn-outline-success font-weight-bold shadow-sm px-3 btn-ai-kktp">
+                <a href="<?= base_url('/') ?>" class="btn btn-outline-secondary btn-sm font-weight-bold shadow-sm px-3 me-2">
+                    <i class="bi bi-house-door"></i> Dashboard
+                </a>
+                <button type="button" class="btn btn-primary btn-sm font-weight-bold shadow-sm px-3 btn-ai-kktp">
                     <i class="bi bi-magic"></i> AI Generate Rubrik
                 </button>
             </div>
@@ -105,58 +110,185 @@
     </div>
 
     <script>
-        // ==============================================================
-        // 1. AI GENERATOR
-        // ==============================================================
-        document.querySelector('.btn-ai-kktp').addEventListener('click', async function() {
-            const btn = this;
-            const rows = document.querySelectorAll('#tbody-kktp tr[data-cpid]');
-            if(rows.length === 0) return alert("Tidak ada TP untuk diproses.");
-            if(!confirm("AI akan membuatkan deskripsi rubrik otomatis untuk setiap Tujuan Pembelajaran. Proses ini mungkin memakan waktu. Lanjutkan?")) return;
-
-            btn.disabled = true;
-            let originalText = btn.innerHTML;
-            btn.innerHTML = "⏳ AI Sedang Menganalisis...";
-
-            for (let tr of rows) {
-                let tp = tr.querySelector('.tp-text').innerText;
-                
-                // 🌟 PERBAIKAN: Prompt AI ditambahkan format kolom 'indikator'
-                let prompt = `Anda adalah pakar Kurikulum Merdeka. Buatkan deskripsi Rubrik KKTP untuk Tujuan Pembelajaran: "${tp}".
-                Output WAJIB berupa raw JSON (tanpa markdown, tanpa bungkus apapun): {"indikator":"", "sb":"", "b":"", "c":"", "pb":""}.
-                indikator: Bukti ketercapaian singkat (Evidence).
-                sb: Deskripsi kriteria Sangat Baik (rentang 90-100).
-                b: Deskripsi kriteria Baik (rentang 80-89).
-                c: Deskripsi kriteria Cukup (rentang 70-79).
-                pb: Deskripsi kriteria Perlu Bimbingan (rentang <70).
-                Gunakan bahasa operasional yang singkat dan padat.`;
-
-                try {
-                    const response = await fetch("<?= base_url('ai/analyze_cp') ?>", {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: "message=" + encodeURIComponent(prompt)
-                    });
-                    const res = await response.json();
-                    let cleanJson = res.reply.replace(/```json/g, '').replace(/```/g, '').trim();
-                    let data = JSON.parse(cleanJson);
-                    
-                    // 🌟 PERBAIKAN: Mengisi data indikator ke kolom yang tepat
-                    if(tr.querySelector('.cell-indikator')) {
-                        tr.querySelector('.cell-indikator').innerText = data.indikator || '';
-                    }
-                    tr.querySelector('.cell-sb').innerText = data.sb || '';
-                    tr.querySelector('.cell-b').innerText = data.b || '';
-                    tr.querySelector('.cell-c').innerText = data.c || '';
-                    tr.querySelector('.cell-pb').innerText = data.pb || '';
-                } catch(e) { 
-                    console.error("Gagal generate baris TP: " + tp, e); 
-                }
+        // FUNGSI BANTUAN MODAL VANILLA JS (BEBAS JQUERY)
+        function showVanillaModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if(modal) {
+                modal.classList.add('show', 'modal-vanilla-backdrop');
+                modal.style.display = 'block';
             }
+        }
+        
+        function hideVanillaModal(modalId) {
+            const modal = document.getElementById(modalId);
+            if(modal) {
+                modal.classList.remove('show', 'modal-vanilla-backdrop');
+                modal.style.display = 'none';
+            }
+        }
+
+        // ==============================================================
+        // 1. AI GENERATOR (VERSI 100% VANILLA JS BEBAS ERROR)
+        // ==============================================================
+        document.querySelector('.btn-ai-kktp').addEventListener('click', function(e) {
+            e.preventDefault();
             
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-            alert("✅ AI selesai menyusun rubrik! Jangan lupa klik Simpan.");
+            const allRows = document.querySelectorAll('#tbody-kktp tr[data-cpid]');
+            if(allRows.length === 0) return alert("Tidak ada TP untuk diproses.");
+
+            // Buat elemen Modal jika belum ada
+            if (!document.getElementById('modalAiPrompt')) {
+                const modalHTML = `
+                <div class="modal fade" id="modalAiPrompt" tabindex="-1" role="dialog" aria-hidden="true" style="z-index: 1050;">
+                    <div class="modal-dialog modal-dialog-centered" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white" style="border-bottom: 3px solid #001a4d;">
+                                <h5 class="modal-title font-weight-bold" style="font-size: 16px;">✨ Kustomisasi Rubrik AI</h5>
+                                <button type="button" class="btn-close-vanilla text-white bg-transparent border-0" style="font-size: 20px; font-weight: bold; cursor: pointer;">&times;</button>
+                            </div>
+                            <div class="modal-body bg-light">
+                                <div class="form-group mb-2">
+                                    <label for="custom-prompt" class="font-weight-bold small text-dark">Instruksi Tambahan Guru (Opsional):</label>
+                                    <textarea id="custom-prompt" class="form-control shadow-sm" rows="3" placeholder="Contoh: Buatkan masing-masing 3 indikator ketercapaian, fokus pada hafalan..."></textarea>
+                                    <small class="text-muted mt-1 d-block">💡 <i>Kosongkan jika ingin menggunakan gaya bahasa standar AI.</i></small>
+                                </div>
+                                <div class="alert alert-warning py-2 small mb-0 mt-3 border-0 shadow-sm" style="background-color: #fffdf5; border-left: 4px solid #FF9F00 !important;">
+                                    <b>Info:</b> AI hanya akan memproses baris yang <b>masih kosong</b> atau berstatus <b>gagal</b>.
+                                </div>
+                            </div>
+                            <div class="modal-footer bg-white border-top-0 py-2">
+                                <button type="button" class="btn btn-secondary btn-sm font-weight-bold px-3 shadow-sm btn-close-vanilla">Batal</button>
+                                <button type="button" id="btn-proses-ai-start" class="btn btn-success btn-sm font-weight-bold px-4 shadow-sm">🚀 Mulai Susun AI</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+                // Event Listener untuk Tombol Close Modal (Silang & Batal)
+                document.querySelectorAll('.btn-close-vanilla').forEach(btn => {
+                    btn.addEventListener('click', () => hideVanillaModal('modalAiPrompt'));
+                });
+
+                // Event Listener Eksekusi AI
+                document.getElementById('btn-proses-ai-start').addEventListener('click', async function() {
+                    const btnUtama = document.querySelector('.btn-ai-kktp');
+                    const customPromptTxt = document.getElementById('custom-prompt').value.trim();
+                    let instruksiTambahan = customPromptTxt ? `\n\nINSTRUKSI TAMBAHAN WAJIB DARI GURU: "${customPromptTxt}"` : '';
+
+                    let rowsToProcess = [];
+                    allRows.forEach(tr => {
+                        const cellSb = tr.querySelector('.cell-sb');
+                        const txtSb = cellSb ? cellSb.innerText.trim() : '';
+                        if (txtSb === "" || txtSb === "-" || txtSb.includes("Gagal") || txtSb.includes("Menganalisis")) {
+                            rowsToProcess.push(tr);
+                        }
+                    });
+
+                    if (rowsToProcess.length === 0) {
+                        alert("🎉 Semua baris di tabel ini sudah terisi! Tidak ada yang perlu diproses.");
+                        hideVanillaModal('modalAiPrompt');
+                        return;
+                    }
+
+                    hideVanillaModal('modalAiPrompt');
+                    btnUtama.disabled = true;
+                    let originalText = btnUtama.innerHTML;
+                    btnUtama.innerHTML = `⏳ AI Memproses ${rowsToProcess.length} Baris...`;
+
+                    for (let tr of rowsToProcess) {
+                        let tp = tr.querySelector('.tp-text').innerText.trim();
+                        
+                        const cellIndikator = tr.querySelector('.cell-indikator');
+                        const cellSb = tr.querySelector('.cell-sb');
+                        const cellB = tr.querySelector('.cell-b');
+                        const cellC = tr.querySelector('.cell-c');
+                        const cellPb = tr.querySelector('.cell-pb');
+
+                        const oldIndikator = cellIndikator ? cellIndikator.innerText : '';
+                        const oldSb = cellSb.innerText;
+                        const oldB = cellB.innerText;
+                        const oldC = cellC.innerText;
+                        const oldPb = cellPb.innerText;
+
+                        let success = false;
+                        let retries = 2; 
+
+                        while (!success && retries >= 0) {
+                            if (cellIndikator) cellIndikator.innerHTML = `<span class="text-muted">⏳ Menganalisis... ${retries < 2 ? '(Ulang)' : ''}</span>`;
+                            cellSb.innerHTML = `<span class="text-muted">⏳...</span>`;
+                            cellB.innerHTML = `<span class="text-muted">⏳...</span>`;
+                            cellC.innerHTML = `<span class="text-muted">⏳...</span>`;
+                            cellPb.innerHTML = `<span class="text-muted">⏳...</span>`;
+
+                            let prompt = `Anda adalah pakar Kurikulum Merdeka. Buatkan deskripsi Rubrik KKTP untuk Tujuan Pembelajaran: "${tp}".${instruksiTambahan}
+                            Output WAJIB berupa raw JSON murni 1 baris saja (TANPA markdown, TANPA enter/newline):
+                            {"indikator":"", "sb":"", "b":"", "c":"", "pb":""}
+                            Aturan teks rubrik:
+                            - JANGAN gunakan enter atau baris baru di dalam teks nilai JSON.
+                            - JANGAN gunakan tanda petik ganda (") di dalam nilai teks, gunakan petik tunggal (') jika diperlukan.
+                            - Kata-kata singkat, padat, dan operasional.`;
+
+                            try {
+                                const fd = new FormData();
+                                fd.append('message', prompt);
+
+                                const response = await fetch("<?= base_url('ai/analyze_cp') ?>", {
+                                    method: 'POST',
+                                    body: fd
+                                });
+                                
+                                if (!response.ok) throw new Error("Koneksi drop");
+                                
+                                const res = await response.json();
+                                let rawReply = res.reply || "";
+                                let jsonMatch = rawReply.match(/\{[\s\S]*\}/);
+                                
+                                if (!jsonMatch) throw new Error("Bukan JSON");
+                                
+                                let jsonString = jsonMatch[0].trim().replace(/[\u0000-\u001F\u007F-\u009F]/g, ""); 
+                                let data = JSON.parse(jsonString);
+                                
+                                let valIndikator = data.indikator || data.evidence || data.bukti || '';
+                                let valSb = data.sb || data.sangat_baik || data['sangat baik'] || '';
+                                let valB = data.b || data.baik || '';
+                                let valC = data.c || data.cukup || '';
+                                let valPb = data.pb || data.perlu_bimbingan || data['perlu bimbingan'] || '';
+
+                                if (!valSb && !valB && !valC) throw new Error("Data kosong");
+
+                                if(cellIndikator) cellIndikator.innerText = valIndikator;
+                                cellSb.innerText = valSb;
+                                cellB.innerText = valB;
+                                cellC.innerText = valC;
+                                cellPb.innerText = valPb;
+                                
+                                success = true; 
+
+                            } catch(e) { 
+                                retries--;
+                                if (retries < 0) {
+                                    if(cellIndikator) cellIndikator.innerHTML = oldIndikator || `<span class="text-danger small font-weight-bold">⚠️ Gagal (Klik Lagi)</span>`;
+                                    cellSb.innerText = oldSb || '-';
+                                    cellB.innerText = oldB || '-';
+                                    cellC.innerText = oldC || '-';
+                                    cellPb.innerText = oldPb || '-';
+                                } else {
+                                    await new Promise(resolve => setTimeout(resolve, 600));
+                                }
+                            }
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 300));
+                    }
+                    
+                    btnUtama.disabled = false;
+                    btnUtama.innerHTML = originalText;
+                    alert("✅ AI selesai memeriksa dan mengisi baris!");
+                });
+            }
+
+            // Tampilkan Modal secara native JS
+            showVanillaModal('modalAiPrompt');
         });
 
         // ==============================================================
@@ -168,7 +300,6 @@
             let rombelId = document.querySelector('select[name="rombel_id"]').value;
 
             document.querySelectorAll('#tbody-kktp tr[data-cpid]').forEach(tr => {
-                // 🌟 PERBAIKAN: Menarik teks dari sel indikator untuk disimpan ke database
                 let indikatorText = tr.querySelector('.cell-indikator') ? tr.querySelector('.cell-indikator').innerText.trim() : '';
 
                 dataKktp.push({
