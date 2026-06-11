@@ -63,12 +63,16 @@
 
                     <div class="col-md-4 text-end">
                         <div class="d-inline-block bg-light rounded p-2 border border-info text-center me-2 min-w-100">
-                            <span class="d-block small text-muted font-weight-bold">Target JP Kaldik</span>
-                            <span class="h5 font-weight-bold text-info mb-0"><?= $totalJpTersedia ?> JP</span>
+                            <!-- PERBAIKAN: Teks diubah, memanggil JP Modul -->
+                            <span class="d-block small text-muted font-weight-bold">Total JP Modul Ajar</span>
+                            <span class="h5 font-weight-bold text-info mb-0"><?= $totalJpModul ?> JP</span>
                         </div>
-                        <div class="d-inline-block bg-light rounded p-2 border <?= ($totalJpAtp == $totalJpTersedia) ? 'border-success' : 'border-warning' ?> text-center min-w-100">
+                        
+                        <!-- PERBAIKAN: Kotak ini akan otomatis hijau HANYA JIKA JP Modul sudah memenuhi seluruh JP ATP -->
+                        <?php $isLengkap = ($totalJpAtp == $totalJpModul && $totalJpAtp > 0); ?>
+                        <div class="d-inline-block bg-light rounded p-2 border <?= $isLengkap ? 'border-success' : 'border-warning' ?> text-center min-w-100">
                             <span class="d-block small text-muted font-weight-bold">Total JP ATP</span>
-                            <span class="h5 font-weight-bold <?= ($totalJpAtp == $totalJpTersedia) ? 'text-success' : 'text-warning' ?> mb-0"><?= $totalJpAtp ?> JP</span>
+                            <span class="h5 font-weight-bold <?= $isLengkap ? 'text-success' : 'text-warning' ?> mb-0"><?= $totalJpAtp ?> JP</span>
                         </div>
                     </div>
                 </form>

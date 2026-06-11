@@ -98,6 +98,7 @@ class ModulAjarController extends BaseController
 
         $dataAtpTersimpan = [];
         $totalJpAtp = 0;
+        $totalJpModul = 0; // PERBAIKAN: Variabel baru penampung JP Modul
 
         if ($tahunAktif && $selectedTeacherId && $db->tableExists('kurikulum_cp_headers') && $db->tableExists('kurikulum_cp_details')) {
             
@@ -246,7 +247,14 @@ class ModulAjarController extends BaseController
                     $row['status_modul'] = !empty($row['modul_id']) ? 1 : 0; 
                     
                     $row['tanggal'] = $listTanggal[$idx] ?? 'Belum Diatur';
-                    $totalJpAtp += (int)($row['estimasi_jp'] ?? 0);
+                    
+                    $estimasi = (int)($row['estimasi_jp'] ?? 0);
+                    $totalJpAtp += $estimasi;
+                    
+                    // PERBAIKAN: Hitung Total JP Modul jika statusnya sudah dibuat
+                    if ($row['status_modul'] == 1) {
+                        $totalJpModul += $estimasi;
+                    }
                 }
                 unset($row);
             }
@@ -254,14 +262,14 @@ class ModulAjarController extends BaseController
 
         $totalJpTersedia = 0; 
 
-        $data = [
+       $data = [
             'daftarRombel'     => $daftarRombel,
             'daftarMapel'      => $daftarMapel,
             'selectedRombelId' => $selectedRombelId,
             'selectedMapelId'  => $selectedMapelId,
             'namaRombelAktif'  => $namaRombelAktif,
             'dataAtpTersimpan' => $dataAtpTersimpan,
-            'totalJpTersedia'  => $totalJpTersedia,
+            'totalJpModul'     => $totalJpModul, // PERBAIKAN: Ganti nama variabel
             'totalJpAtp'       => $totalJpAtp
         ];
 
