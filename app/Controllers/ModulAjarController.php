@@ -531,7 +531,7 @@ class ModulAjarController extends BaseController
     }
 
     // ==============================================================
-    // FUNGSI SIKUMI AI GENERATOR UNTUK MODUL AJAR (GROQ LLaMA)
+    // FUNGSI SIKUMI AI GENERATOR (GROQ LLaMA - SMART GENERATION)
     // ==============================================================
     public function generateAi()
     {
@@ -540,16 +540,23 @@ class ModulAjarController extends BaseController
             return $this->response->setJSON(['status' => 'error', 'message' => 'Akses tidak sah.']);
         }
 
-        // 1. Tangkap konteks dari Form
+        // 1. Tangkap Konteks dan Daftar Kolom Kosong
         $mapel = $request->getPost('mapel');
         $rombel = $request->getPost('rombel');
         $materi = $request->getPost('materi');
         $tp = $request->getPost('tp');
         $instruksi = $request->getPost('instruksi');
-
-        // 2. Ambil Pengaturan API dari Database (Seperti AiController)
-        $db = \Config\Database::connect();
         
+        // Menangkap data array kolom mana saja yang masih kosong dari Javascript
+        $emptyFieldsJson = $request->getPost('empty_fields');
+        $emptyFields = json_decode($emptyFieldsJson, true);
+
+        if (empty($emptyFields)) {
+            return $this->response->setJSON(['status' => 'success', 'data' => [], 'message' => 'Semua kolom sudah terisi.']);
+        }
+
+        // 2. Ambil Pengaturan API
+        $db = \Config\Database::connect();
         $apiKeySetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_api_key')->get()->getRowArray() : null;
         $apiKey = $apiKeySetting ? trim($apiKeySetting['value']) : '';
 
@@ -560,12 +567,40 @@ class ModulAjarController extends BaseController
             return $this->response->setJSON(['status' => 'error', 'message' => 'Kunci akses API belum dipasang di pengaturan database.']);
         }
 
-        // 3. Susun Prompt (System & User)
-        $systemInstruction = "Anda adalah Ahli Kurikulum Merdeka (KBC) & Deep Learning. Tugas Anda menghasilkan konten edukatif untuk mengisi kolom modul ajar.\n"
-                           . "OUTPUT WAJIB JSON MURNI TANPA tag markdown (```json). Gunakan struktur key berikut persis:\n"
-                           . '{"capaian_pembelajaran":"","lintas_disiplin":"","topik_pembelajaran":"","praktik_pedagogis":"","kemitraan_pembelajaran":"","lingkungan_pembelajaran":"","pemanfaatan_digital":"","kegiatan_awal":"","kegiatan_inti_memahami":"","kegiatan_inti_mengaplikasikan":"","kegiatan_inti_merefleksi":"","kegiatan_penutup":"","asesmen_awal":"","asesmen_proses":"","asesmen_akhir":"","lampiran_materi":"","lampiran_lkm":"","lampiran_rubrik":"","sumber_belajar":"","contoh_produk":""}';
+        // 3. Mapping Nama HTML ke Format JSON AI
+        $keyMapping = [
+            'kegiatan[awal][isi]' => 'kegiatan_awal',
+            'kegiatan[inti][memahami]' => 'kegiatan_inti_memahami',
+            'kegiatan[inti][mengaplikasikan]' => 'kegiatan_inti_mengaplikasikan',
+            'kegiatan[inti][merefleksi]' => 'kegiatan_inti_merefleksi',
+            'kegiatan[penutup][isi]' => 'kegiatan_penutup'
+        ];
 
-        $userPrompt = "Bantu saya menyusun isi modul ajar untuk:\n"
+        // Membangun kerangka JSON dinamis HANYA untuk kolom yang kosong
+        $jsonKeysRequested = [];
+        foreach($emptyFields as $field) {
+            $jsonKeysRequested[] = $keyMapping[$field] ?? $field;
+        }
+        
+        $jsonStructureString = "{";
+        $count = count($jsonKeysRequested);
+        for($i=0; $i<$count; $i++) {
+            $jsonStructureString .= '"' . $jsonKeysRequested[$i] . '":""';
+            if ($i < $count - 1) $jsonStructureString .= ',';
+        }
+        $jsonStructureString .= "}";
+
+        // 4. Susun Prompt Cerdas
+        $systemInstruction = "Anda adalah Master Trainer Kurikulum Merdeka, Kurikulum Berbasis Cinta (KBC) MIMHa, & Deep Learning. Tugas Anda menyusun rancangan Modul Ajar yang SANGAT DETAIL, PANJANG, MENDALAM, dan APLIKATIF layaknya dokumen resmi RPP bertaraf nasional.\n\n"
+                           . "ATURAN PENULISAN (WAJIB DITAATI):\n"
+                           . "1. JANGAN GUNAKAN JAWABAN SINGKAT. Jabarkan narasi dengan operasional, interaktif, dan detail skenarionya.\n"
+                           . "2. Jika diminta 'kesiapan_murid': Uraikan kompetensi prasyarat, kondisi psikologis, dan gaya belajar.\n"
+                           . "3. Jika diminta 'insersi_kbc': Jabarkan filosofi integrasi nilai Panca Cinta dengan skenario terapannya.\n"
+                           . "4. PENTING: OUTPUT WAJIB JSON MURNI TANPA FORMAT MARKDOWN APAPUN.\n\n"
+                           . "HANYA HASILKAN KEY JSON BERIKUT KARENA HANYA BAGIAN INI YANG KOSONG DAN DIBUTUHKAN:\n"
+                           . $jsonStructureString;
+
+        $userPrompt = "Lengkapi rancangan Modul Ajar untuk:\n"
                     . "- Mata Pelajaran: $mapel\n"
                     . "- Sasaran: Kelas/Rombel $rombel\n"
                     . "- Materi Pokok: $materi\n"
@@ -575,23 +610,20 @@ class ModulAjarController extends BaseController
             $userPrompt .= "INSTRUKSI TAMBAHAN DARI GURU:\n$instruksi\n";
         }
 
-        // 4. SUSUN DATA UNTUK API
+        // 5. Data API
         $data = [
             'model' => 'llama-3.3-70b-versatile', 
             'messages' => [
                 ['role' => 'system', 'content' => $systemInstruction],
                 ['role' => 'user', 'content' => $userPrompt]
             ],
-            'temperature' => 0.6,
-            'max_tokens' => 3000
+            'temperature' => 0.7, 
+            'max_tokens' => 6000  
         ];
 
-        $headers = [
-            'Authorization: Bearer ' . $apiKey,
-            'Content-Type: application/json'
-        ];
+        $headers = [ 'Authorization: Bearer ' . $apiKey, 'Content-Type: application/json' ];
 
-        // 5. EKSEKUSI API MENGGUNAKAN cURL
+        // 6. Eksekusi cURL
         $ch = curl_init($apiUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
@@ -605,27 +637,24 @@ class ModulAjarController extends BaseController
 
         $responseData = json_decode($responseRaw, true);
 
-        // Jika kena limit (Groq API Rate Limit)
         if ($httpCode == 429) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Kuota SiKuMi habis (Limit). Silakan tunggu beberapa saat.']);
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Kuota SiKuMi habis (Limit API). Silakan tunggu beberapa saat.']);
         }
 
-        // 6. Parsing Balasan
         if ($httpCode >= 200 && $httpCode < 300) {
             if (isset($responseData['choices'][0]['message']['content'])) {
                 $aiText = $responseData['choices'][0]['message']['content'];
                 
-                // Bersihkan Markdown agar bisa di-decode jadi JSON
-                $aiText = preg_replace('/
-```json\s*/', '', $aiText);
-                $aiText = preg_replace('/```\s*/', '', $aiText);
+                // Pembersihan Markdown
+                $aiText = str_replace('```json', '', $aiText);
+                $aiText = str_replace('```', '', $aiText);
                 
                 $jsonOutput = json_decode(trim($aiText), true);
 
-                if($jsonOutput) {
+                if($jsonOutput !== null) {
                     return $this->response->setJSON(['status' => 'success', 'data' => $jsonOutput]);
                 } else {
-                    return $this->response->setJSON(['status' => 'error', 'message' => 'Gagal membaca format data AI.']);
+                    return $this->response->setJSON(['status' => 'error', 'message' => 'AI menghasilkan struktur gagal diurai. Silakan coba klik Generate lagi.']);
                 }
             }
         }
@@ -633,6 +662,5 @@ class ModulAjarController extends BaseController
         $errorMessage = $responseData['error']['message'] ?? 'Kesalahan dari server AI.';
         return $this->response->setJSON(['status' => 'error', 'message' => $errorMessage]);
     }
-
 
 }

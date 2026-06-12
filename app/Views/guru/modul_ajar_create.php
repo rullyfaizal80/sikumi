@@ -352,6 +352,7 @@
         </div>
     </div>
 
+    <!-- Wajib sertakan JS bawaan bootstrap/adminLTE agar Modal berfungsi jika belum ada -->
     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
 
     <script>
@@ -359,20 +360,48 @@
             let btn = document.getElementById('btnProsesAi');
             let instruksi = document.getElementById('ai_instruksi').value;
             
-            // PERBAIKAN 1: Mengambil nilai dengan aman menggunakan ID yang sudah dibuat
+            // 1. Mengambil nilai konteks umum
             let mapel = document.getElementById('input_mapel').value;
             let rombel = document.getElementById('input_rombel').value;
             let materi = document.getElementById('input_materi').value;
             
-            // Mengumpulkan Teks Tujuan Pembelajaran
             let tpElements = document.querySelectorAll('.box-tp');
             let tp = "";
             tpElements.forEach(el => tp += el.innerText + "\n");
 
-            // PERBAIKAN 2: Mengambil URL dari atribut tombol agar VS Code bahagia
             let targetUrl = btn.getAttribute('data-url');
 
-            btn.innerHTML = '⏳ Sedang Memikirkan...';
+            // 2. LOGIKA CERDAS: Mendata Semua Kolom yang Kosong Saja
+            const formFields = [
+                'kesiapan_murid', 'insersi_kbc', 'capaian_pembelajaran', 'lintas_disiplin',
+                'topik_pembelajaran', 'praktik_pedagogis', 'kemitraan_pembelajaran',
+                'lingkungan_pembelajaran', 'pemanfaatan_digital', 'kegiatan[awal][isi]',
+                'kegiatan[inti][memahami]', 'kegiatan[inti][mengaplikasikan]',
+                'kegiatan[inti][merefleksi]', 'kegiatan[penutup][isi]', 'asesmen_awal',
+                'asesmen_proses', 'asesmen_akhir', 'lampiran_materi', 'lampiran_lkm',
+                'lampiran_rubrik', 'sumber_belajar', 'contoh_produk'
+            ];
+
+            let emptyFields = [];
+            formFields.forEach(f => {
+                let el = document.querySelector(`[name="${f}"]`);
+                if(el && el.value.trim() === '') {
+                    emptyFields.push(f);
+                }
+            });
+
+            // Jika seluruh data sudah terisi, hentikan proses dan beritahu guru
+            if (emptyFields.length === 0) {
+                alert("👍 Semua kolom modul sudah terisi dengan lengkap! Anda tidak perlu memanggil AI lagi.");
+                
+                var myModalEl = document.getElementById('modalAi');
+                var modal = bootstrap.Modal.getInstance(myModalEl);
+                if(modal) modal.hide();
+                return;
+            }
+
+            // 3. Mulai Memanggil API
+            btn.innerHTML = '⏳ Menulis Bagian yang Kosong...';
             btn.disabled = true;
 
             let formData = new FormData();
@@ -381,6 +410,7 @@
             formData.append('materi', materi);
             formData.append('tp', tp);
             formData.append('instruksi', instruksi);
+            formData.append('empty_fields', JSON.stringify(emptyFields)); // Kirim array data kosong ke Server
 
             fetch(targetUrl, {
                 method: 'POST',
@@ -392,48 +422,36 @@
                 if(res.status === 'success') {
                     let d = res.data;
                     
-                    // Fungsi Cerdas: Hanya Mengisi Textarea/Input yang Kosong
-                    const fillData = (name, val) => {
+                    const fillData = (name, jsonKey) => {
                         let el = document.querySelector(`[name="${name}"]`);
-                        if(el && el.value.trim() === '' && val) {
-                            el.value = val;
-                            // Efek kedip biru untuk penanda
-                            el.style.backgroundColor = '#e8f4fd';
+                        if(el && el.value.trim() === '' && d[jsonKey]) {
+                            el.value = d[jsonKey];
+                            el.style.backgroundColor = '#e8f4fd'; // Animasi visual
                             setTimeout(() => { el.style.backgroundColor = ''; }, 2000);
                         }
                     };
-                    
-                    // Eksekusi pengisian (Pemetaan 1:1)
-                    fillData('capaian_pembelajaran', d.capaian_pembelajaran);
-                    fillData('lintas_disiplin', d.lintas_disiplin);
-                    fillData('topik_pembelajaran', d.topik_pembelajaran);
-                    fillData('praktik_pedagogis', d.praktik_pedagogis);
-                    fillData('kemitraan_pembelajaran', d.kemitraan_pembelajaran);
-                    fillData('lingkungan_pembelajaran', d.lingkungan_pembelajaran);
-                    fillData('pemanfaatan_digital', d.pemanfaatan_digital);
-                    
-                    fillData('kegiatan[awal][isi]', d.kegiatan_awal);
-                    fillData('kegiatan[inti][memahami]', d.kegiatan_inti_memahami);
-                    fillData('kegiatan[inti][mengaplikasikan]', d.kegiatan_inti_mengaplikasikan);
-                    fillData('kegiatan[inti][merefleksi]', d.kegiatan_inti_merefleksi);
-                    fillData('kegiatan[penutup][isi]', d.kegiatan_penutup);
 
-                    fillData('asesmen_awal', d.asesmen_awal);
-                    fillData('asesmen_proses', d.asesmen_proses);
-                    fillData('asesmen_akhir', d.asesmen_akhir);
+                    // Memetakan input name HTML kembali ke Key JSON yang dihasilkan AI
+                    const keyMapping = {
+                        'kegiatan[awal][isi]' : 'kegiatan_awal',
+                        'kegiatan[inti][memahami]' : 'kegiatan_inti_memahami',
+                        'kegiatan[inti][mengaplikasikan]' : 'kegiatan_inti_mengaplikasikan',
+                        'kegiatan[inti][merefleksi]' : 'kegiatan_inti_merefleksi',
+                        'kegiatan[penutup][isi]' : 'kegiatan_penutup'
+                    };
 
-                    fillData('lampiran_materi', d.lampiran_materi);
-                    fillData('lampiran_lkm', d.lampiran_lkm);
-                    fillData('lampiran_rubrik', d.lampiran_rubrik);
-                    fillData('sumber_belajar', d.sumber_belajar);
-                    fillData('contoh_produk', d.contoh_produk);
+                    // HANYA eksekusi isian untuk form yang kosong (berdasarkan array)
+                    emptyFields.forEach(f => {
+                        let jKey = keyMapping[f] || f;
+                        fillData(f, jKey);
+                    });
 
-                    // Menutup Modal 
+                    // Tutup Modal
                     var myModalEl = document.getElementById('modalAi');
                     var modal = bootstrap.Modal.getInstance(myModalEl);
                     if(modal) modal.hide();
                     
-                    alert('🪄 Voila! Kolom yang kosong telah dilengkapi oleh SiKuMi AI. Silakan periksa dan edit kembali.');
+                    alert('🪄 SiKuMi AI telah melengkapi ' + emptyFields.length + ' kolom yang kosong. Silakan periksa hasilnya!');
                 } else {
                     alert('❌ Gagal: ' + res.message);
                 }
