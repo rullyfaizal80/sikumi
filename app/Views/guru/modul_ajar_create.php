@@ -26,6 +26,15 @@
         .text-pudar {
             color: #adb5bd !important;
         }
+
+        /* CSS untuk Textarea Dinamis Melar */
+        textarea.form-control {
+            overflow-y: hidden;
+            min-height: 60px;   
+            max-height: 350px;  
+            resize: none;       
+            transition: background-color 0.3s ease;
+        }
     </style>
 </head>
 <body class="layout-fixed">
@@ -44,7 +53,7 @@
                     <p class="text-muted mb-0">Insersi Kurikulum Berbasis Cinta (KBC) & Deep Learning</p>
                 </div>
                 <div>
-                    <!-- PERBAIKAN: Tombol Modal SiKuMi AI -->
+                    <!-- Tombol Modal SiKuMi AI -->
                     <button type="button" class="btn btn-info btn-sm font-weight-bold shadow-sm me-1 text-white" data-bs-toggle="modal" data-bs-target="#modalAi">🪄 SiKuMi AI</button>
                     
                     <?php if(!empty($modulId)): ?>
@@ -57,6 +66,9 @@
             </div>
 
             <div class="row">
+                <!-- ========================================== -->
+                <!-- KOLOM KIRI (Bagian A, B, C)                  -->
+                <!-- ========================================== -->
                 <div class="col-lg-6">
                     
                     <div class="card shadow-sm mb-4 border-0">
@@ -85,9 +97,9 @@
                             </div>
 
                             <div class="row mb-3 align-items-center">
-                                <label class="col-sm-4 small font-weight-bold text-muted mb-0">Tanggal Pelaksanaan <span class="text-danger">*</span></label>
+                                <label class="col-sm-4 small font-weight-bold text-muted mb-0">Tanggal Pelaksanaan</label>
                                 <div class="col-sm-8">
-                                    <input type="text" name="tanggal_pelaksanaan" class="form-control form-control-sm font-weight-bold text-primary bg-white" value="<?= esc($tanggalPelaksanaan) ?>" placeholder="Contoh: 12 Jan 2026, 19 Jan 2026" required>
+                                    <input type="text" name="tanggal_pelaksanaan" class="form-control form-control-sm auto-filled text-muted" value="<?= esc($tanggalPelaksanaan) ?>" readonly>
                                 </div>
                             </div>
 
@@ -211,7 +223,12 @@
                         </div>
                     </div>
 
-                </div> <div class="col-lg-6">
+                </div> 
+
+                <!-- ========================================== -->
+                <!-- KOLOM KANAN (Bagian D, E, F)                 -->
+                <!-- ========================================== -->
+                <div class="col-lg-6">
                     
                     <div class="card shadow-sm mb-4 border-0">
                         <div class="card-body">
@@ -314,8 +331,11 @@
                         </div>
                     </div>
 
-                </div> </div>
-        </form> <?php if(!empty($modulId)): ?>
+                </div> 
+            </div>
+        </form> 
+
+        <?php if(!empty($modulId)): ?>
         <form id="formReset" action="<?= base_url('guru/modul-ajar/reset') ?>" method="POST" style="display:none;">
             <input type="hidden" name="modul_id" value="<?= esc($modulId) ?>">
             <input type="hidden" name="rombel_id" value="<?= esc($rombelId) ?>">
@@ -337,7 +357,7 @@
                 </div>
                 <div class="modal-body">
                     <div class="alert alert-light border small text-muted mb-3">
-                        Robot SiKuMi AI akan menganalisis Tujuan Pembelajaran Anda dan otomatis mengisi kolom-kolom yang <b>masih kosong</b>. Isian yang sudah Anda ketik secara manual tidak akan ditimpa/dihapus.
+                        Robot SiKuMi AI akan menganalisis Tujuan Pembelajaran Anda dan otomatis mengisi kolom-kolom yang <b>masih kosong</b>. Isian yang sudah Anda ketik manual aman terjaga.
                     </div>
                     <div class="form-group mb-0">
                         <label class="small font-weight-bold text-dark">Instruksi Tambahan (Opsional)</label>
@@ -352,26 +372,66 @@
         </div>
     </div>
 
-    <!-- Wajib sertakan JS bawaan bootstrap/adminLTE agar Modal berfungsi jika belum ada -->
     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
 
     <script>
+        // ==========================================
+        // FUNGSI AUTO-RESIZE TEXTAREA
+        // ==========================================
+        function autoResizeTextarea(el) {
+            el.style.height = 'auto'; 
+            let newHeight = el.scrollHeight; 
+            el.style.height = newHeight + 'px';
+            
+            let maxHeight = parseInt(window.getComputedStyle(el).maxHeight);
+            if (newHeight >= maxHeight) {
+                el.style.overflowY = 'auto';
+            } else {
+                el.style.overflowY = 'hidden';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            let textareas = document.querySelectorAll('textarea.form-control');
+            textareas.forEach(ta => {
+                ta.addEventListener('input', function() {
+                    autoResizeTextarea(this);
+                });
+                if(ta.value.trim() !== '') {
+                    setTimeout(() => autoResizeTextarea(ta), 100); 
+                }
+            });
+        });
+
+        // ==========================================
+        // FUNGSI PROSES AI (FULL CONTEXT)
+        // ==========================================
         function prosesAi() {
             let btn = document.getElementById('btnProsesAi');
             let instruksi = document.getElementById('ai_instruksi').value;
             
-            // 1. Mengambil nilai konteks umum
             let mapel = document.getElementById('input_mapel').value;
             let rombel = document.getElementById('input_rombel').value;
             let materi = document.getElementById('input_materi').value;
             
+            // Tangkap ID ATP untuk Query Pencarian CP Asli di DB
+            let atpIds = document.querySelector('input[name="atp_ids"]').value;
+
+            // Kumpulkan Teks TP
             let tpElements = document.querySelectorAll('.box-tp');
             let tp = "";
             tpElements.forEach(el => tp += el.innerText + "\n");
 
+            // Kumpulkan Profil Lulusan & Panca Cinta yang Tercentang
+            let dplElements = document.querySelectorAll('input[id^="DPL"]:checked');
+            let dpl = Array.from(dplElements).map(el => el.nextElementSibling.innerText).join(', ');
+
+            let pilarElements = document.querySelectorAll('input[id^="P"]:checked');
+            let pancaCinta = Array.from(pilarElements).map(el => el.nextElementSibling.innerText).join(', ');
+
             let targetUrl = btn.getAttribute('data-url');
 
-            // 2. LOGIKA CERDAS: Mendata Semua Kolom yang Kosong Saja
+            // Deteksi Kolom Kosong
             const formFields = [
                 'kesiapan_murid', 'insersi_kbc', 'capaian_pembelajaran', 'lintas_disiplin',
                 'topik_pembelajaran', 'praktik_pedagogis', 'kemitraan_pembelajaran',
@@ -390,18 +450,16 @@
                 }
             });
 
-            // Jika seluruh data sudah terisi, hentikan proses dan beritahu guru
             if (emptyFields.length === 0) {
                 alert("👍 Semua kolom modul sudah terisi dengan lengkap! Anda tidak perlu memanggil AI lagi.");
-                
                 var myModalEl = document.getElementById('modalAi');
                 var modal = bootstrap.Modal.getInstance(myModalEl);
                 if(modal) modal.hide();
                 return;
             }
 
-            // 3. Mulai Memanggil API
-            btn.innerHTML = '⏳ Menulis Bagian yang Kosong...';
+            // Memulai Fetch ke Controller
+            btn.innerHTML = '⏳ Sedang Merumuskan RPP...';
             btn.disabled = true;
 
             let formData = new FormData();
@@ -410,7 +468,10 @@
             formData.append('materi', materi);
             formData.append('tp', tp);
             formData.append('instruksi', instruksi);
-            formData.append('empty_fields', JSON.stringify(emptyFields)); // Kirim array data kosong ke Server
+            formData.append('dpl', dpl);                 // <- Data DPL masuk
+            formData.append('panca_cinta', pancaCinta);   // <- Data Panca Cinta masuk
+            formData.append('atp_ids', atpIds);           // <- ID ATP untuk narik CP Asli masuk
+            formData.append('empty_fields', JSON.stringify(emptyFields));
 
             fetch(targetUrl, {
                 method: 'POST',
@@ -425,13 +486,21 @@
                     const fillData = (name, jsonKey) => {
                         let el = document.querySelector(`[name="${name}"]`);
                         if(el && el.value.trim() === '' && d[jsonKey]) {
-                            el.value = d[jsonKey];
-                            el.style.backgroundColor = '#e8f4fd'; // Animasi visual
+                            
+                            let val = d[jsonKey];
+                            
+                            if (typeof val === 'object' && val !== null) {
+                                val = Object.values(val).join('\n\n');
+                            }
+                            
+                            el.value = val;
+                            autoResizeTextarea(el);
+                            
+                            el.style.backgroundColor = '#e8f4fd'; 
                             setTimeout(() => { el.style.backgroundColor = ''; }, 2000);
                         }
                     };
 
-                    // Memetakan input name HTML kembali ke Key JSON yang dihasilkan AI
                     const keyMapping = {
                         'kegiatan[awal][isi]' : 'kegiatan_awal',
                         'kegiatan[inti][memahami]' : 'kegiatan_inti_memahami',
@@ -440,24 +509,22 @@
                         'kegiatan[penutup][isi]' : 'kegiatan_penutup'
                     };
 
-                    // HANYA eksekusi isian untuk form yang kosong (berdasarkan array)
                     emptyFields.forEach(f => {
                         let jKey = keyMapping[f] || f;
                         fillData(f, jKey);
                     });
 
-                    // Tutup Modal
                     var myModalEl = document.getElementById('modalAi');
                     var modal = bootstrap.Modal.getInstance(myModalEl);
                     if(modal) modal.hide();
                     
-                    alert('🪄 SiKuMi AI telah melengkapi ' + emptyFields.length + ' kolom yang kosong. Silakan periksa hasilnya!');
+                    alert('🪄 Sempurna! SiKuMi AI telah mengisi ' + emptyFields.length + ' kolom yang kosong (termasuk memotong kalimat CP Asli secara cerdas). Silakan periksa!');
                 } else {
                     alert('❌ Gagal: ' + res.message);
                 }
             })
             .catch(error => {
-                alert('Terjadi kesalahan koneksi saat memanggil AI.');
+                alert('Terjadi kesalahan jaringan saat memanggil AI.');
                 console.error(error);
             })
             .finally(() => {

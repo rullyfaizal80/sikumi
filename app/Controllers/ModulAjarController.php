@@ -531,7 +531,7 @@ class ModulAjarController extends BaseController
     }
 
     // ==============================================================
-    // FUNGSI SIKUMI AI GENERATOR (GROQ LLaMA - SMART GENERATION)
+    // FUNGSI SIKUMI AI GENERATOR (GROQ LLaMA - STRICT & DYNAMIC CP)
     // ==============================================================
     public function generateAi()
     {
@@ -540,14 +540,16 @@ class ModulAjarController extends BaseController
             return $this->response->setJSON(['status' => 'error', 'message' => 'Akses tidak sah.']);
         }
 
-        // 1. Tangkap Konteks dan Daftar Kolom Kosong
+        // 1. Tangkap Konteks dari Form
         $mapel = $request->getPost('mapel');
         $rombel = $request->getPost('rombel');
         $materi = $request->getPost('materi');
         $tp = $request->getPost('tp');
         $instruksi = $request->getPost('instruksi');
+        $dpl = $request->getPost('dpl');
+        $pancaCinta = $request->getPost('panca_cinta');
         
-        // Menangkap data array kolom mana saja yang masih kosong dari Javascript
+        // Tangkap Array Kolom Kosong
         $emptyFieldsJson = $request->getPost('empty_fields');
         $emptyFields = json_decode($emptyFieldsJson, true);
 
@@ -555,8 +557,35 @@ class ModulAjarController extends BaseController
             return $this->response->setJSON(['status' => 'success', 'data' => [], 'message' => 'Semua kolom sudah terisi.']);
         }
 
-        // 2. Ambil Pengaturan API
         $db = \Config\Database::connect();
+
+        // 2. LOGIKA BARU: Mengambil Teks CP Asli dari Database berdasarkan ATP yang dipilih
+        $cpAsli = "Tidak ada referensi CP Asli.";
+        $atpIdsPost = $request->getPost('atp_ids'); 
+        
+        if (!empty($atpIdsPost)) {
+            $atpIdsArray = explode(',', $atpIdsPost);
+            
+            $builder = $db->table('kurikulum_atp a');
+            $builder->select('h.teks_cp_asli');
+            $builder->join('kurikulum_cp_details d', 'd.id = a.cp_detail_id', 'left');
+            $builder->join('kurikulum_cp_headers h', 'h.id = d.header_id', 'left');
+            $builder->whereIn('a.id', $atpIdsArray);
+            $builder->where('h.teks_cp_asli IS NOT NULL');
+            $builder->groupBy('h.id'); // Mencegah duplikasi jika 1 CP punya banyak TP
+            
+            $queryCp = $builder->get()->getResultArray();
+            
+            if (!empty($queryCp)) {
+                $cpTexts = [];
+                foreach($queryCp as $row) {
+                    $cpTexts[] = $row['teks_cp_asli'];
+                }
+                $cpAsli = implode("\n", $cpTexts);
+            }
+        }
+
+        // 3. Ambil Pengaturan API
         $apiKeySetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_api_key')->get()->getRowArray() : null;
         $apiKey = $apiKeySetting ? trim($apiKeySetting['value']) : '';
 
@@ -564,10 +593,10 @@ class ModulAjarController extends BaseController
         $apiUrl = (!empty($apiProviderSetting['value'])) ? trim($apiProviderSetting['value']) : 'https://api.groq.com/openai/v1/chat/completions';
 
         if (empty($apiKey)) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Kunci akses API belum dipasang di pengaturan database.']);
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Kunci akses API belum dipasang.']);
         }
 
-        // 3. Mapping Nama HTML ke Format JSON AI
+        // 4. Mapping Nama HTML ke Format JSON AI
         $keyMapping = [
             'kegiatan[awal][isi]' => 'kegiatan_awal',
             'kegiatan[inti][memahami]' => 'kegiatan_inti_memahami',
@@ -576,7 +605,6 @@ class ModulAjarController extends BaseController
             'kegiatan[penutup][isi]' => 'kegiatan_penutup'
         ];
 
-        // Membangun kerangka JSON dinamis HANYA untuk kolom yang kosong
         $jsonKeysRequested = [];
         foreach($emptyFields as $field) {
             $jsonKeysRequested[] = $keyMapping[$field] ?? $field;
@@ -585,45 +613,52 @@ class ModulAjarController extends BaseController
         $jsonStructureString = "{";
         $count = count($jsonKeysRequested);
         for($i=0; $i<$count; $i++) {
-            $jsonStructureString .= '"' . $jsonKeysRequested[$i] . '":""';
-            if ($i < $count - 1) $jsonStructureString .= ',';
+            $jsonStructureString .= '"' . $jsonKeysRequested[$i] . '":"Teks pembuka...\\n1. Poin pertama\\n2. Poin kedua"';
+            if ($i < $count - 1) $jsonStructureString .= ', ';
         }
         $jsonStructureString .= "}";
 
-        // 4. Susun Prompt Cerdas
-        $systemInstruction = "Anda adalah Master Trainer Kurikulum Merdeka, Kurikulum Berbasis Cinta (KBC) MIMHa, & Deep Learning. Tugas Anda menyusun rancangan Modul Ajar yang SANGAT DETAIL, PANJANG, MENDALAM, dan APLIKATIF layaknya dokumen resmi RPP bertaraf nasional.\n\n"
-                           . "ATURAN PENULISAN (WAJIB DITAATI):\n"
-                           . "1. JANGAN GUNAKAN JAWABAN SINGKAT. Jabarkan narasi dengan operasional, interaktif, dan detail skenarionya.\n"
-                           . "2. Jika diminta 'kesiapan_murid': Uraikan kompetensi prasyarat, kondisi psikologis, dan gaya belajar.\n"
-                           . "3. Jika diminta 'insersi_kbc': Jabarkan filosofi integrasi nilai Panca Cinta dengan skenario terapannya.\n"
-                           . "4. PENTING: OUTPUT WAJIB JSON MURNI TANPA FORMAT MARKDOWN APAPUN.\n\n"
-                           . "HANYA HASILKAN KEY JSON BERIKUT KARENA HANYA BAGIAN INI YANG KOSONG DAN DIBUTUHKAN:\n"
+        // 5. Susun Prompt Cerdas dengan Data Super Lengkap
+        $systemInstruction = "Anda adalah Master Trainer Kurikulum Merdeka, Kurikulum Berbasis Cinta (KBC) MIMHa, & Deep Learning. Tugas Anda menyusun rancangan Modul Ajar yang SANGAT DETAIL, MENDALAM, dan APLIKATIF.\n\n"
+                           . "ATURAN FORMAT JSON (WAJIB DITAATI):\n"
+                           . "1. TIPE DATA VALUE WAJIB STRING. DILARANG KERAS membuat Array atau Object bercabang di dalam value JSON.\n"
+                           . "2. DILARANG MENGGUNAKAN ENTER ASLI (Raw Newline). Untuk baris baru atau poin, WAJIB gunakan literal '\\n'.\n"
+                           . "3. DILARANG MENGGUNAKAN TANDA KUTIP GANDA (\") di dalam teks, gunakan kutip tunggal (').\n"
+                           . "4. KHUSUS 'capaian_pembelajaran': JANGAN mengarang CP sendiri! Anda WAJIB memotong/mengutip kalimat yang relevan saja dari 'Teks CP Asli Pemerintah' yang diberikan oleh user.\n"
+                           . "5. KHUSUS 'insersi_kbc': Jabarkan langkah aplikatif dari 'Fokus Nilai Panca Cinta' yang diberikan user.\n\n"
+                           . "HANYA HASILKAN KEY JSON BERIKUT (OUTPUT WAJIB JSON MURNI):\n"
                            . $jsonStructureString;
 
         $userPrompt = "Lengkapi rancangan Modul Ajar untuk:\n"
                     . "- Mata Pelajaran: $mapel\n"
                     . "- Sasaran: Kelas/Rombel $rombel\n"
                     . "- Materi Pokok: $materi\n"
-                    . "- Tujuan Pembelajaran:\n$tp\n\n";
+                    . "- Fokus Dimensi Profil Lulusan (DPL): " . (!empty($dpl) ? $dpl : 'Sesuaikan dengan materi') . "\n"
+                    . "- Fokus Nilai Panca Cinta (KBC): " . (!empty($pancaCinta) ? $pancaCinta : 'Sesuaikan dengan materi') . "\n\n"
+                    . "- Tujuan Pembelajaran (TP):\n$tp\n"
+                    . "-----------------------------------\n"
+                    . "- Teks CP Asli Pemerintah (Sumber Ekstraksi CP):\n$cpAsli\n"
+                    . "-----------------------------------\n\n";
         
         if (!empty($instruksi)) {
             $userPrompt .= "INSTRUKSI TAMBAHAN DARI GURU:\n$instruksi\n";
         }
 
-        // 5. Data API
+        // 6. Data API dengan Response Format Terkunci
         $data = [
             'model' => 'llama-3.3-70b-versatile', 
             'messages' => [
                 ['role' => 'system', 'content' => $systemInstruction],
                 ['role' => 'user', 'content' => $userPrompt]
             ],
-            'temperature' => 0.7, 
-            'max_tokens' => 6000  
+            'temperature' => 0.6, 
+            'max_tokens' => 6000,
+            'response_format' => ['type' => 'json_object'] 
         ];
 
         $headers = [ 'Authorization: Bearer ' . $apiKey, 'Content-Type: application/json' ];
 
-        // 6. Eksekusi cURL
+        // 7. Eksekusi cURL
         $ch = curl_init($apiUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
@@ -645,16 +680,17 @@ class ModulAjarController extends BaseController
             if (isset($responseData['choices'][0]['message']['content'])) {
                 $aiText = $responseData['choices'][0]['message']['content'];
                 
-                // Pembersihan Markdown
-                $aiText = str_replace('```json', '', $aiText);
-                $aiText = str_replace('```', '', $aiText);
+                if (preg_match('/\{[\s\S]*\}/', $aiText, $matches)) {
+                    $aiText = $matches[0];
+                }
                 
                 $jsonOutput = json_decode(trim($aiText), true);
 
                 if($jsonOutput !== null) {
                     return $this->response->setJSON(['status' => 'success', 'data' => $jsonOutput]);
                 } else {
-                    return $this->response->setJSON(['status' => 'error', 'message' => 'AI menghasilkan struktur gagal diurai. Silakan coba klik Generate lagi.']);
+                    $jsonError = json_last_error_msg();
+                    return $this->response->setJSON(['status' => 'error', 'message' => "Kesalahan format AI: $jsonError. Silakan klik Generate lagi."]);
                 }
             }
         }
