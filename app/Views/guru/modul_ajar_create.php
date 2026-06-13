@@ -53,16 +53,21 @@
                     <p class="text-muted mb-0">Insersi Kurikulum Berbasis Cinta (KBC) & Deep Learning</p>
                 </div>
                 <div>
-                    <!-- Tombol Modal SiKuMi AI -->
-                    <button type="button" class="btn btn-info btn-sm font-weight-bold shadow-sm me-1 text-white" data-bs-toggle="modal" data-bs-target="#modalAi">🪄 SiKuMi AI</button>
-                    
-                    <?php if(!empty($modulId)): ?>
-                        <button type="button" class="btn btn-danger btn-sm font-weight-bold shadow-sm me-1" onclick="if(confirm('Yakin ingin mereset/menghapus modul ini? Seluruh isian akan hilang dan TP akan kembali ke status Belum Dibuat.')) document.getElementById('formReset').submit();">🗑️ Reset Modul</button>
-                    <?php endif; ?>
-                    
-                    <a href="<?= base_url("guru/modul-ajar?rombel_id={$rombelId}&mapel_id={$mapelId}") ?>" class="btn btn-secondary btn-sm font-weight-bold shadow-sm me-1">⬅️ Batal</a>
-                    <button type="submit" class="btn btn-primary btn-sm font-weight-bold shadow-sm">💾 Simpan Modul</button>
-                </div>
+    <!-- Tombol Modal SiKuMi AI -->
+    <button type="button" class="btn btn-info btn-sm font-weight-bold shadow-sm me-1 text-white" data-bs-toggle="modal" data-bs-target="#modalAi">🪄 SiKuMi AI</button>
+    
+    <?php if(!empty($modulId)): ?>
+        <!-- Tombol Print (Hanya muncul jika sudah tersimpan) -->
+        <a href="<?= base_url('guru/modul-ajar/print/' . $modulId) ?>" target="_blank" class="btn btn-success btn-sm font-weight-bold shadow-sm me-1">🖨️ Print Modul</a>
+
+        <!-- Tombol Reset -->
+        <button type="button" class="btn btn-danger btn-sm font-weight-bold shadow-sm me-1" onclick="if(confirm('Yakin ingin mereset/menghapus modul ini? Seluruh isian akan hilang dan TP akan kembali ke status Belum Dibuat.')) document.getElementById('formReset').submit();">🗑️ Reset Modul</button>
+    <?php endif; ?>
+    
+    <a href="<?= base_url("guru/modul-ajar?rombel_id={$rombelId}&mapel_id={$mapelId}") ?>" class="btn btn-secondary btn-sm font-weight-bold shadow-sm me-1">⬅️ Batal</a>
+    <button type="submit" class="btn btn-primary btn-sm font-weight-bold shadow-sm">💾 Simpan Modul</button>
+</div>
+
             </div>
 
             <div class="row">

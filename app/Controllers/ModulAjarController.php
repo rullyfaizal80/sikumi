@@ -699,4 +699,76 @@ class ModulAjarController extends BaseController
         return $this->response->setJSON(['status' => 'error', 'message' => $errorMessage]);
     }
 
+    // ==============================================================
+    // FUNGSI CETAK (PRINT) MODUL AJAR
+    // ==============================================================
+    public function printModul($modulId)
+    {
+        $db = \Config\Database::connect();
+
+        // 1. Ambil Data Modul Utama
+        $modulData = $db->table('kurikulum_modul_ajar')->where('id', $modulId)->get()->getRowArray();
+        if (!$modulData) {
+            return redirect()->back()->with('error', 'Data modul tidak ditemukan.');
+        }
+
+        // 2. Ambil Nama Rombel
+        $rombel = $db->tableExists('class_rombel') ? $db->table('class_rombel')->where('id', $modulData['rombel_id'])->get()->getRowArray() : null;
+        $namaRombel = $rombel ? $rombel['rombel_name'] : '-';
+
+        // 3. Ambil Teks Tujuan Pembelajaran (Gabungan dari ATP yang Terikat)
+        $atpList = $db->table('kurikulum_atp a')
+                      ->select('d.tujuan_pembelajaran')
+                      ->join('kurikulum_cp_details d', 'd.id = a.cp_detail_id', 'left')
+                      ->where('a.modul_id', $modulId)
+                      ->get()->getResultArray();
+                      
+        $tpTexts = [];
+        foreach($atpList as $idx => $atp) {
+            if (!empty($atp['tujuan_pembelajaran'])) {
+                $tpTexts[] = ($idx + 1) . ". " . $atp['tujuan_pembelajaran'];
+            }
+        }
+        $tujuanPembelajaranTeks = empty($tpTexts) ? "Tujuan Pembelajaran belum dirumuskan." : implode("\n", $tpTexts);
+
+        // 4. Ambil Tahun Aktif
+        $tahunAktif = $db->tableExists('academic_years') ? $db->table('academic_years')->where('is_active', 1)->get()->getRowArray() : null;
+
+        // 5. Ambil Pengaturan Global (Nama Sekolah, Kamad, dll)
+        $settings = $db->tableExists('settings') ? $db->table('settings')->get()->getResultArray() : [];
+        $set = [];
+        foreach($settings as $s) { 
+            $set[$s['key']] = $s['value']; 
+        }
+
+        // 6. Tangkap Identitas Guru
+        $userId = session()->get('user_id') ?? session()->get('id') ?? 1;
+        $namaGuruCetak = session()->get('nama') ?? 'Nama : Rully Faizal, S.T.';
+        $guruNpk = session()->get('npk') ?? session()->get('nim') ?? 'NIM : 20276896180001';
+
+        // 7. Format Titi Mangsa (Tanggal Cetak Lokal Indonesia)
+        $bulanIndo = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+        $tanggalCetak = date('j') . ' ' . $bulanIndo[(int)date('m')] . ' ' . date('Y');
+        $titiMangsa = ($set['titimangsa_print'] ?? 'Bandung') . ', ' . $tanggalCetak;
+
+        // 8. Susun Variabel untuk View
+        $data = [
+            'modulId' => $modulId,
+            'modulData' => $modulData,
+            'namaMadrasah' => $set['nama_sekolah'] ?? 'MTs MIFTAHUL HUDA',
+            'tahunAktif' => $tahunAktif,
+            'namaMapelAktif' => $modulData['mapel_id'], 
+            'namaRombel' => $namaRombel,
+            'tujuanPembelajaranTeks' => $tujuanPembelajaranTeks,
+            'kepalaNama' => $set['kepala_nama'] ?? 'Yana Purnama, S.Pd.',
+            'kepalaNpk' => $set['kepala_npk'] ?? '-',
+            'titiMangsa' => $titiMangsa,
+            'userId' => $userId,
+            'namaGuruCetak' => $namaGuruCetak,
+            'guruNpk' => $guruNpk
+        ];
+
+        return view('guru/modul_ajar_print', $data);
+    }
+
 }
