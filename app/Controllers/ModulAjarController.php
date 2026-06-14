@@ -699,8 +699,8 @@ class ModulAjarController extends BaseController
         return $this->response->setJSON(['status' => 'error', 'message' => $errorMessage]);
     }
 
-    // ==============================================================
-    // FUNGSI CETAK (PRINT) MODUL AJAR
+   // ==============================================================
+    // FUNGSI CETAK (PRINT) MODUL AJAR (FULL DINAMIS)
     // ==============================================================
     public function printModul($modulId)
     {
@@ -716,56 +716,136 @@ class ModulAjarController extends BaseController
         $rombel = $db->tableExists('class_rombel') ? $db->table('class_rombel')->where('id', $modulData['rombel_id'])->get()->getRowArray() : null;
         $namaRombel = $rombel ? $rombel['rombel_name'] : '-';
 
-        // 3. Ambil Teks Tujuan Pembelajaran (Gabungan dari ATP yang Terikat)
+        // 3. Menerjemahkan Kode Mapel (S_x atau C_x) menjadi Nama Asli
+        $rawMapelId = $modulData['mapel_id'];
+        $namaMapelAktif = $rawMapelId; // Default jika gagal dicari
+
+        if (strpos($rawMapelId, 'S_') === 0) {
+            // Jika diawali S_ (Mapel Tunggal)
+            $idMapel = str_replace('S_', '', $rawMapelId);
+            $mapelRow = $db->tableExists('master_subjects') ? $db->table('master_subjects')->where('id', $idMapel)->get()->getRowArray() : null;
+            if ($mapelRow) {
+                $namaMapelAktif = $mapelRow['subject_name'] ?? $mapelRow['nama_mapel'] ?? $mapelRow['name'] ?? $rawMapelId;
+            }
+        } elseif (strpos($rawMapelId, 'C_') === 0) {
+            // Jika diawali C_ (Mapel Gabungan / Combined)
+            $idMapel = str_replace('C_', '', $rawMapelId);
+            $mapelRow = $db->tableExists('schedule_combined_subjects') ? $db->table('schedule_combined_subjects')->where('id', $idMapel)->get()->getRowArray() : null;
+            if ($mapelRow) {
+                $namaMapelAktif = $mapelRow['combined_name'] ?? $rawMapelId;
+            }
+        }
+
+        // 4. Ambil Teks Tujuan Pembelajaran, DPL, dan Panca Cinta dari Tabel Relasi
         $atpList = $db->table('kurikulum_atp a')
-                      ->select('d.tujuan_pembelajaran')
+                      ->select('d.tujuan_pembelajaran, a.dpl_terpilih, a.panca_cinta_terpilih') 
                       ->join('kurikulum_cp_details d', 'd.id = a.cp_detail_id', 'left')
                       ->where('a.modul_id', $modulId)
                       ->get()->getResultArray();
                       
         $tpTexts = [];
+        $dplArray = [];
+        $pancaCintaArray = [];
+
         foreach($atpList as $idx => $atp) {
             if (!empty($atp['tujuan_pembelajaran'])) {
                 $tpTexts[] = ($idx + 1) . ". " . $atp['tujuan_pembelajaran'];
             }
+            
+            // Ekstrak DPL
+            if(!empty($atp['dpl_terpilih'])) {
+                $ex1 = explode(',', $atp['dpl_terpilih']);
+                foreach($ex1 as $e) $dplArray[] = trim($e);
+            }
+            // Ekstrak Panca Cinta
+            if(!empty($atp['panca_cinta_terpilih'])) {
+                $ex2 = explode(',', $atp['panca_cinta_terpilih']);
+                foreach($ex2 as $e) $pancaCintaArray[] = trim($e);
+            }
         }
+        
         $tujuanPembelajaranTeks = empty($tpTexts) ? "Tujuan Pembelajaran belum dirumuskan." : implode("\n", $tpTexts);
+        $dplArray = array_unique(array_filter($dplArray));
+        $pancaCintaArray = array_unique(array_filter($pancaCintaArray));
 
-        // 4. Ambil Tahun Aktif
+        // 5. Mapping DPL & Panca Cinta agar tampil Namanya
+        $listProfilLulusan = [
+            'DPL1' => 'Keimanan dan Ketakwaan', 'DPL2' => 'Kewargaan',
+            'DPL3' => 'Penalaran Kritis', 'DPL4' => 'Kreativitas',
+            'DPL5' => 'Kolaborasi', 'DPL6' => 'Kemandirian',
+            'DPL7' => 'Kesehatan', 'DPL8' => 'Komunikasi'
+        ];
+        
+        $listPancaCinta = [
+            'P1' => 'Cinta kepada Allah dan Rasul-Nya',
+            'P2' => 'Cinta kepada Ilmu',
+            'P3' => 'Cinta kepada Diri Sendiri dan Sesama',
+            'P4' => 'Cinta kepada Lingkungan',
+            'P5' => 'Cinta kepada Tanah Air'
+        ];
+
+        $dplTeksList = [];
+        foreach($dplArray as $d) {
+            $dplTeksList[] = isset($listProfilLulusan[$d]) ? "☑ {$d} - {$listProfilLulusan[$d]}" : "☑ {$d}";
+        }
+        $dplTeksCetak = empty($dplTeksList) ? '-' : implode("<br>", $dplTeksList);
+
+        $pancaCintaTeksList = [];
+        foreach($pancaCintaArray as $p) {
+            $pancaCintaTeksList[] = isset($listPancaCinta[$p]) ? "☑ {$listPancaCinta[$p]}" : "☑ {$p}";
+        }
+        $pancaCintaTeksCetak = empty($pancaCintaTeksList) ? '-' : implode("<br>", $pancaCintaTeksList);
+
+        // 6. Ambil Pengaturan Global (Nama Sekolah, Kamad, NPK Kamad)
         $tahunAktif = $db->tableExists('academic_years') ? $db->table('academic_years')->where('is_active', 1)->get()->getRowArray() : null;
-
-        // 5. Ambil Pengaturan Global (Nama Sekolah, Kamad, dll)
         $settings = $db->tableExists('settings') ? $db->table('settings')->get()->getResultArray() : [];
-        $set = [];
-        foreach($settings as $s) { 
-            $set[$s['key']] = $s['value']; 
+        $set = []; foreach($settings as $s) { $set[$s['key']] = $s['value']; }
+
+        $namaMadrasah = $set['nama_madrasah'] ?? $set['nama_sekolah'] ?? 'MTs MIFTAHUL HUDA';
+        $kepalaNama = $set['kaldik_kepala_nama'] ?? $set['kepala_nama'] ?? 'Yana Purnama, S.Pd.';
+        $kepalaNpk = $set['kaldik_kepala_npk'] ?? $set['kepala_npk'] ?? '-';
+
+       // 7. Tangkap Identitas Guru (Update: Pastikan mengambil dari tabel yang benar)
+        $userId = session()->get('user_id') ?? (function_exists('user_id') ? user_id() : 0);
+        $namaGuruCetak = 'Guru Pengampu';
+        $guruNpk = '-';
+
+        if ($db->tableExists('teacher_profiles')) {
+            // Gunakan query yang sesuai dengan struktur tabel user/teacher_profiles Bapak
+            $guru = $db->table('teacher_profiles')->where('user_id', $userId)->get()->getRowArray();
+            if ($guru) {
+                $namaGuruCetak = $guru['nama_guru'] ?? $guru['nama'] ?? 'Guru Pengampu';
+                $guruNpk = $guru['npk'] ?? $guru['nip'] ?? '-';
+            }
         }
 
-        // 6. Tangkap Identitas Guru
-        $userId = session()->get('user_id') ?? session()->get('id') ?? 1;
-        $namaGuruCetak = session()->get('nama') ?? 'Nama : Rully Faizal, S.T.';
-        $guruNpk = session()->get('npk') ?? session()->get('nim') ?? 'NIM : 20276896180001';
+        // Bersihkan sisa hardcode string di controller jika ada
+        $namaGuruCetak = trim(str_ireplace(['Nama :', 'Nama: ', 'Nama '], '', $namaGuruCetak));
+        $guruNpk = trim(str_ireplace(['NIM :', 'NIM: ', 'NIM ', 'NPK :', 'NPK: ', 'NPK '], '', $guruNpk));
 
-        // 7. Format Titi Mangsa (Tanggal Cetak Lokal Indonesia)
+        // 8. Format Titi Mangsa (Kota dan Tanggal Cetak)
         $bulanIndo = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
         $tanggalCetak = date('j') . ' ' . $bulanIndo[(int)date('m')] . ' ' . date('Y');
-        $titiMangsa = ($set['titimangsa_print'] ?? 'Bandung') . ', ' . $tanggalCetak;
+        $kotaTitimangsa = $set['kaldik_titi_mangsa'] ?? $set['titimangsa_print'] ?? 'Bandung';
+        $titiMangsa = trim($kotaTitimangsa) . ', ' . $tanggalCetak;
 
-        // 8. Susun Variabel untuk View
+        // 9. Susun Variabel untuk View
         $data = [
             'modulId' => $modulId,
             'modulData' => $modulData,
-            'namaMadrasah' => $set['nama_sekolah'] ?? 'MTs MIFTAHUL HUDA',
+            'namaMadrasah' => $namaMadrasah,
             'tahunAktif' => $tahunAktif,
-            'namaMapelAktif' => $modulData['mapel_id'], 
+            'namaMapelAktif' => $namaMapelAktif, 
             'namaRombel' => $namaRombel,
             'tujuanPembelajaranTeks' => $tujuanPembelajaranTeks,
-            'kepalaNama' => $set['kepala_nama'] ?? 'Yana Purnama, S.Pd.',
-            'kepalaNpk' => $set['kepala_npk'] ?? '-',
+            'dplTeksCetak' => $dplTeksCetak,
+            'pancaCintaTeksCetak' => $pancaCintaTeksCetak,
+            'kepalaNama' => $kepalaNama,
+            'kepalaNpk' => trim($kepalaNpk),
             'titiMangsa' => $titiMangsa,
             'userId' => $userId,
-            'namaGuruCetak' => $namaGuruCetak,
-            'guruNpk' => $guruNpk
+            'namaGuruCetak' => trim($namaGuruCetak),
+            'guruNpk' => trim($guruNpk)
         ];
 
         return view('guru/modul_ajar_print', $data);
