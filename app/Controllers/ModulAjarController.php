@@ -699,8 +699,8 @@ class ModulAjarController extends BaseController
         return $this->response->setJSON(['status' => 'error', 'message' => $errorMessage]);
     }
 
-   // ==============================================================
-    // FUNGSI CETAK (PRINT) MODUL AJAR (FULL DINAMIS)
+    // ==============================================================
+    // FUNGSI CETAK (PRINT) MODUL AJAR (FULL DINAMIS & LAYOUT TABEL)
     // ==============================================================
     public function printModul($modulId)
     {
@@ -716,27 +716,21 @@ class ModulAjarController extends BaseController
         $rombel = $db->tableExists('class_rombel') ? $db->table('class_rombel')->where('id', $modulData['rombel_id'])->get()->getRowArray() : null;
         $namaRombel = $rombel ? $rombel['rombel_name'] : '-';
 
-        // 3. Menerjemahkan Kode Mapel (S_x atau C_x) menjadi Nama Asli
+        // 3. Menerjemahkan Kode Mapel (S_x atau C_x)
         $rawMapelId = $modulData['mapel_id'];
-        $namaMapelAktif = $rawMapelId; // Default jika gagal dicari
+        $namaMapelAktif = $rawMapelId; 
 
         if (strpos($rawMapelId, 'S_') === 0) {
-            // Jika diawali S_ (Mapel Tunggal)
             $idMapel = str_replace('S_', '', $rawMapelId);
             $mapelRow = $db->tableExists('master_subjects') ? $db->table('master_subjects')->where('id', $idMapel)->get()->getRowArray() : null;
-            if ($mapelRow) {
-                $namaMapelAktif = $mapelRow['subject_name'] ?? $mapelRow['nama_mapel'] ?? $mapelRow['name'] ?? $rawMapelId;
-            }
+            if ($mapelRow) $namaMapelAktif = $mapelRow['subject_name'] ?? $mapelRow['nama_mapel'] ?? $mapelRow['name'] ?? $rawMapelId;
         } elseif (strpos($rawMapelId, 'C_') === 0) {
-            // Jika diawali C_ (Mapel Gabungan / Combined)
             $idMapel = str_replace('C_', '', $rawMapelId);
             $mapelRow = $db->tableExists('schedule_combined_subjects') ? $db->table('schedule_combined_subjects')->where('id', $idMapel)->get()->getRowArray() : null;
-            if ($mapelRow) {
-                $namaMapelAktif = $mapelRow['combined_name'] ?? $rawMapelId;
-            }
+            if ($mapelRow) $namaMapelAktif = $mapelRow['combined_name'] ?? $rawMapelId;
         }
 
-        // 4. Ambil Teks Tujuan Pembelajaran, DPL, dan Panca Cinta dari Tabel Relasi
+        // 4. Ambil Teks Tujuan Pembelajaran, DPL, dan Panca Cinta
         $atpList = $db->table('kurikulum_atp a')
                       ->select('d.tujuan_pembelajaran, a.dpl_terpilih, a.panca_cinta_terpilih') 
                       ->join('kurikulum_cp_details d', 'd.id = a.cp_detail_id', 'left')
@@ -751,13 +745,10 @@ class ModulAjarController extends BaseController
             if (!empty($atp['tujuan_pembelajaran'])) {
                 $tpTexts[] = ($idx + 1) . ". " . $atp['tujuan_pembelajaran'];
             }
-            
-            // Ekstrak DPL
             if(!empty($atp['dpl_terpilih'])) {
                 $ex1 = explode(',', $atp['dpl_terpilih']);
                 foreach($ex1 as $e) $dplArray[] = trim($e);
             }
-            // Ekstrak Panca Cinta
             if(!empty($atp['panca_cinta_terpilih'])) {
                 $ex2 = explode(',', $atp['panca_cinta_terpilih']);
                 foreach($ex2 as $e) $pancaCintaArray[] = trim($e);
@@ -768,35 +759,7 @@ class ModulAjarController extends BaseController
         $dplArray = array_unique(array_filter($dplArray));
         $pancaCintaArray = array_unique(array_filter($pancaCintaArray));
 
-        // 5. Mapping DPL & Panca Cinta agar tampil Namanya
-        $listProfilLulusan = [
-            'DPL1' => 'Keimanan dan Ketakwaan', 'DPL2' => 'Kewargaan',
-            'DPL3' => 'Penalaran Kritis', 'DPL4' => 'Kreativitas',
-            'DPL5' => 'Kolaborasi', 'DPL6' => 'Kemandirian',
-            'DPL7' => 'Kesehatan', 'DPL8' => 'Komunikasi'
-        ];
-        
-        $listPancaCinta = [
-            'P1' => 'Cinta kepada Allah dan Rasul-Nya',
-            'P2' => 'Cinta kepada Ilmu',
-            'P3' => 'Cinta kepada Diri Sendiri dan Sesama',
-            'P4' => 'Cinta kepada Lingkungan',
-            'P5' => 'Cinta kepada Tanah Air'
-        ];
-
-        $dplTeksList = [];
-        foreach($dplArray as $d) {
-            $dplTeksList[] = isset($listProfilLulusan[$d]) ? "☑ {$d} - {$listProfilLulusan[$d]}" : "☑ {$d}";
-        }
-        $dplTeksCetak = empty($dplTeksList) ? '-' : implode("<br>", $dplTeksList);
-
-        $pancaCintaTeksList = [];
-        foreach($pancaCintaArray as $p) {
-            $pancaCintaTeksList[] = isset($listPancaCinta[$p]) ? "☑ {$listPancaCinta[$p]}" : "☑ {$p}";
-        }
-        $pancaCintaTeksCetak = empty($pancaCintaTeksList) ? '-' : implode("<br>", $pancaCintaTeksList);
-
-        // 6. Ambil Pengaturan Global (Nama Sekolah, Kamad, NPK Kamad)
+        // 5. Ambil Pengaturan Global
         $tahunAktif = $db->tableExists('academic_years') ? $db->table('academic_years')->where('is_active', 1)->get()->getRowArray() : null;
         $settings = $db->tableExists('settings') ? $db->table('settings')->get()->getResultArray() : [];
         $set = []; foreach($settings as $s) { $set[$s['key']] = $s['value']; }
@@ -805,31 +768,36 @@ class ModulAjarController extends BaseController
         $kepalaNama = $set['kaldik_kepala_nama'] ?? $set['kepala_nama'] ?? 'Yana Purnama, S.Pd.';
         $kepalaNpk = $set['kaldik_kepala_npk'] ?? $set['kepala_npk'] ?? '-';
 
-       // 7. Tangkap Identitas Guru (Update: Pastikan mengambil dari tabel yang benar)
-        $userId = session()->get('user_id') ?? (function_exists('user_id') ? user_id() : 0);
-        $namaGuruCetak = 'Guru Pengampu';
-        $guruNpk = '-';
+        // 6. Tangkap Identitas Guru (Diperkuat agar tidak gagal load)
+        $userId = session()->get('user_id') ?? session()->get('id') ?? (function_exists('user_id') ? user_id() : 0);
+        $namaGuruCetak = session()->get('nama') ?? session()->get('full_name') ?? 'Guru Pengampu'; 
+        $guruNpk = session()->get('npk') ?? session()->get('nim') ?? session()->get('nuptk') ?? '-';
 
         if ($db->tableExists('teacher_profiles')) {
-            // Gunakan query yang sesuai dengan struktur tabel user/teacher_profiles Bapak
             $guru = $db->table('teacher_profiles')->where('user_id', $userId)->get()->getRowArray();
             if ($guru) {
-                $namaGuruCetak = $guru['nama_guru'] ?? $guru['nama'] ?? 'Guru Pengampu';
-                $guruNpk = $guru['npk'] ?? $guru['nip'] ?? '-';
+                $namaGuruCetak = !empty($guru['nama_guru']) ? $guru['nama_guru'] : (!empty($guru['nama']) ? $guru['nama'] : (!empty($guru['full_name']) ? $guru['full_name'] : $namaGuruCetak));
+                $guruNpk = !empty($guru['npk']) ? $guru['npk'] : (!empty($guru['nip']) ? $guru['nip'] : (!empty($guru['nuptk']) ? $guru['nuptk'] : $guruNpk));
             }
         }
 
-        // Bersihkan sisa hardcode string di controller jika ada
+        // Membersihkan dari kata "Nama:" atau "NIM:" yang dobel
         $namaGuruCetak = trim(str_ireplace(['Nama :', 'Nama: ', 'Nama '], '', $namaGuruCetak));
         $guruNpk = trim(str_ireplace(['NIM :', 'NIM: ', 'NIM ', 'NPK :', 'NPK: ', 'NPK '], '', $guruNpk));
 
-        // 8. Format Titi Mangsa (Kota dan Tanggal Cetak)
-        $bulanIndo = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-        $tanggalCetak = date('j') . ' ' . $bulanIndo[(int)date('m')] . ' ' . date('Y');
-        $kotaTitimangsa = $set['kaldik_titi_mangsa'] ?? $set['titimangsa_print'] ?? 'Bandung';
-        $titiMangsa = trim($kotaTitimangsa) . ', ' . $tanggalCetak;
+        // 7. Format Titi Mangsa (Mencegah double tanggal)
+        $titimangsaSetting = trim($set['kaldik_titi_mangsa'] ?? $set['titimangsa_print'] ?? 'Bandung');
+        if (strpos($titimangsaSetting, ',') !== false) {
+            // Jika di pengaturan sudah ada koma (misal: "Bandung, 1 Juli 2026"), pakai yang itu saja
+            $titiMangsa = $titimangsaSetting;
+        } else {
+            // Jika hanya nama kota, tambahkan tanggal hari ini
+            $bulanIndo = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            $tanggalCetak = date('j') . ' ' . $bulanIndo[(int)date('m')] . ' ' . date('Y');
+            $titiMangsa = $titimangsaSetting . ', ' . $tanggalCetak;
+        }
 
-        // 9. Susun Variabel untuk View
+        // 8. Susun Variabel untuk View
         $data = [
             'modulId' => $modulId,
             'modulData' => $modulData,
@@ -838,8 +806,8 @@ class ModulAjarController extends BaseController
             'namaMapelAktif' => $namaMapelAktif, 
             'namaRombel' => $namaRombel,
             'tujuanPembelajaranTeks' => $tujuanPembelajaranTeks,
-            'dplTeksCetak' => $dplTeksCetak,
-            'pancaCintaTeksCetak' => $pancaCintaTeksCetak,
+            'dplArray' => $dplArray,                 
+            'pancaCintaArray' => $pancaCintaArray,   
             'kepalaNama' => $kepalaNama,
             'kepalaNpk' => trim($kepalaNpk),
             'titiMangsa' => $titiMangsa,
