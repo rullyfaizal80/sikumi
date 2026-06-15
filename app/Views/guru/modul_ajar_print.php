@@ -50,11 +50,21 @@
         /* TABEL KEGIATAN */
         .kegiatan-table th { background-color: #f4f4f4 !important; text-align: center; font-size: 13px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
-        .signature-section { font-size: 12px; margin-top: 40px; padding: 0 30px; page-break-inside: avoid; }
+         /* TANDA TANGAN SECTION */
+        .signature-section { font-size: 12px; margin-top: 30px; padding: 0 30px; page-break-inside: avoid; }
 
+        /* PANEL KONTROL */
         .print-actions-wrapper { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+        .btn-group-top { display: flex; gap: 10px; }
         .btn-print { background: #002060; color: #fff; padding: 8px 16px; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         .btn-close { background: #dc3545; color: #fff; padding: 8px 16px; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .control-panel { background: #fff; padding: 12px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid #ddd; text-align: center; width: 140px; }
+        .control-panel p { margin: 0 0 8px 0; font-size: 11px; font-weight: bold; color: #333; }
+        .d-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; justify-items: center; }
+        .btn-dpad { background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; width: 30px; height: 30px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+        .btn-dpad:hover { background: #dee2e6; }
+        .btn-reset { margin-top: 8px; background: #6c757d; color: white; border: none; border-radius: 4px; font-size: 10px; padding: 4px; width: 100%; cursor: pointer; }
+    
     </style>
 </head>
 <body>
@@ -63,6 +73,16 @@
         <div class="btn-group-top">
             <button class="btn-print" onclick="window.print()">🖨️ Cetak PDF</button>
             <button class="btn-close" onclick="window.close()">❌ Tutup</button>
+        </div>
+        <div class="control-panel">
+            <p>Atur Posisi TTD Guru</p>
+            <div class="d-pad">
+                <div></div><button class="btn-dpad" onclick="moveTtd(0, -3)">⬆️</button><div></div>
+                <button class="btn-dpad" onclick="moveTtd(-3, 0)">⬅️</button>
+                <button class="btn-dpad" onclick="moveTtd(0, 3)">⬇️</button>
+                <button class="btn-dpad" onclick="moveTtd(3, 0)">➡️</button>
+            </div>
+            <button class="btn-reset" onclick="resetTtd()">🔄 Reset Posisi</button>
         </div>
     </div>
 
@@ -249,22 +269,44 @@
         </table>
 
         <div class="d-flex justify-content-between signature-section">
-            <div class="text-center" style="width: 250px; line-height: 1.2;">
-                <p>Mengetahui,<br>Kepala Madrasah,</p>
-                <br><br><br>
-                <p class="font-weight-bold mb-0 d-inline-block" style="font-weight: 800; border-bottom: 1px solid #000; padding-bottom: 2px;"><?= esc($kepalaNama) ?></p>
-                <p class="text-muted small mb-0" style="font-size: 11px; margin-top: 4px;">NPK. <?= esc($kepalaNpk) ?></p>
+            <div class="text-center" style="width: 250px; line-height: 1;">
+                <p class="mb-0">Mengetahui,</p>
+                <p class="font-weight-bold" style="font-weight: 700; margin-top: 3px; margin-bottom: -15px; position: relative; z-index: 1;">Kepala Madrasah,</p>
+                <img src="<?= base_url('assets/img/ttd_kamad.png') ?>" alt="TTD Kamad" 
+                     style="height: 90px; width: auto; object-fit: contain; margin-top: -8px; margin-bottom: -30px; position: relative; z-index: 2; mix-blend-mode: multiply; transform: scale(0.85); left: -25px;" 
+                     onerror="this.style.opacity='0'">
+                <p class="font-weight-bold mb-0 d-inline-block" style="font-weight: 800; position: relative; z-index: 3;"><?= esc($kepalaNama ?? '.............................................') ?></p>
+                <p class="text-muted small mb-0" style="font-size: 11px; position: relative; z-index: 3; margin-top: 4px;">NPK. <?= esc($kepalaNpk ?? '.....................................') ?></p>
             </div>
 
-            <div class="text-center" style="width: 250px; line-height: 1.2;">
-                <p><?= esc($titiMangsa) ?><br>Guru Mata Pelajaran,</p>
-                <br><br><br>
-                <p class="font-weight-bold mb-0 d-inline-block" style="font-weight: 800; border-bottom: 1px solid #000; padding-bottom: 2px;"><?= esc($namaGuruCetak) ?></p>
-                <p class="text-muted small mb-0" style="font-size: 11px; margin-top: 4px;">NPK. <?= esc($guruNpk) ?></p>
+            <div class="text-center" style="width: 250px; line-height: 1;">
+                <p class="mb-0"><?= esc($titiMangsa ?? 'Bandung, ....................................') ?></p>
+                <p class="font-weight-bold" style="font-weight: 700; margin-top: 3px; margin-bottom: -15px; position: relative; z-index: 1;">Guru Mata Pelajaran,</p>
+                <div style="width: 100%; position: relative; z-index: 2;">
+                    <img id="ttd-guru" src="<?= base_url('assets/img/ttd_' . esc($userId) . '.png') ?>" alt="TTD Guru" 
+                         style="height: 78px; width: auto; object-fit: contain; top: 0px; margin-top: 3px; margin-bottom: -28px; position: relative; mix-blend-mode: multiply; transform: scale(0.85); left: 0px;" 
+                         onerror="this.style.opacity='0'">
+                </div>
+                <p class="font-weight-bold mb-0 d-inline-block" style="font-weight: 800; position: relative; z-index: 3;"><?= esc($namaGuruCetak) ?></p>
+                <p class="text-muted small mb-0" style="font-size: 11px; position: relative; z-index: 3; margin-top: 4px;">NPK. <?= esc($guruNpk) ?></p>
             </div>
         </div>
 
     </div>
+    <script>
+        let ttdPosX = 0; let ttdPosY = 0;
+        const imgTtdGuru = document.getElementById('ttd-guru');
+
+        function moveTtd(x, y) {
+            ttdPosX += x; ttdPosY += y;
+            if(imgTtdGuru) { imgTtdGuru.style.left = ttdPosX + 'px'; imgTtdGuru.style.top = ttdPosY + 'px'; }
+        }
+
+        function resetTtd() {
+            ttdPosX = 0; ttdPosY = 0;
+            if(imgTtdGuru) { imgTtdGuru.style.left = ttdPosX + 'px'; imgTtdGuru.style.top = ttdPosY + 'px'; }
+        }
+    </script>
 
 </body>
 </html>
