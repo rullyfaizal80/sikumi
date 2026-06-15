@@ -66,6 +66,7 @@
 
     <div class="print-actions-wrapper">
         <button class="btn-print" onclick="window.print()">🖨️ Cetak PDF (CTRL+P)</button>
+        <button class="btn-print" onclick="warnaiJadwal()" style="background-color: #28a745; margin-right: 5px;">🎨 Warnai Jadwal</button>
         <button class="btn-close" onclick="window.close()">❌ Tutup</button>
     </div>
 
@@ -216,6 +217,59 @@
                 }
             });
         });
+
+       // ==============================================================
+        // FITUR MEWARNAI JADWAL (WARNA PASTEL LEBIH BERAGAM)
+        // ==============================================================
+        let isColored = false;
+
+        // Fungsi mengubah teks menjadi warna Pastel yang unik, beragam, dan tetap konsisten
+        function stringToSoftColor(str) {
+            let hash = 0;
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+                hash = hash & hash; // Konversi ke 32bit integer
+            }
+            
+            // Ubah jadi angka positif
+            hash = Math.abs(hash);
+            
+            // HUE: Spektrum warna 0 - 360 derajat (Memutar seluruh warna)
+            const h = hash % 360;
+            
+            // SATURATION: Bervariasi antara 55% - 85% (Agar ada warna yg kalem & ada yg tajam)
+            const s = 55 + (hash % 30);
+            
+            // LIGHTNESS: Bervariasi antara 75% - 90% (Mencegah warna terlalu gelap)
+            // Digeser (>> 4) agar kombinasinya tidak seragam dengan Saturation
+            const l = 75 + ((hash >> 4) % 15);
+            
+            return `hsl(${h}, ${s}%, ${l}%)`; 
+        }
+
+        function warnaiJadwal() {
+            isColored = !isColored; // Toggle nyala/mati
+            
+            let cells = document.querySelectorAll('td[data-text]');
+            
+            cells.forEach(cell => {
+                let text = cell.getAttribute('data-text');
+                
+                // Abaikan jika kosong atau strip
+                if (!text || text.trim() === '' || text.trim() === '-') {
+                    return;
+                }
+
+                if (isColored) {
+                    let softColor = stringToSoftColor(text.trim());
+                    cell.style.setProperty('background-color', softColor, 'important');
+                    cell.style.setProperty('-webkit-print-color-adjust', 'exact', 'important');
+                    cell.style.setProperty('print-color-adjust', 'exact', 'important');
+                } else {
+                    cell.style.removeProperty('background-color');
+                }
+            });
+        }
     </script>
 </body>
 </html>
