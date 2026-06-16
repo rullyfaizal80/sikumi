@@ -14,6 +14,7 @@
             body { background: #fff; padding: 0; }
             .a4-paper { width: 100%; min-height: auto; margin: 0; padding: 0; box-shadow: none; }
             .btn-print { display: none !important; }
+            .btn-close { display: none !important; }
         }
 
         /* UTILITY CLASS */
