@@ -16,7 +16,6 @@
             padding: 20px 30px !important; 
         }
         
-        /* REVISI PADDING TOTAL TABEL REKAP DAN BULANAN: ULTRA RAMPING PROPORSIONAL */
         .table-kaldik th, .month-box table tr th { 
             padding: 3px 2px !important; 
             font-size: 9.5px; 
@@ -31,37 +30,50 @@
             line-height: 1.1 !important;
         }
         
-        .month-box { border: 1px solid #000000; padding: 6px; background: #fff; height: 100%; display: flex; flex-direction: column; justify-content: space-between; }
+        /* Membuat tinggi kotak selalu rata */
+        .month-box { border: 1px solid #000000; padding: 6px; background: #fff; display: flex; flex-direction: column; justify-content: space-between; height: 100%; }
         .month-title { background-color: #002060; color: #ffffff; text-align: center; font-weight: 800; padding: 3px; font-size: 11px; text-transform: uppercase; margin-bottom: 5px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .grid-days { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 9.5px; font-weight: 800; border-bottom: 1px solid #000; padding-bottom: 2px; margin-bottom: 4px; }
-        .grid-dates { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 3px; column-gap: 3px; text-align: center; }
+        
+        /* Memberikan min-height agar stabil mau 5/6 minggu */
+        .grid-dates { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 3px; column-gap: 3px; text-align: center; min-height: 100px; align-content: start;}
         
         .date-cell { font-size: 10px; font-weight: 800; padding: 1px 0; color: #000; }
         .date-empty { visibility: hidden; }
         .date-weekend { color: #cc0000 !important; background-color: #f2f2f2; border-radius: 2px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         
+        /* PENGATURAN PAGE BREAK KERTAS A4 LANDSCAPE */
         @page { size: A4 landscape; margin: 0.8cm; }
+        
         @media print {
             .no-print { display: none !important; }
             body { padding: 0 !important; margin: 0; }
-            .month-box { page-break-inside: avoid; }
+            
+            /* Memaksa pembagian kertas halaman baru */
+            .page-break { page-break-before: always; break-before: page; clear: both; }
+            
+            /* Mengamankan row dari kerusakan flexbox browser */
+            .row { display: flex !important; flex-wrap: wrap !important; }
+            .col-4 { display: flex; flex: 0 0 33.333333% !important; max-width: 33.333333% !important; box-sizing: border-box !important; flex-direction: column; }
+            
+            .month-box { page-break-inside: avoid !important; break-inside: avoid !important; margin-bottom: 15px !important; }
+            .legend-box, .table-kaldik, .signature-block { page-break-inside: avoid !important; break-inside: avoid !important; }
         }
     </style>
 </head>
 <body>
 
     <div class="no-print d-flex justify-content-between align-items-center alert alert-dark p-2 mb-3" style="border-radius: 6px;">
-        <span class="small font-weight-bold text-white ps-2"><i class="bi bi-eye-fill me-1 text-warning"></i> Pratinjau Cetak Kalender Pendidikan Resmi Madrasah MIMHa</span>
+        <span class="small font-weight-bold text-white ps-2"><i class="bi bi-eye-fill me-1 text-warning"></i> Pratinjau Cetak Kalender Pendidikan</span>
         <div>
-            <button onclick="window.print()" class="btn btn-warning btn-sm text-white font-weight-bold me-2 shadow-sm" style="background-color: #FF9F00; border: none;"><i class="bi bi-printer-fill me-1"></i> 🖨️ Cetak ke Printer / Save PDF</button>
-            <button onclick="window.close()" class="btn btn-sm btn-secondary font-weight-bold px-3">Tutup Halaman</button>
+            <button onclick="window.print()" class="btn btn-warning btn-sm text-white font-weight-bold me-2 shadow-sm" style="background-color: #FF9F00; border: none;"><i class="bi bi-printer-fill me-1"></i> 🖨️ Cetak ke PDF</button>
+            <button onclick="window.close()" class="btn btn-sm btn-secondary font-weight-bold px-3">Tutup</button>
         </div>
     </div>
 
     <div class="d-flex justify-content-center align-items-center border-bottom border-dark pb-2 mb-3 w-100">
         <div class="d-flex align-items-center justify-content-between" style="width: 85%;">
             <img src="<?= base_url('assets/img/logo_kaldik1.png') ?>" alt="Logo Yayasan" style="height: 70px; width: auto; object-fit: contain;">
-            
             <div class="text-center flex-grow-1 mx-4">
                 <h5 class="my-0 font-weight-bold" style="font-weight: 800; color: #002060; font-size: 17px; letter-spacing: 0.5px;">
                     KALENDER PENDIDIKAN <?= strtoupper(esc($namaMadrasah)) ?>
@@ -69,7 +81,6 @@
                 <h6 class="my-1 font-weight-bold" style="font-weight: 700; font-size: 13px;">TAHUN PELAJARAN <?= $tahunAktif ? $tahunAktif['academic_year'] : '-' ?></h6>
                 <span class="badge font-weight-bold text-uppercase text-white px-3" style="font-size: 11px; background-color: #002060 !important; border-radius: 3px; padding: 2px 8px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">SEMESTER <?= $tahunAktif ? $tahunAktif['semester'] : '-' ?></span>
             </div>
-            
             <img src="<?= base_url('assets/img/logo_kaldik2.png') ?>" alt="Logo MTs" style="height: 70px; width: auto; object-fit: contain;">
         </div>
     </div>
@@ -79,9 +90,7 @@
     $hariKerjaSetting = 5; 
     if ($db->tableExists('settings')) {
         $getSetting = $db->table('settings')->where('key', 'kaldik_hari_kerja')->get()->getRowArray();
-        if ($getSetting) {
-            $hariKerjaSetting = (int)$getSetting['value'];
-        }
+        if ($getSetting) $hariKerjaSetting = (int)$getSetting['value'];
     }
 
     $mappedEvents = [];
@@ -94,10 +103,7 @@
                         'id'          => $ag['id'],
                         'name'        => $ag['event_name'],
                         'color'       => $ag['color_hex'],
-                        'category_id' => $ag['category_id'],
-                        'jenis_matriks' => $ag['jenis_matriks'], // <--- TAMBAHKAN BARIS INI
-                        'start_date'  => $ag['start_date'],
-                        'end_date'    => $ag['end_date']
+                        'jenis_matriks' => $ag['jenis_matriks'] ?? 'HEB'
                     ];
         }
     }
@@ -123,7 +129,7 @@
     <div class="row g-2 mb-2">
         <?php foreach ($bulanKaldik as $numBulan => $namaBulan): ?>
             <div class="col-4" style="width: 33.333%;">
-                <div class="month-box d-flex flex-column h-100">
+                <div class="month-box">
                     <div class="month-title"><?= $namaBulan ?> <?= $targetYear ?></div>
                     <div class="grid-days">
                         <div>Sen</div><div>Sel</div><div>Rab</div><div>Kam</div><div>Jum</div>
@@ -150,16 +156,13 @@
                             $dayLabel = $mapDayIndex[$dayOfWeek];
                             $kategoriHari = 'HEB';
 
-                            // Filter Sensor Utama Kategori Database (Tanpa Hardcode)
-                                            if (isset($mappedEvents[$fullDate])) {
-                                                // Langsung ambil tujuannya dari database!
-                                                $kategoriHari = $mappedEvents[$fullDate]['jenis_matriks'];
-                                            } else {
-                                                // Logika HLCB polos jika kalender kosong
-                                                if ($dayOfWeek == 0 || ($dayOfWeek == 6 && $hariKerjaSetting == 5)) {
-                                                    $kategoriHari = 'HLCB';
-                                                }
-                                            }
+                            if (isset($mappedEvents[$fullDate])) {
+                                $kategoriHari = $mappedEvents[$fullDate]['jenis_matriks'];
+                            } else {
+                                if ($dayOfWeek == 0 || ($dayOfWeek == 6 && $hariKerjaSetting == 5)) {
+                                    $kategoriHari = 'HLCB';
+                                }
+                            }
 
                             $rekapBulanan[$numBulan][$kategoriHari][$dayLabel]++;
                             $rekapBulanan[$numBulan][$kategoriHari]['jml']++;
@@ -182,7 +185,7 @@
                         ?>
                     </div>
 
-                    <table class="table table-bordered text-center my-1 align-middle" style="font-size: 8px; line-height: 1; font-weight: 700; border: 1px solid #000 !important; margin-bottom: 4px !important;">
+                    <table class="table table-bordered text-center align-middle mt-auto" style="font-size: 8px; line-height: 1; font-weight: 700; border: 1px solid #000 !important; margin-bottom: 0 !important;">
                         <tr style="background-color: #d9e1f2; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
                             <td style="padding: 2px !important;">Hari</td><td style="padding: 2px !important;">Sn</td><td style="padding: 2px !important;">Sl</td><td style="padding: 2px !important;">Rb</td><td style="padding: 2px !important;">Km</td><td style="padding: 2px !important;">Jm</td>
                             <td style="padding: 2px !important; color: <?= ($hariKerjaSetting == 5) ? '#c00000' : 'inherit' ?>;">Sb</td>
@@ -204,35 +207,68 @@
                             <td style="color:#c00000;"><?= $rekapBulanan[$numBulan]['HLCB']['mn'] ?></td>
                         </tr>
                     </table>
-
-                    <!-- REVISI 1: FONT AGENDA MEMBESAR 10px & ADA BLOK WARNA -->
-                    <div class="mt-1 border-top pt-2 text-dark" style="font-size: 10px; line-height: 1.2;">
-                        <?php 
-                        foreach ($agendaKaldik as $ag): 
-                            $startMonth = (int)date('m', strtotime($ag['start_date']));
-                            $endMonth = (int)date('m', strtotime($ag['end_date']));
-                            if ($numBulan >= $startMonth && $numBulan <= $endMonth):
-                        ?>
-                            <div class="d-flex align-items-start mb-1">
-                                <span class="me-1 mt-1" style="display: inline-block; width: 7px; height: 7px; border-radius: 2px; background-color: <?= $ag['color_hex'] ?>; flex-shrink: 0; border: 1px solid #777; -webkit-print-color-adjust: exact; print-color-adjust: exact;"></span>
-                                <span class="me-1 font-weight-bold" style="font-size: 10px; white-space: nowrap;">
-                                    <?= $ag['start_date'] === $ag['end_date'] ? date('d', strtotime($ag['start_date'])) : date('d', strtotime($ag['start_date'])).'-'.date('d', strtotime($ag['end_date'])) ?>:
-                                </span>
-                                <span style="font-size: 10px;"><?= esc($ag['event_name']) ?></span>
-                            </div>
-                        <?php endif; endforeach; ?>
-                    </div>
                 </div>
             </div>
         <?php endforeach; ?>
     </div>
 
-    <!-- REVISI 2: JUDUL PEMISAH BLOKING REKAPITULASI -->
-    <div class="mt-3 mb-2 p-1 text-center text-white text-uppercase" style="background-color: #002060 !important; border-radius: 4px; font-size: 13px; font-weight: 800; border: 1px solid #002060; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+
+    <div class="page-break"></div>
+    <div style="padding-top: 15px;"></div> 
+
+
+    <?php if(!empty($agendaKaldik)): ?>
+    <div class="legend-box border border-dark p-2 mb-4" style="background-color: #fffdf5; border-radius: 4px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+        <div class="font-weight-bold text-uppercase mb-2 pb-1" style="color: #002060; border-bottom: 1px dashed #ccc; font-size: 11px;">Keterangan Warna & Agenda Kegiatan:</div>
+        <div class="row g-1">
+            <?php 
+            // Array untuk memetakan nama bulan dalam bahasa Indonesia
+            $namaBulanIndo = [
+                '01' => 'Jan', '02' => 'Feb', '03' => 'Mar', '04' => 'Apr', 
+                '05' => 'Mei', '06' => 'Jun', '07' => 'Juli', '08' => 'Agu', 
+                '09' => 'Sep', '10' => 'Okt', '11' => 'Nov', '12' => 'Des'
+            ];
+
+            foreach ($agendaKaldik as $ag): 
+                $startDay = date('d', strtotime($ag['start_date']));
+                $startMonth = date('m', strtotime($ag['start_date']));
+                
+                $endDay = date('d', strtotime($ag['end_date']));
+                $endMonth = date('m', strtotime($ag['end_date']));
+                
+                if ($startMonth === $endMonth) {
+                    if ($startDay === $endDay) {
+                        $tglText = $startDay . ' ' . $namaBulanIndo[$startMonth];
+                    } else {
+                        $tglText = $startDay . '-' . $endDay . ' ' . $namaBulanIndo[$startMonth];
+                    }
+                } else {
+                    $tglText = $startDay . ' ' . $namaBulanIndo[$startMonth] . ' - ' . $endDay . ' ' . $namaBulanIndo[$endMonth];
+                }
+            ?>
+            <div class="col-4 mb-1">
+                <table style="width: 100%; border: none; font-size: 10px; line-height: 1.2;">
+                    <tr>
+                        <td style="width: 12px; padding: 0; vertical-align: top; padding-top: 2px;">
+                            <span style="display: block; width: 8px; height: 8px; border-radius: 2px; background-color: <?= $ag['color_hex'] ?>; border: 1px solid #777; -webkit-print-color-adjust: exact; print-color-adjust: exact;"></span>
+                        </td>
+                        <td style="width: 105px; min-width: 105px; max-width: 105px; padding: 0; vertical-align: top; white-space: nowrap; overflow: hidden;" class="font-weight-bold text-dark"><?= $tglText ?></td>
+                        
+                        <td style="width: 8px; padding: 0; vertical-align: top;" class="font-weight-bold text-center text-dark">:</td>
+                        <td style="padding: 0; vertical-align: top; padding-left: 3px;" class="text-dark"><?= esc($ag['event_name']) ?></td>
+                    </tr>
+                </table>
+            </div>
+            <?php endforeach; ?>
+        </div>
+    </div>
+    <?php endif; ?>
+
+    <div class="mb-2 p-1 text-center text-white text-uppercase" style="background-color: #002060 !important; border-radius: 4px; font-size: 13px; font-weight: 800; border: 1px solid #002060; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
         Rekapitulasi Analisis HEB, HEF dan HLCB
     </div>
 
-    <div class="row g-2 mb-3">
+    <div class="row g-2 mb-4">
         <?php foreach (['HEB' => ['Hari Efektif Belajar (HEB)', '#4f81bd', '#d9e1f2', true], 'HEF' => ['Hari Efektif Fakultatif (HEF)', '#ffc000', '#fff2cc', false], 'HLCB' => ['Hari Libur & Cuti Bersama (HLCB)', '#c00000', '#fce4d6', false]] as $keyKat => $meta): ?>
             <div class="col-4" style="width: 33.333%;">
                 <table class="table table-bordered text-center mb-0 align-middle table-kaldik">
@@ -279,8 +315,8 @@
             </div>
         <?php endforeach; ?>
     </div>
-    <br>
-  <div class="d-flex justify-content-end text-end pe-4" style="font-size: 11px; margin-top: 15px;">
+    
+    <div class="d-flex justify-content-end text-end pe-4 signature-block" style="font-size: 11px; margin-top: 15px;">
         <div class="text-center" style="width: 250px;">
             <p class="mb-0"><?= esc($titiMangsa) ?></p>
             <p class="font-weight-bold" style="font-weight: 700; margin-bottom: 0; position: relative; z-index: 1;">Kepala Madrasah,</p>
