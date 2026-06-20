@@ -183,6 +183,7 @@ $routes->get('admin/kaldik/category/delete/(:num)', 'KaldikController::deleteCat
 $routes->get('guru/atp', 'AtpController::index');
 $routes->post('guru/atp/simpan', 'AtpController::simpanAtp');
 $routes->post('guru/atp/reset', 'AtpController::resetAtp');
+$routes->post('guru/atp/copy', 'AtpController::copyAtp');
 
 $routes->get('guru/modul-ajar', 'ModulAjarController::index');
 $routes->get('guru/modul-ajar/create', 'ModulAjarController::create');

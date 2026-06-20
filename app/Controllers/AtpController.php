@@ -533,16 +533,28 @@ class AtpController extends BaseController
         ];
 
         $listPancaCinta = [
-            'P1' => 'Cinta kepada Allah SWT dan Rasul-Nya',
-            'P2' => 'Cinta kepada Ilmu',
-            'P3' => 'Cinta kepada Diri dan Sesama',
-            'P4' => 'Cinta kepada Alam dan Lingkungan',
-            'P5' => 'Cinta kepada Bangsa, Tanah Air, dan Negara'
+            'P1' => 'Cinta Allah dan Rasul-Nya',
+            'P2' => 'Cinta Ilmu',
+            'P3' => 'Cinta Lingkungan',
+            'P4' => 'Cinta Diri dan Sesama Manusia',
+            'P5' => 'Cinta Tanah Air'
         ];
+
+        // --- TAMBAHAN: Ambil rombel paralel di tingkat yang sama (Kecuali rombel yang sedang aktif) ---
+        $rombelTingkatSama = [];
+        foreach ($daftarRombel as $r) {
+            $rMaster = $r['master_class_id'] ?? $r['id'];
+            // Jika master_class sama dan bukan rombel yang sedang dibuka
+            if ($rMaster == $masterClassId && $r['id'] != $selectedRombelId) {
+                $rombelTingkatSama[] = $r;
+            }
+        }
+        // ------------------------------------------------------------------------------------------
 
         $data = [
             'tahunAktif'       => $tahunAktif,
             'daftarRombel'     => $daftarRombel,
+            'rombelTingkatSama'=> $rombelTingkatSama, // 🌟 MASUKKAN KE VIEW
             'daftarMapel'      => $daftarMapel,
             'selectedRombelId' => $selectedRombelId,
             'selectedMapelId'  => $selectedMapelId,
@@ -678,6 +690,77 @@ class AtpController extends BaseController
         }
 
         return $this->response->setJSON(['status' => 'success', 'message' => 'Susunan ATP berhasil dikembalikan ke posisi semula!']);
+    }
+
+    // ==============================================================
+    // FUNGSI UNTUK COPY DATA ATP DARI ROMBEL LAIN (TINGKAT SAMA)
+    // ==============================================================
+    public function copyAtp()
+    {
+        $db = \Config\Database::connect();
+        $request = \Config\Services::request();
+
+        if (!$request->isAJAX()) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Akses tidak sah.']);
+        }
+
+        $fromRombelId = $request->getPost('from_rombel_id');
+        $toRombelId   = $request->getPost('to_rombel_id');
+        $cpIdsJson    = $request->getPost('cp_ids');
+        
+        if (empty($fromRombelId) || empty($toRombelId) || empty($cpIdsJson)) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Data tidak lengkap.']);
+        }
+
+        $cpIds = json_decode($cpIdsJson, true);
+
+        if (empty($cpIds)) {
+             return $this->response->setJSON(['status' => 'error', 'message' => 'Tidak ada detail materi yang akan disalin.']);
+        }
+
+        $db->transStart();
+
+        // 1. Ambil data susunan ATP dari rombel sumber (berdasarkan CP/Materi saat ini)
+        $sourceData = $db->table('kurikulum_atp')
+                         ->where('rombel_id', $fromRombelId)
+                         ->whereIn('cp_detail_id', $cpIds)
+                         ->get()->getResultArray();
+
+        if (empty($sourceData)) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Rombel sumber belum memiliki susunan ATP untuk mapel ini.']);
+        }
+
+        // 2. Hapus data ATP yang sudah ada di rombel tujuan agar tidak ganda
+        $db->table('kurikulum_atp')
+           ->where('rombel_id', $toRombelId)
+           ->whereIn('cp_detail_id', $cpIds)
+           ->delete();
+
+        // 3. Masukkan data dari rombel sumber ke rombel tujuan
+        $insertData = [];
+        foreach ($sourceData as $sd) {
+            $insertData[] = [
+                'cp_detail_id'         => $sd['cp_detail_id'],
+                'rombel_id'            => $toRombelId, // 🌟 Ini yang memastikan tujuan copy-nya aktif ke rombel target
+                'urutan'               => $sd['urutan'],
+                'aktivitas_kognitif'   => $sd['aktivitas_kognitif'],
+                'dpl_terpilih'         => $sd['dpl_terpilih'],
+                'panca_cinta_terpilih' => $sd['panca_cinta_terpilih'],
+                'created_at'           => date('Y-m-d H:i:s')
+            ];
+        }
+
+        if (!empty($insertData)) {
+            $db->table('kurikulum_atp')->insertBatch($insertData);
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Gagal menyalin data dari database.']);
+        }
+
+        return $this->response->setJSON(['status' => 'success', 'message' => 'Susunan ATP berhasil disalin!']);
     }
 
 }

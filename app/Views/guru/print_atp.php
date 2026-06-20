@@ -151,19 +151,28 @@
                             </td>
 
                             <td style="font-size: 10px; text-align: left; padding: 6px 8px;">
-                                <?php 
-                                    $pc = $row['panca_cinta_terpilih'] ?? [];
-                                    if (is_string($pc)) $pc = array_filter(explode(',', $pc));
-                                    if (!empty($pc)) {
-                                        foreach($pc as $kode) {
-                                            $kode = trim($kode);
-                                            $teks = $listPancaCinta[$kode] ?? '';
-                                            echo "<div style='margin-bottom: 4px;'><b>{$kode}</b>: {$teks}</div>";
-                                        }
-                                    } else {
-                                        echo '<div class="text-center">-</div>';
-                                    }
-                                ?>
+                               <?php 
+    $pc = $row['panca_cinta_terpilih'] ?? [];
+    if (is_string($pc)) $pc = array_filter(explode(',', $pc));
+    
+    if (!empty($pc)) {
+        foreach($pc as $kode) {
+            $kode = trim($kode);
+            
+            // Mengambil teks dari array berdasarkan kode asli (P1, P2, dst)
+            $teks = $listPancaCinta[$kode] ?? '';
+            
+            // Manipulasi string untuk tampilan: P1 -> Topik 1
+            // Hapus spasinya ('Topik') jika ingin tampilannya 'Topik1'
+            $tampilKode = str_replace('P', 'Topik ', $kode);
+            
+            // Cetak $tampilKode menggantikan $kode di dalam tag <b>
+            echo "<div style='margin-bottom: 4px;'><b>{$tampilKode}</b>: {$teks}</div>";
+        }
+    } else {
+        echo '<div class="text-center">-</div>';
+    }
+?>
                             </td>
 
                             <td class="text-center font-weight-bold"><?= esc($row['estimasi_jp'] ?? $row['jp'] ?? 0) ?></td>

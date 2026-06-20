@@ -102,9 +102,17 @@
         <div class="card shadow border-top border-success border-3">
             <div class="card-header bg-white d-flex justify-content-between align-items-center py-2">
                 <h6 class="font-weight-bold my-0">Tabel Distribusi ATP - Rombel <?= esc($namaRombelAktif) ?></h6>
-                <button type="button" id="btn-eksekusi-ai-atp" class="btn btn-sm btn-outline-success font-weight-bold">
-                     ✨ AI Generate Kognitif & Sikap
-                </button>
+                
+                <div class="d-flex gap-2">
+                    <!-- Tombol Copy -->
+                    <button type="button" class="btn btn-sm btn-outline-primary fw-bold" data-bs-toggle="modal" data-bs-target="#modalCopyAtp">
+    📋 Copy dari Rombel Lain
+</button>
+                    <!-- Tombol AI Asli -->
+                    <button type="button" id="btn-eksekusi-ai-atp" class="btn btn-sm btn-outline-success font-weight-bold">
+                         ✨ AI Generate Kognitif & Sikap
+                    </button>
+                </div>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -177,18 +185,24 @@
                                     </td>
                                     
                                     <td>
-                                        <div class="checklist-box">
-                                            <?php foreach($listPancaCinta as $kode => $teks): ?>
-                                            <?php 
-                                                // Cek apakah kode ini ada di array panca_cinta_terpilih
-                                                $isChecked = (!empty($row['panca_cinta_terpilih']) && in_array($kode, $row['panca_cinta_terpilih'])) ? 'checked' : ''; 
-                                            ?>
-                                            <div class="custom-check">
-                                                <input type="checkbox" id="pc_<?= $idx ?>_<?= $kode ?>" value="<?= $kode ?>" <?= $isChecked ?>>
-                                                <label for="pc_<?= $idx ?>_<?= $kode ?>"><b><?= $kode ?></b>: <?= $teks ?></label>
-                                            </div>
-                                            <?php endforeach; ?>
-                                        </div>
+                                       <div class="checklist-box">
+    <?php foreach($listPancaCinta as $kode => $teks): ?>
+    <?php 
+        // Cek apakah kode (misal 'P1') ada di array panca_cinta_terpilih
+        $isChecked = (!empty($row['panca_cinta_terpilih']) && in_array($kode, $row['panca_cinta_terpilih'])) ? 'checked' : ''; 
+        
+        // Manipulasi string: Ubah huruf 'P' menjadi 'Topik ' (pakai spasi)
+        // Hasilnya: 'P1' -> 'Topik 1'
+        // Jika tidak ingin ada spasi (Topik1), hapus spasinya menjadi: str_replace('P', 'Topik', $kode);
+        $tampilKode = str_replace('P', 'Topik ', $kode);
+    ?>
+    <div class="custom-check">
+        <input type="checkbox" id="pc_<?= $idx ?>_<?= $kode ?>" value="<?= $kode ?>" <?= $isChecked ?>>
+        
+        <label for="pc_<?= $idx ?>_<?= $kode ?>"><b><?= $tampilKode ?></b>: <?= $teks ?></label>
+    </div>
+    <?php endforeach; ?>
+</div>
                                     </td>
                                     
                                     <td class="text-center font-weight-bold align-middle bg-light" style="font-size: 13px;">
@@ -209,6 +223,41 @@
             <?php endif; ?>            
         </div>
     </div>
+
+    <!-- Modal Copy ATP -->
+    <div class="modal fade" id="modalCopyAtp" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title font-weight-bold">📋 Copy Susunan ATP</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">Fitur ini akan menyalin Urutan, Aktivitas Kognitif, DPL, dan Panca Cinta dari Rombel paralel ke <b>Rombel <?= esc($namaRombelAktif) ?></b> yang sedang aktif saat ini.</p>
+                    
+                    <div class="form-group">
+                        <label class="font-weight-bold text-primary">Pilih Rombel Sumber:</label>
+                        <select id="select-copy-from" class="form-select border-primary">
+                            <option value="">-- Pilih Rombel Sumber --</option>
+                            <?php if(!empty($rombelTingkatSama)): ?>
+                                <?php foreach($rombelTingkatSama as $rt): ?>
+                                    <option value="<?= $rt['id'] ?>"><?= esc($rt['class_name'] . ' ' . $rt['rombel_name']) ?></option>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <option value="" disabled>Tidak ada rombel paralel di tingkat ini.</option>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary font-weight-bold" id="btn-proses-copy">Proses Copy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
 
     <script>
         let arrTanggal = [];
@@ -580,6 +629,68 @@ Format JSON persis seperti ini:
             } finally {
                 btnReset.disabled = false;
                 btnReset.innerHTML = originalText;
+            }
+        });
+
+        // ====================================================================
+        // TRIGGER COPY ATP DARI ROMBEL LAIN
+        // ====================================================================
+        document.getElementById('btn-proses-copy').addEventListener('click', async function() {
+            let fromRombelId = document.getElementById('select-copy-from').value;
+            let toRombelId = '<?= $selectedRombelId ?>';
+            
+            if(!fromRombelId) {
+                alert("Silakan pilih rombel sumber terlebih dahulu!");
+                return;
+            }
+
+            // Kumpulkan ID CP yang sedang tampil agar copy-nya tidak lari ke mapel lain
+            let cpIds = [];
+            document.querySelectorAll("#tbody-atp tr").forEach(tr => {
+                let cpId = tr.getAttribute('data-cpid');
+                if (cpId) cpIds.push(cpId);
+            });
+
+            if (cpIds.length === 0) {
+                alert("Tidak ada target materi untuk disalin. Tabel masih kosong!");
+                return;
+            }
+
+            if (!confirm("Apakah Anda yakin ingin menimpa susunan ATP rombel ini dengan data dari rombel yang dipilih?")) {
+                return;
+            }
+
+            let btn = this;
+            let originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Sedang Menyalin...';
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('from_rombel_id', fromRombelId);
+            formData.append('to_rombel_id', toRombelId);
+            formData.append('cp_ids', JSON.stringify(cpIds));
+
+            try {
+                const response = await fetch("<?= base_url('guru/atp/copy') ?>", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    alert("✅ " + result.message);
+                    // Reload agar tabelnya memuat data yang baru saja dicopy
+                    window.location.reload();
+                } else {
+                    alert("⚠️ Gagal: " + result.message);
+                }
+            } catch (error) {
+                console.error(error);
+                alert("⚠️ Terjadi kesalahan koneksi saat menyalin data.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
             }
         });
     </script>
