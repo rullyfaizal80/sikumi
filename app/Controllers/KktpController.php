@@ -72,6 +72,14 @@ class KktpController extends BaseController
             }
         }
 
+        $rombelTingkatSama = [];
+        foreach ($daftarRombel as $r) {
+            $rMaster = $r['master_class_id'] ?? $r['id'];
+            if ($rMaster == $masterClassId && $r['id'] != $selectedRombelId) {
+                $rombelTingkatSama[] = $r;
+            }
+        }
+
         // ==============================================================
         // 3. KUNCI MAPEL & MAPEL GABUNGAN (KHUSUS GURU AKTIF)
         // ==============================================================
@@ -175,6 +183,7 @@ class KktpController extends BaseController
         $data = [
             'tahunAktif' => $tahunAktif,
             'daftarRombel' => $daftarRombel,
+            'rombelTingkatSama' => $rombelTingkatSama, // 🌟 TAMBAHAN
             'daftarMapel' => $daftarMapel,
             'selectedRombelId' => $selectedRombelId,
             'selectedMapelId' => $selectedMapelId,
@@ -237,4 +246,77 @@ class KktpController extends BaseController
 
         return $this->response->setJSON(['status' => 'success', 'message' => 'Data KKTP untuk kelas ini berhasil direset!']);
     }
+
+    // ==============================================================
+    // FUNGSI UNTUK COPY DATA KKTP DARI ROMBEL LAIN (TINGKAT SAMA)
+    // ==============================================================
+    public function copyKktp()
+    {
+        $db = \Config\Database::connect();
+        $request = \Config\Services::request();
+
+        if (!$request->isAJAX()) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Akses tidak sah.']);
+        }
+
+        $fromRombelId = $request->getPost('from_rombel_id');
+        $toRombelId   = $request->getPost('to_rombel_id');
+        $cpIdsJson    = $request->getPost('cp_ids');
+        
+        if (empty($fromRombelId) || empty($toRombelId) || empty($cpIdsJson)) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Data tidak lengkap.']);
+        }
+
+        $cpIds = json_decode($cpIdsJson, true);
+
+        if (empty($cpIds)) {
+             return $this->response->setJSON(['status' => 'error', 'message' => 'Tidak ada target materi yang akan disalin.']);
+        }
+
+        $db->transStart();
+
+        // 1. Ambil data rubrik KKTP dari rombel sumber
+        $sourceData = $db->table('kurikulum_kktp')
+                         ->where('rombel_id', $fromRombelId)
+                         ->whereIn('cp_detail_id', $cpIds)
+                         ->get()->getResultArray();
+
+        if (empty($sourceData)) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Rombel sumber belum memiliki data Rubrik KKTP untuk mapel ini.']);
+        }
+
+        // 2. Hapus data KKTP yang sudah ada di rombel tujuan agar tidak numpuk/double
+        $db->table('kurikulum_kktp')
+           ->where('rombel_id', $toRombelId)
+           ->whereIn('cp_detail_id', $cpIds)
+           ->delete();
+
+        // 3. Masukkan data dari rombel sumber ke rombel tujuan
+        $insertData = [];
+        foreach ($sourceData as $sd) {
+            $insertData[] = [
+                'cp_detail_id'         => $sd['cp_detail_id'],
+                'rombel_id'            => $toRombelId,
+                'indikator'            => $sd['indikator'],
+                'skor_sangat_baik'     => $sd['skor_sangat_baik'],
+                'skor_baik'            => $sd['skor_baik'],
+                'skor_cukup'           => $sd['skor_cukup'],
+                'skor_perlu_bimbingan' => $sd['skor_perlu_bimbingan'],
+                'created_at'           => date('Y-m-d H:i:s')
+            ];
+        }
+
+        if (!empty($insertData)) {
+            $db->table('kurikulum_kktp')->insertBatch($insertData);
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Gagal menyalin data dari database.']);
+        }
+
+        return $this->response->setJSON(['status' => 'success', 'message' => 'Rubrik KKTP berhasil disalin!']);
+    }
+
 }

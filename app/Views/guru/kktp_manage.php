@@ -29,6 +29,9 @@
                 <a href="<?= base_url('/') ?>" class="btn btn-outline-secondary btn-sm font-weight-bold shadow-sm px-3 me-2">
                     <i class="bi bi-house-door"></i> Dashboard
                 </a>
+                <button type="button" class="btn btn-outline-primary btn-sm font-weight-bold shadow-sm px-3 me-2" data-bs-toggle="modal" data-bs-target="#modalCopyKktp">
+                    📋 Copy dari Rombel Lain
+                </button>
                 <button type="button" class="btn btn-primary btn-sm font-weight-bold shadow-sm px-3 btn-ai-kktp">
                     <i class="bi bi-magic"></i> AI Generate Rubrik
                 </button>
@@ -108,6 +111,39 @@
             <?php endif; ?>
         </div>
     </div>
+    <div class="modal fade" id="modalCopyKktp" tabindex="-1" aria-labelledby="modalCopyKktpLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title font-weight-bold" id="modalCopyKktpLabel">📋 Copy Rubrik KKTP</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-3">Fitur ini akan menyalin seluruh Indikator dan Deskripsi Rubrik dari Rombel paralel ke <b>Rombel <?= esc($namaRombelAktif) ?></b> yang sedang aktif saat ini.</p>
+                    
+                    <div class="mb-3">
+                        <label class="font-weight-bold text-primary form-label">Pilih Rombel Sumber:</label>
+                        <select id="select-copy-from-kktp" class="form-select border-primary">
+                            <option value="">-- Pilih Rombel Sumber --</option>
+                            <?php if(!empty($rombelTingkatSama)): ?>
+                                <?php foreach($rombelTingkatSama as $rt): ?>
+                                    <option value="<?= $rt['id'] ?>"><?= esc($rt['class_name'] . ' ' . $rt['rombel_name']) ?></option>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <option value="" disabled>Tidak ada rombel paralel di tingkat ini.</option>
+                            <?php endif; ?>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-primary font-weight-bold" id="btn-proses-copy-kktp">Proses Copy</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
 
     <script>
         // FUNGSI BANTUAN MODAL VANILLA JS (BEBAS JQUERY)
@@ -370,6 +406,69 @@
                 btnReset.innerHTML = originalText;
             }
         });
+        // ==============================================================
+        // 4. COPY KKTP DARI ROMBEL LAIN
+        // ==============================================================
+        const btnProsesCopyKktp = document.getElementById('btn-proses-copy-kktp');
+        if (btnProsesCopyKktp) {
+            btnProsesCopyKktp.addEventListener('click', async function() {
+                let fromRombelId = document.getElementById('select-copy-from-kktp').value;
+                let toRombelId = document.querySelector('select[name="rombel_id"]').value;
+                
+                if(!fromRombelId) {
+                    alert("Silakan pilih rombel sumber terlebih dahulu!");
+                    return;
+                }
+
+                // Kumpulkan ID CP yang sedang tampil
+                let cpIds = [];
+                document.querySelectorAll("#tbody-kktp tr[data-cpid]").forEach(tr => {
+                    let cpId = tr.getAttribute('data-cpid');
+                    if (cpId) cpIds.push(cpId);
+                });
+
+                if (cpIds.length === 0) {
+                    alert("Tidak ada target materi untuk disalin. Tabel masih kosong!");
+                    return;
+                }
+
+                if (!confirm("Apakah Anda yakin ingin menimpa Rubrik KKTP rombel ini dengan data dari rombel yang dipilih?")) {
+                    return;
+                }
+
+                let btn = this;
+                let originalText = btn.innerHTML;
+                btn.innerHTML = '⏳ Sedang Menyalin...';
+                btn.disabled = true;
+
+                const formData = new FormData();
+                formData.append('from_rombel_id', fromRombelId);
+                formData.append('to_rombel_id', toRombelId);
+                formData.append('cp_ids', JSON.stringify(cpIds));
+
+                try {
+                    const response = await fetch("<?= base_url('guru/kktp/copy') ?>", {
+                        method: 'POST',
+                        body: formData,
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    
+                    const result = await response.json();
+                    if (result.status === 'success') {
+                        alert("✅ " + result.message);
+                        window.location.reload(); // Reload agar tabel update
+                    } else {
+                        alert("⚠️ Gagal: " + result.message);
+                    }
+                } catch (error) {
+                    console.error(error);
+                    alert("⚠️ Terjadi kesalahan koneksi saat menyalin data.");
+                } finally {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }
+            });
+        }
     </script>
 </body>
 </html>

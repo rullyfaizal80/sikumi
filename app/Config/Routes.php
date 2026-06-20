@@ -194,6 +194,7 @@ $routes->post('guru/modul-ajar/reset', 'ModulAjarController::resetModul');
 $routes->get('guru/kktp', 'KktpController::index');
 $routes->post('guru/kktp/simpan', 'KktpController::simpan');
 $routes->post('guru/kktp/reset', 'KktpController::reset');
+$routes->post('guru/kktp/copy', 'KktpController::copyKktp');
 
 $routes->post('guru/modul-ajar/generate-ai', 'ModulAjarController::generateAi');
 
