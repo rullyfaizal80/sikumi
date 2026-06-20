@@ -179,6 +179,7 @@ $routes->post('perangkat/copy_draft', 'PerangkatController::copy_draft_elemen');
 $routes->post('admin/kaldik/category/store', 'KaldikController::storeCategory');
 $routes->post('admin/kaldik/category/update', 'KaldikController::updateCategory');
 $routes->get('admin/kaldik/category/delete/(:num)', 'KaldikController::deleteCategory/$1');
+$routes->post('admin/kaldik/clear', 'KaldikController::clearKaldik');
 
 $routes->get('guru/atp', 'AtpController::index');
 $routes->post('guru/atp/simpan', 'AtpController::simpanAtp');

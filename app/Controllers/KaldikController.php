@@ -393,4 +393,27 @@ class KaldikController extends BaseController
         return view('admin/kaldik_print_view', $data);
     }
 
+    // Fungsi untuk Mengosongkan/Menghapus Seluruh Agenda Kaldik yang Sedang Tampil
+public function clearKaldik()
+{
+    $db = \Config\Database::connect();
+
+    // Tangkap parameter Tahun Pelajaran dan Kelas dari form POST
+    $tahunId = $this->request->getPost('academic_year_id');
+    $classId = $this->request->getPost('class_id');
+
+    if (empty($tahunId) || empty($classId)) {
+        return redirect()->back()->with('gagal', 'Gagal menghapus! Parameter tahun pelajaran atau kelas tidak valid.');
+    }
+
+    // Eksekusi penghapusan massal agenda kegiatan berdasarkan filter aktif
+    $db->table('academic_calendars')
+       ->where('academic_year_id', $tahunId)
+       ->where('class_id', $classId)
+       ->delete();
+
+    return redirect()->to('admin/kaldik?class_id=' . $classId . '&ta=' . $tahunId)
+                     ->with('sukses', 'Seluruh agenda kegiatan kalender akademik untuk kelas ini berhasil dikosongkan!');
+}
+
 }

@@ -78,7 +78,16 @@
 
 </form>
                     </li>
-                    <li class="nav-item"><button type="button" class="btn btn-outline-dark btn-sm font-weight-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCopyKaldik"><i class="bi bi-copy me-1"></i> Copy Kaldik</button></li>
+                    <li class="nav-item"><button type="button" class="btn btn-outline-dark btn-sm font-weight-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalCopyKaldik">📄 Copy Kaldik</button></li>
+                    <li class="nav-item">
+                        <form action="<?= base_url('admin/kaldik/clear') ?>" method="POST" onsubmit="return confirm('⚠️ PERINGATAN PERMANEN:\n\nSemua agenda kegiatan pada kelas dan tahun pelajaran ini akan DIHAPUS SEKALIGUS.\n\nTindakan ini tidak bisa dibatalkan! Apakah Anda yakin?')" style="display: inline;">
+                            <?= csrf_field() ?> <input type="hidden" name="academic_year_id" value="<?= !empty($tahunAktif) ? $tahunAktif['id'] : '' ?>">
+                            <input type="hidden" name="class_id" value="<?= $kelasTerpilih ?>">
+                            <button type="submit" class="btn btn-sm btn-danger font-weight-bold shadow-sm">
+                                🗑️ Hapus Isi Kaldik
+                            </button>
+                        </form>
+                    </li>
                     <li class="nav-item"><a href="<?= base_url('/') ?>" class="btn btn-sm btn-secondary font-weight-bold px-3">🏠 Dashboard</a></li>
                 </ul>
             </div>
@@ -140,7 +149,7 @@
                                     </div>
                                       <!-- REVISI TOMBOL CETAK AGAR MEMBAWA PARAMETER TAHUN DAN KELAS -->
 <a href="<?= base_url('admin/kaldik/print?ta=' . ($tahunAktif ? $tahunAktif['id'] : '') . '&class_id=' . $kelasTerpilih) ?>" target="_blank" class="btn btn-sm btn-outline-secondary font-weight-bold shadow-sm">
-    <i class="bi bi-printer-fill me-1"></i>🖨️ Cetak Kalender (PDF)
+    🖨️ Cetak Kalender (PDF)
 </a>
                                     </div>
 
