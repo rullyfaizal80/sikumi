@@ -319,4 +319,165 @@ class KktpController extends BaseController
         return $this->response->setJSON(['status' => 'success', 'message' => 'Rubrik KKTP berhasil disalin!']);
     }
 
+    // ==============================================================
+    // 🌟 PERBAIKAN TOTAL: FUNGSI UNTUK CETAK/PRINT RUBRIK KKTP
+    // ==============================================================
+    public function printKktp()
+    {
+        $db = \Config\Database::connect();
+        $request = \Config\Services::request();
+
+        // 1. INFO HEADER (SINKRONISASI TOTAL DATABASE)
+        $tahunAktif = $db->tableExists('academic_years') ? $db->table('academic_years')->where('is_active', 1)->get()->getRowArray() : null;
+        $userId = session()->get('user_id') ?? (function_exists('user_id') ? user_id() : 0);
+        
+        $namaMadrasah  = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_lembaga_nama')->get()->getRowArray() : null;
+        if (!$namaMadrasah) {
+            $namaMadrasah = $db->tableExists('settings') ? $db->table('settings')->where('key', 'nama_madrasah')->get()->getRowArray() : null;
+        }
+        $titiMangsa    = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_titi_mangsa')->get()->getRowArray() : null;
+        $kepalaSekolah = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_nama')->get()->getRowArray() : null;
+        $npkKepala     = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_npk')->get()->getRowArray() : null;
+
+        // Tarik NPK Guru (SINKRON DENGAN INDEX)
+        $guruNpk = '.....................................';
+        if ($db->tableExists('teacher_profiles')) {
+            $guruProfile = $db->table('teacher_profiles')->where('user_id', $userId)->get()->getRowArray();
+            if ($guruProfile) {
+                $guruNpk = $guruProfile['nip'] ?? $guruProfile['npk'] ?? '.....................................';
+            }
+        }
+
+        // Tarik Nama Guru dari teacher_profiles / users (SINKRON DENGAN INDEX)
+        $namaGuruCetak = '.....................................';
+        if ($db->tableExists('teacher_profiles')) {
+            $guru = $db->table('teacher_profiles')->where('user_id', $userId)->get()->getRowArray();
+            if ($guru) {
+                $namaGuruCetak = $guru['nama_guru'] ?? $guru['nama'] ?? $guru['full_name'] ?? 'Guru Pengampu';
+            }
+        }
+        if (($namaGuruCetak == '.....................................' || $namaGuruCetak == 'Guru Pengampu') && $db->tableExists('users')) {
+            $guruData = $db->table('users')->where('id', $userId)->get()->getRowArray();
+            if ($guruData) {
+                $namaGuruCetak = $guruData['fullname'] ?? $guruData['name'] ?? $guruData['username'] ?? 'Nama Guru Belum Diatur';
+            }
+        }
+
+        // 2. PARAMETER FILTER & AMBIL NAMA ROMBEL
+        $selectedRombelId = $request->getGet('rombel_id');
+        $selectedMapelId  = $request->getGet('mapel_id');
+
+        $namaRombelAktif = '-';
+        $namaMapelAktif  = '-';
+        $faseAktif       = '-';
+        $kelasAktif      = '-';
+        $masterClassId   = null;
+
+        // --- AMBIL DATA ROMBEL & TINGKAT ---
+        if (!empty($selectedRombelId)) {
+            $r = $db->table('class_rombel cr')
+                    ->select('cr.rombel_name, mc.class_name, cr.master_class_id')
+                    ->join('master_classes mc', 'mc.id = cr.master_class_id', 'left')
+                    ->where('cr.id', $selectedRombelId)
+                    ->get()->getRowArray();
+
+            if ($r) {
+                $className = $r['class_name'] ?? '';
+                $rombelName = $r['rombel_name'] ?? '';
+                $namaRombelAktif = $className . ($rombelName ? ' - ' . $rombelName : '');
+                $kelasAktif      = $className;
+                $masterClassId   = $r['master_class_id'];
+                
+                $angkaTingkat = preg_replace('/[^0-9]/', '', $className); 
+                if (!empty($angkaTingkat)) {
+                    $faseAktif = ($angkaTingkat >= 7 && $angkaTingkat <= 9) ? 'D' : (($angkaTingkat == 10) ? 'E' : 'F');
+                } else {
+                    $upperClass = strtoupper($className);
+                    if (strpos($upperClass, 'VII') !== false || strpos($upperClass, 'VIII') !== false || strpos($upperClass, 'IX') !== false) { $faseAktif = 'D'; }
+                    elseif (strpos($upperClass, 'XI') !== false || strpos($upperClass, 'XII') !== false) { $faseAktif = 'F'; }
+                    elseif (strpos($upperClass, 'X') !== false) { $faseAktif = 'E'; }
+                }
+            }
+        }
+
+        // --- 🌟 AMBIL DATA NAMA MATA PELAJARAN (FIX BLANK) ---
+        if (!empty($selectedMapelId)) {
+            $isCombined = strpos($selectedMapelId, 'C_') === 0;
+            $cleanMapelId = str_replace(['S_', 'C_'], '', $selectedMapelId);
+
+            if ($isCombined && $db->tableExists('schedule_combined_subjects')) {
+                $m = $db->table('schedule_combined_subjects')->where('id', $cleanMapelId)->get()->getRowArray();
+                if ($m) $namaMapelAktif = $m['combined_name'] ?? 'Mapel Gabungan';
+            } else {
+                $tabelMapel = $db->tableExists('master_subjects') ? 'master_subjects' : ($db->tableExists('subjects') ? 'subjects' : 'mata_pelajaran');
+                if ($db->tableExists($tabelMapel)) {
+                    $mapelFields = $db->getFieldNames($tabelMapel);
+                    $kolomNamaMapel = in_array('subject_name', $mapelFields) ? 'subject_name' : (in_array('nama_mapel', $mapelFields) ? 'nama_mapel' : 'name');
+                    
+                    // Dicari menggunakan ID bersih maupun ID dengan awalan prefix
+                    $m = $db->table($tabelMapel)->where('id', $cleanMapelId)->orWhere('id', $selectedMapelId)->get()->getRowArray();
+                    if ($m) $namaMapelAktif = $m[$kolomNamaMapel] ?? '-';
+                }
+            }
+        }
+
+        // 3. LOAD DATA KKTP SINKRON DENGAN TABEL MANAGE & FILTER TINGKAT
+        $kktpData = [];
+        if (!empty($selectedRombelId) && !empty($selectedMapelId)) {
+            $cleanMapelId = str_replace(['S_', 'C_'], '', $selectedMapelId);
+
+            $tabelCpHeader = $db->tableExists('kurikulum_cp_headers_1') ? 'kurikulum_cp_headers_1' : 'kurikulum_cp_headers';
+            $tabelCpDetail = $db->tableExists('kurikulum_cp_details_1') ? 'kurikulum_cp_details_1' : 'kurikulum_cp_details';
+
+            $builder = $db->table($tabelCpDetail . ' d')
+                ->join($tabelCpHeader . ' h', 'd.header_id = h.id')
+                ->join('kurikulum_atp a', 'a.cp_detail_id = d.id AND a.rombel_id = ' . $db->escape($selectedRombelId), 'left')
+                ->join('kurikulum_kktp k', 'k.cp_detail_id = d.id AND k.rombel_id = ' . $db->escape($selectedRombelId), 'left')
+                ->groupStart()
+                    ->where('h.mapel_id', $selectedMapelId)
+                    ->orWhere('h.mapel_id', $cleanMapelId)
+                ->groupEnd();
+
+            if (!empty($masterClassId)) {
+                $builder->where('h.master_class_id', $masterClassId);
+            }
+
+            if ($tahunAktif) {
+                $builder->where('h.academic_year_id', $tahunAktif['id']);
+            }
+
+            $kktpData = $builder->select('d.id, d.tujuan_pembelajaran, a.urutan as no_tp, k.indikator, k.skor_sangat_baik, k.skor_baik, k.skor_cukup, k.skor_perlu_bimbingan')
+                ->orderBy('COALESCE(a.urutan, 999)', 'ASC', false) 
+                ->orderBy('d.id', 'ASC')
+                ->get()->getResultArray();
+        }
+
+        // 4. MAPPING VARIABEL GANDA (Mengunci kompatibilitas variabel view)
+        $data = [
+            'tahunAktif'       => $tahunAktif,
+            'namaMadrasah'     => $namaMadrasah ? $namaMadrasah['value'] : 'MTs MIFTAHUL HUDA (MIMHa)',
+            'titiMangsa'       => $titiMangsa ? $titiMangsa['value'] : 'Bandung, ' . date('d F Y'),
+            
+            // Mengirim 2 versi key kepala sekolah agar aman
+            'kepalaNama'       => $kepalaSekolah ? $kepalaSekolah['value'] : 'Rully Faizal, S.T.',
+            'kepalaSekolah'    => $kepalaSekolah ? $kepalaSekolah['value'] : 'Rully Faizal, S.T.',
+            'kepalaNpk'        => $npkKepala ? $npkKepala['value'] : '-',
+            
+            'namaGuruCetak'    => $namaGuruCetak,
+            'guruNpk'          => $guruNpk,
+            'userId'           => $userId,
+            'namaRombelAktif'  => $namaRombelAktif,
+            
+            // 🌟 DOUBLE-KEY MAPEL: Menjamin nama mapel ter-render di view manapun
+            'namaMapelAktif'   => $namaMapelAktif,
+            'selectedMapelName'=> $namaMapelAktif, 
+            
+            'faseAktif'        => $faseAktif,
+            'kelasAktif'       => $kelasAktif,
+            'kktpData'         => $kktpData
+        ];
+
+        return view('guru/print_kktp', $data);
+    }
+
 }

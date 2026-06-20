@@ -32,8 +32,11 @@
                 <button type="button" class="btn btn-outline-primary btn-sm font-weight-bold shadow-sm px-3 me-2" data-bs-toggle="modal" data-bs-target="#modalCopyKktp">
                     📋 Copy dari Rombel Lain
                 </button>
+                <a href="<?= base_url('guru/kktp/print?rombel_id=' . ($selectedRombelId ?? '') . '&mapel_id=' . ($selectedMapelId ?? '')) ?>" target="_blank" class="btn btn-outline-danger btn-sm font-weight-bold shadow-sm px-3 me-2">
+    🖨️ Cetak KKTP
+</a>
                 <button type="button" class="btn btn-primary btn-sm font-weight-bold shadow-sm px-3 btn-ai-kktp">
-                    <i class="bi bi-magic"></i> AI Generate Rubrik
+                    🤖 AI Generate Rubrik
                 </button>
             </div>
         </div>
