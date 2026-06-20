@@ -86,7 +86,7 @@
                                 <tr><td colspan="8" class="text-center py-4 text-danger font-weight-bold">Belum ada data Tujuan Pembelajaran.</td></tr>
                             <?php else: ?>
                                 <?php foreach($dataKktp as $idx => $row): ?>
-                                <tr data-cpid="<?= esc($row['id'] ?? '') ?>">
+                                <tr data-cpid="<?= esc($row['id'] ?? '') ?>" data-acuan="<?= esc($row['acuan_kktp'] ?? '') ?>">
                                     <td class="text-center font-weight-bold"><?= $idx + 1 ?></td>
                                     <td class="text-center font-weight-bold text-muted"><?= esc($tingkatKelas) . '.' . esc($row['no_tp'] ?? ($idx + 1)) ?></td>
                                     <td class="tp-text font-weight-bold"><?= esc($row['tujuan_pembelajaran']) ?></td>
@@ -234,6 +234,7 @@
 
                     for (let tr of rowsToProcess) {
                         let tp = tr.querySelector('.tp-text').innerText.trim();
+                        let acuanKktp = tr.getAttribute('data-acuan') || ''; // 🌟 TANGKAP ACUAN KKTP DARI DATABASE
                         
                         const cellIndikator = tr.querySelector('.cell-indikator');
                         const cellSb = tr.querySelector('.cell-sb');
@@ -257,13 +258,21 @@
                             cellC.innerHTML = `<span class="text-muted">⏳...</span>`;
                             cellPb.innerHTML = `<span class="text-muted">⏳...</span>`;
 
-                            let prompt = `Anda adalah pakar Kurikulum Merdeka. Buatkan deskripsi Rubrik KKTP untuk Tujuan Pembelajaran: "${tp}".${instruksiTambahan}
-                            Output WAJIB berupa raw JSON murni 1 baris saja (TANPA markdown, TANPA enter/newline):
-                            {"indikator":"", "sb":"", "b":"", "c":"", "pb":""}
-                            Aturan teks rubrik:
-                            - JANGAN gunakan enter atau baris baru di dalam teks nilai JSON.
-                            - JANGAN gunakan tanda petik ganda (") di dalam nilai teks, gunakan petik tunggal (') jika diperlukan.
-                            - Kata-kata singkat, padat, dan operasional.`;
+                            let prompt = `Anda adalah pakar Kurikulum Merdeka. Buatkan deskripsi Rubrik Penilaian KKTP berdasarkan acuan berikut:
+- Tujuan Pembelajaran (TP): "${tp}"
+- Kriteria Acuan Utama (Target): "${acuanKktp}"
+
+Tugas Anda:
+Berdasarkan "Kriteria Acuan Utama" di atas, jabarkan menjadi 4 tingkat pencapaian siswa.${instruksiTambahan}
+Output WAJIB berupa raw JSON murni 1 baris saja (TANPA markdown, TANPA enter/newline):
+{"indikator":"", "sb":"", "b":"", "c":"", "pb":""}
+Aturan teks rubrik:
+- "indikator" diisi ringkasan target acuan.
+- "sb" (Sangat Baik/Melampaui acuan).
+- "b" (Baik/Mencapai acuan persis).
+- "c" (Cukup/Hampir mencapai acuan).
+- "pb" (Perlu Bimbingan/Belum mencapai acuan).
+- JANGAN gunakan enter atau baris baru di dalam teks. JANGAN gunakan tanda petik ganda (") di dalam nilai teks, gunakan petik tunggal (') jika perlu. Bahasa harus operasional dan mudah dipahami.`;
 
                             try {
                                 const fd = new FormData();

@@ -154,7 +154,7 @@ class KktpController extends BaseController
 
             $builder = $db->table('kurikulum_atp a')
                           // Ambil urutan dari tabel ATP (a.urutan), indikator dari KKTP (k.indikator)
-                          ->select('d.id, d.tujuan_pembelajaran, a.urutan as no_tp, k.indikator, k.skor_sangat_baik, k.skor_baik, k.skor_cukup, k.skor_perlu_bimbingan')
+                          ->select('d.id, d.tujuan_pembelajaran, d.kktp as acuan_kktp, a.urutan as no_tp, k.indikator, k.skor_sangat_baik, k.skor_baik, k.skor_cukup, k.skor_perlu_bimbingan')
                           ->join('kurikulum_cp_details d', 'd.id = a.cp_detail_id')
                           ->join('kurikulum_cp_headers h', 'h.id = d.header_id')
                           // Join KKTP menggunakan rombel yang spesifik
