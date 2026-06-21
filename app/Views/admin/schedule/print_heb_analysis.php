@@ -98,7 +98,7 @@
             <div class="header-content">
                 <img src="<?= base_url('assets/img/logo_kaldik1.png') ?>" alt="Logo Yayasan">
                 <div class="header-text">
-                    <h5>ANALISIS HARI EFEKTIF BELAJAR (HEB)</h5>
+                    <h5>ANALISIS HARI EFEKTIF BELAJAR</h5>
                     <h5 style="font-size: 14px; margin-top: 0;"><?= strtoupper(esc($namaMadrasah ?? 'MTs MIFTAHUL HUDA (MIMHa)')) ?></h5>
                     <h6>TAHUN PELAJARAN <?= $tahunAktif ? esc($tahunAktif['academic_year']) : '-' ?></h6>
                     <span class="badge-semester">

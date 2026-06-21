@@ -36,7 +36,7 @@ class PerangkatController extends BaseController
                 $faseAsli = trim($k['curriculum_phase'] ?? '-');
                 $faseBersih = trim(str_ireplace('Fase', '', $faseAsli));
                 
-                $classOptions[$k['id']] = 'Kelas ' . ($k['class_name'] ?? '') . ' (Fase ' . $faseBersih . ')';
+                $classOptions[$k['id']] = ($k['class_name'] ?? '') . ' / ' . $faseBersih;
             }
 
             // 2. Ambil Pilihan Mapel (Tunggal & Gabungan)
@@ -571,6 +571,57 @@ $npkKepala     = $db->tableExists('settings') ? $db->table('settings')->where('k
         } else {
             return redirect()->back()->with('error', "Tidak ada elemen baru yang disalin (Mungkin elemen sudah ada di kelas ini).");
         }
+    }
+
+    // ==============================================================
+    // FUNGSI RESET / KOSONGKAN TABEL LANGKAH 2 (HEADER & DETAILS)
+    // ==============================================================
+    public function reset_analisis_cp()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Akses tidak sah.']);
+        }
+
+        $db = \Config\Database::connect();
+        $userId = session()->has('user_id') ? session()->get('user_id') : (function_exists('user_id') ? user_id() : 0);
+        $tahunAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+
+        $mapelId = $this->request->getPost('mapel_id');
+        $masterClassId = $this->request->getPost('master_class_id');
+
+        if (empty($mapelId) || empty($masterClassId) || empty($tahunAktif)) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Parameter tidak lengkap.']);
+        }
+
+        $tabelHeader = $db->tableExists('kurikulum_cp_headers_1') ? 'kurikulum_cp_headers_1' : 'kurikulum_cp_headers';
+        $tabelDetail = $db->tableExists('kurikulum_cp_details_1') ? 'kurikulum_cp_details_1' : 'kurikulum_cp_details';
+
+        $db->transStart();
+
+        $headers = $db->table($tabelHeader)
+                     ->where('teacher_id', $userId)
+                     ->where('academic_year_id', $tahunAktif['id'])
+                     ->where('mapel_id', $mapelId)
+                     ->where('master_class_id', $masterClassId)
+                     ->get()->getResultArray();
+
+        if (!empty($headers)) {
+            $headerIds = array_column($headers, 'id');
+            $db->table($tabelDetail)->whereIn('header_id', $headerIds)->delete();
+            $db->table($tabelHeader)->whereIn('id', $headerIds)->delete();
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Gagal mengosongkan tabel.']);
+        }
+
+        if (empty($headers)) {
+            return $this->response->setJSON(['status' => 'success', 'message' => 'Tabel memang sudah kosong.']);
+        }
+
+        return $this->response->setJSON(['status' => 'success', 'message' => 'Seluruh data Tabel Langkah 2 berhasil dihapus permanen!']);
     }
 
 }

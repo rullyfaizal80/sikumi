@@ -68,7 +68,7 @@
     <div class="print-actions-wrapper">
         <div class="btn-group-top">
             <button class="btn-print" onclick="window.print()">🖨️ Cetak PDF</button>
-            <button class="btn-close" onclick="window.close()">❌ Tutup</button>
+            <button class="btn-close" onclick="window.close()">🆇 Tutup</button>
         </div>
         <div class="control-panel">
             <p>Atur Posisi TTD Guru</p>
@@ -88,7 +88,7 @@
             <div class="header-content">
                 <img src="<?= base_url('assets/img/logo_kaldik1.png') ?>" alt="Logo Yayasan">
                 <div class="header-text">
-                    <h5>ANALISIS CAPAIAN PEMBELAJARAN (CP) & TUJUAN PEMBELAJARAN</h5>
+                    <h5>ANALISIS CAPAIAN PEMBELAJARAN</h5>
                     <h5 style="font-size: 18px; margin-top: 2px;"><?= strtoupper(esc($namaMadrasah ?? 'MTs MIFTAHUL HUDA (MIMHa)')) ?></h5>
                     <h6>TAHUN PELAJARAN <?= $tahunAktif ? esc($tahunAktif['academic_year']) : '-' ?></h6>
                     <span class="badge-semester">
@@ -102,21 +102,21 @@
         <!-- INFORMASI MAPEL -->
         <table class="info-table">
             <tr><td width="120">Mata Pelajaran</td><td width="10">:</td><td><?= esc($namaMapelAktif ?? '-') ?></td></tr>
-            <tr><td>Fase / Kelas</td><td>:</td><td><?= esc($namaKelasAktif ?? '-') ?></td></tr>
+            <tr><td>Kelas / Fase</td><td>:</td><td><?= esc($namaKelasAktif ?? '-') ?></td></tr>
             <tr><td>Guru Pengampu</td><td>:</td><td><?= esc($namaGuruCetak) ?></td></tr>
         </table>
 
         <!-- ============================================================== -->
         <!-- BAGIAN A: TABEL DESKRIPSI CP (DRAFT ELEMEN)                    -->
         <!-- ============================================================== -->
-        <div class="section-title">A. DESKRIPSI CAPAIAN PEMBELAJARAN (CP)</div>
+        <div class="section-title">A. ELEMEN & DESKRIPSI CAPAIAN PEMBELAJARAN (CP)</div>
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
-                        <th width="5%">No</th>
-                        <th width="20%">Elemen CP</th>
-                        <th width="75%">Deskripsi Capaian Pembelajaran</th>
+                        <th width="4%">No</th>
+                        <th width="15%">Elemen CP</th>
+                        <th width="80%">Deskripsi Capaian Pembelajaran</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -138,17 +138,17 @@
         <!-- ============================================================== -->
         <!-- BAGIAN B: TABEL ANALISIS TP & KKTP                             -->
         <!-- ============================================================== -->
-        <div class="section-title">B. ANALISIS TUJUAN PEMBELAJARAN (TP) & KKTP</div>
+        <div class="section-title">B. HASIL ANALISIS CAPAIAN PEMBELAJARAN (CP)</div>
         <div class="table-container">
-            <table>
+            <table class="table table-bordered" style="table-layout: fixed; word-wrap: break-word;">
                 <thead>
                     <tr>
                         <th width="4%">No</th>
                         <th width="15%">Elemen CP</th>
-                        <th width="22%">Tujuan Pembelajaran (TP)</th>
+                        <th width="20%">Tujuan Pembelajaran (TP)</th>
                         <th width="16%">Lingkup Materi</th>
-                        <th width="23%">Kriteria Ketercapaian TP (KKTP)</th>
-                        <th width="15%">Aktivitas Pembelajaran</th>
+                        <th width="20%">Kriteria Ketercapaian TP (KKTP)</th>
+                        <th width="20%">Aktivitas Pembelajaran</th>
                         <th width="5%">JP</th>
                     </tr>
                 </thead>
@@ -174,12 +174,12 @@
                         <?php endforeach; ?>
                     <?php endif; ?>
                 </tbody>
-                <tfoot>
+                <tbody>
                     <tr style="background-color: #f4f4f4; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
                         <td colspan="6" class="text-right" style="font-weight: bold; padding-right: 15px; vertical-align: middle;">TOTAL ALOKASI JP:</td>
                         <td class="text-center font-weight-bold" style="font-size: 13px;"><?= $totalJp ?></td>
                     </tr>
-                </tfoot>
+                </tbody>
             </table>
         </div>
 
