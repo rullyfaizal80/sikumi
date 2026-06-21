@@ -160,8 +160,6 @@ class AtpController extends BaseController
              $dataAtp = $builder->get()->getResultArray();
         }
 
-        // ... (Kode sebelumnya yang mengambil data mentah dari Analisis CP ke variabel $dataAtp) ...
-
         // ==============================================================
         // 🌟 SINKRONISASI DENGAN DATABASE ATP (Tarik Urutan & Centang Tersimpan)
         // ==============================================================
@@ -205,10 +203,6 @@ class AtpController extends BaseController
                 return $a['urutan'] <=> $b['urutan'];
             });
         }
-
-        // ==============================================================
-        // 5. LOAD TANGGAL JADWAL & HITUNG TOTAL JP MINIMAL...
-        // ==============================================================
 
         // ==============================================================
         // 5. LOAD TANGGAL JADWAL & HITUNG TOTAL JP MINIMAL (CERDAS & AMAN)
@@ -452,22 +446,34 @@ class AtpController extends BaseController
         // Jika data Analisis CP sudah ada, kita distribusikan
         if ($totalAtp > 0) {
             
-            // SKENARIO A: Distribusi tanggal ke materi yang ada (Jika Materi > Jadwal, otomatis 'Jadwal Habis')
+            // SKENARIO A: Distribusi tanggal ke materi yang ada
             foreach ($dataAtp as $idx => &$row) {
                 $row['nomor_atp'] = $tingkatKelas . '.' . ($idx + 1);
-                $row['tanggal']   = $listTanggal[$idx] ?? 'Jadwal Habis / Belum Diatur';
+                $cpId = $row['id'];
                 
-                // Hitung total JP sekaligus di sini agar lebih efisien
+                // 🌟 SIMPAN TANGGAL MURNI DARI HEB UNTUK REFERENSI JAVASCRIPT
+                $row['tanggal_default'] = $listTanggal[$idx] ?? 'Jadwal Habis / Belum Diatur';
+
+                if (isset($savedAtpMap[$cpId]) && isset($savedAtpMap[$cpId]['alokasi_tanggal'])) {
+                    // Gunakan tanggal hasil modifikasi dari database
+                    $row['tanggal'] = $savedAtpMap[$cpId]['alokasi_tanggal'];
+                } else {
+                    // Jika belum pernah disimpan, gunakan default
+                    $row['tanggal'] = $row['tanggal_default'];
+                }
+                
                 $totalJpAtp += (int)($row['estimasi_jp'] ?? $row['jp'] ?? 0);
             }
-            unset($row); // WAJIB untuk memutuskan referensi PHP
+            unset($row); 
 
-            // SKENARIO B: Jika masih ada sisa tanggal jadwal (Jadwal > Materi), tambahkan baris kosong
+            // SKENARIO B: Jika masih ada sisa tanggal jadwal, tambahkan baris kosong
             if ($totalTgl > $totalAtp) {
                 for ($i = $totalAtp; $i < $totalTgl; $i++) {
+                    $defaultTgl = $listTanggal[$i] ?? 'Jadwal Habis / Belum Diatur';
                     $dataAtp[] = [
                         'nomor_atp'           => $tingkatKelas . '.' . ($i + 1),
-                        'tanggal'             => $listTanggal[$i],
+                        'tanggal'             => $defaultTgl, // Karena Skenario B baris baru, isinya default
+                        'tanggal_default'     => $defaultTgl, // Referensi murni
                         'tujuan_pembelajaran' => '', 
                         'lingkup_materi'      => '',
                         'aktivitas_tarl'      => '',
@@ -629,9 +635,13 @@ class AtpController extends BaseController
                 'cp_detail_id'         => $item['cp_detail_id'],
                 'rombel_id'            => $rombelId,
                 'urutan'               => $item['urutan'],
-                'aktivitas_kognitif'   => $item['aktivitas_kognitif'],
-                'dpl_terpilih'         => $item['dpl'], // Sudah berbentuk "DPL1,DPL3"
-                'panca_cinta_terpilih' => $item['pilar'], // Sudah berbentuk "P1,P5"
+                'aktivitas_kognitif'   => $item['aktivitas_kognitif'] ?? null,
+                'dpl_terpilih'         => $item['dpl'] ?? null, 
+                'panca_cinta_terpilih' => $item['pilar'] ?? null, 
+                
+                // 🌟 TAMBAHAN BARU: Menyimpan alokasi tanggal yang sudah digeser
+                'alokasi_tanggal'      => isset($item['alokasi_tanggal']) ? $item['alokasi_tanggal'] : null,
+                
                 'created_at'           => date('Y-m-d H:i:s')
             ];
         }
@@ -647,7 +657,7 @@ class AtpController extends BaseController
             return $this->response->setJSON(['status' => 'error', 'message' => 'Gagal menyimpan ke database.']);
         }
 
-        return $this->response->setJSON(['status' => 'success', 'message' => 'Susunan ATP berhasil disimpan permanen!']);
+        return $this->response->setJSON(['status' => 'success', 'message' => 'Susunan ATP dan Alokasi Tanggal berhasil disimpan permanen!']);
     }
 
     // ==============================================================

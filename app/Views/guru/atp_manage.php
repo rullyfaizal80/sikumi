@@ -146,13 +146,35 @@
                                         </div>
                                     </td>
                                     
-                                    <?php 
-                                        $tglText = $row['tanggal'] ?? 'Jadwal Habis / Belum Diatur';
-                                        $isHabis = (strpos($tglText, 'Habis') !== false || strpos($tglText, 'Belum') !== false);
+                                  <?php 
+                                        $tglText = $row['tanggal'] ?? ''; // Ini yang dari Database (Bisa gabungan atau kosong)
+                                        $tglDefault = $row['tanggal_default'] ?? 'Jadwal Habis / Belum Diatur'; // Ini Murni HEB
+                                        
+                                        $isHabis = (strpos($tglDefault, 'Habis') !== false || strpos($tglDefault, 'Belum') !== false);
                                         $colorClass = $isHabis ? 'text-danger' : 'text-success';
+                                        
+                                        $tpText = trim($row['tujuan_pembelajaran'] ?? $row['tp'] ?? '');
+                                        $isTpKosong = empty($tpText) || $tpText === '-';
                                     ?>
-                                    <td class="text-center font-weight-bold align-middle cell-tanggal <?= $colorClass ?>">
-                                        <?= esc($tglText) ?>
+                                    <td class="text-center font-weight-bold align-middle cell-tanggal <?= $colorClass ?>" 
+                                        data-is-empty="<?= $isTpKosong ? 'true' : 'false' ?>" 
+                                        data-is-habis="<?= $isHabis ? 'true' : 'false' ?>"
+                                        data-original-date="<?= esc($tglDefault) ?>"
+                                        data-alokasi-tanggal="<?= esc($tglText) ?>">
+                                        
+                                        <span class="date-text d-block">
+                                            </span>
+                                        
+                                        <?php if (!$isHabis && !$isTpKosong): ?>
+                                            <div class="d-print-none mt-2 action-date-btns">
+                                                <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 shadow-sm mb-1" style="font-size: 10px; border-radius: 12px; display: block; width: 100%;" onclick="addDateAllocation(this)" title="Tambah alokasi tanggal dari baris kosong di bawah">
+                                                    ➕ Tambah Tgl
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2 shadow-sm" style="font-size: 10px; border-radius: 12px; display: none; width: 100%;" onclick="removeDateAllocation(this)" title="Kurangi alokasi tanggal">
+                                                    ➖ Kurangi Tgl
+                                                </button>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
 
                                     <td class="text-center font-weight-bold align-middle cell-no"><?= esc($tingkatKelas) . '.' . ($idx + 1) ?></td>
@@ -260,17 +282,52 @@
     <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
 
     <script>
-        let arrTanggal = [];
-        let tingkatKelas = '<?= esc($tingkatKelas) ?>';
+        // =========================================================
+        // 1. VARIABEL GLOBAL & INISIALISASI
+        // =========================================================
+        var tingkatKelas = '<?= esc($tingkatKelas) ?>';
+        var globalDates = [];
+        var rowsData = [];
 
         document.addEventListener("DOMContentLoaded", function() {
-            let rows = document.querySelectorAll("#tbody-atp tr");
-            rows.forEach(r => {
-                let cellTgl = r.querySelector('.cell-tanggal');
-                if(cellTgl) arrTanggal.push(cellTgl.innerText.trim());
+            const rows = document.querySelectorAll('.table-atp tbody tr');
+            
+            rows.forEach((row) => {
+                let cell = row.querySelector('.cell-tanggal');
+                if(!cell) return;
+                
+                let isHabis = cell.getAttribute('data-is-habis') === 'true';
+                let isEmptyTP = cell.getAttribute('data-is-empty') === 'true';
+                let origDate = cell.getAttribute('data-original-date') || '';
+                let savedAlokasi = cell.getAttribute('data-alokasi-tanggal'); 
+                
+                globalDates.push(origDate); 
+                
+                let alloc = 1; 
+                if (savedAlokasi === '') {
+                    alloc = 0; 
+                } else if (savedAlokasi && savedAlokasi.includes('&')) {
+                    alloc = savedAlokasi.split('&').length;
+                }
+
+                if(isHabis) {
+                    alloc = 1; 
+                }
+
+                rowsData.push({
+                    rowElement: row,
+                    isEmpty: isEmptyTP,
+                    isHabis: isHabis,
+                    allocation: alloc 
+                });
             });
+
+            renderDynamicDates();
         });
 
+        // =========================================================
+        // 2. FUNGSI MENGGESER POSISI (UP/DOWN)
+        // =========================================================
         function moveRow(btn, direction) {
             const row = btn.closest('tr');
             const tbody = row.parentNode;
@@ -278,57 +335,130 @@
             row.style.backgroundColor = "#fff3cd"; 
             setTimeout(() => { row.style.backgroundColor = ""; }, 500);
 
+            // Pindah Elemen HTML
             if (direction === 'up' && row.previousElementSibling) {
                 tbody.insertBefore(row, row.previousElementSibling);
             } else if (direction === 'down' && row.nextElementSibling) {
                 tbody.insertBefore(row.nextElementSibling, row);
             }
 
+            // Sinkronkan ulang urutan Nomor ATP dan array 'rowsData'
+            let newRowsData = [];
             let allRows = tbody.querySelectorAll("tr");
+            
             allRows.forEach((r, idx) => {
-                let cellTgl = r.querySelector('.cell-tanggal');
                 let cellNo = r.querySelector('.cell-no');
-                
-                if (cellTgl && arrTanggal[idx]) {
-                    let currentText = arrTanggal[idx];
-                    cellTgl.innerText = currentText;
-                    
-                    // Jaga konsistensi warna teks saat baris ditukar posisi (Drag & Drop Safe)
-                    if (currentText.includes('Habis') || currentText.includes('Belum')) {
-                        cellTgl.classList.remove('text-success');
-                        cellTgl.classList.add('text-danger');
-                    } else {
-                        cellTgl.classList.remove('text-danger');
-                        cellTgl.classList.add('text-success');
-                    }
-                }
                 if (cellNo) {
                     cellNo.innerText = tingkatKelas + "." + (idx + 1);
                 }
+
+                let oldData = rowsData.find(data => data.rowElement === r);
+                if(oldData) newRowsData.push(oldData);
+            });
+
+            rowsData = newRowsData;
+            renderDynamicDates();
+        }
+
+        // =========================================================
+        // 3. FUNGSI ALOKASI TANGGAL DINAMIS
+        // =========================================================
+        function addDateAllocation(btn) {
+            let tr = btn.closest('tr');
+            let rowIndex = rowsData.findIndex(r => r.rowElement === tr);
+            if(rowIndex === -1) return;
+
+            let donorIndex = -1;
+            for(let i = rowsData.length - 1; i > rowIndex; i--) {
+                if(rowsData[i].isEmpty && rowsData[i].allocation > 0 && !rowsData[i].isHabis) {
+                    donorIndex = i; break;
+                }
+            }
+
+            if(donorIndex === -1) {
+                alert("⚠️ Tidak ada sisa tanggal di baris TP kosong bawah yang bisa digunakan.");
+                return;
+            }
+
+            rowsData[donorIndex].allocation--;
+            rowsData[rowIndex].allocation++;
+            renderDynamicDates();
+        }
+
+        function removeDateAllocation(btn) {
+            let tr = btn.closest('tr');
+            let rowIndex = rowsData.findIndex(r => r.rowElement === tr);
+            if(rowIndex === -1 || rowsData[rowIndex].allocation <= 1) return;
+
+            let receiverIndex = -1;
+            for(let i = rowIndex + 1; i < rowsData.length; i++) {
+                if(rowsData[i].isEmpty && rowsData[i].allocation === 0) {
+                    receiverIndex = i; break;
+                }
+            }
+
+            if(receiverIndex !== -1) {
+                rowsData[receiverIndex].allocation++; 
+                rowsData[rowIndex].allocation--; 
+                renderDynamicDates();
+            } else {
+                alert("⚠️ Sistem tidak dapat menemukan baris kosong untuk mengembalikan tanggal.");
+            }
+        }
+
+        function renderDynamicDates() {
+            let dateCursor = 0;
+            
+            rowsData.forEach((data) => {
+                let cell = data.rowElement.querySelector('.cell-tanggal');
+                let dateSpan = cell.querySelector('.date-text');
+                let btnRemove = cell.querySelector('button[onclick="removeDateAllocation(this)"]');
+                
+                if(data.allocation === 0) {
+                    data.rowElement.style.display = 'none';
+                    data.rowElement.setAttribute('data-alokasi-tanggal', ''); 
+                } else {
+                    data.rowElement.style.display = ''; 
+                    
+                    let assignedDates = [];
+                    for(let i = 0; i < data.allocation; i++) {
+                        if(dateCursor < globalDates.length) {
+                            assignedDates.push(globalDates[dateCursor]);
+                            dateCursor++;
+                        }
+                    }
+                    
+                    let finalDateString = assignedDates.join(' & ');
+                    data.rowElement.setAttribute('data-alokasi-tanggal', finalDateString);
+                    
+                    if(dateSpan) {
+                        dateSpan.innerHTML = assignedDates.join('<br><span class="text-secondary fw-bold" style="font-size:10px;">&</span><br>');
+                    }
+                    
+                    if(btnRemove) {
+                        btnRemove.style.display = (data.allocation > 1) ? 'block' : 'none';
+                    }
+                }
             });
         }
-    </script>
-    <script>
+
         // ====================================================================
-        // TRIGGER AI: PENGURUTAN PEDAGOGIS & PEMETAAN KBC (JSON MODE)
+        // 4. TRIGGER AI: PENGURUTAN PEDAGOGIS & PEMETAAN KBC (JSON MODE)
         // ====================================================================
         document.getElementById('btn-eksekusi-ai-atp').addEventListener('click', async function() {
             const btnAi = this;
             const tbody = document.getElementById('tbody-atp');
             const allRows = Array.from(tbody.querySelectorAll('tr'));
             
-            // 1. VALIDASI DATA KOSONG
             if (allRows.length === 0 || allRows[0].innerText.includes('Belum ada data')) {
                 alert("Tabel ATP kosong. Tidak ada yang bisa dianalisis.");
                 return;
             }
 
-            /* // 2. VALIDASI BEBAN JP
             let totalJpInput = 0;
             let dataAtpMentah = [];
             
             allRows.forEach((tr, index) => {
-                // Pastikan baris memiliki data (bukan baris sisa jadwal kosong)
                 let tpTeks = tr.cells[3].innerText.trim();
                 let lingkupTeks = tr.cells[4].innerText.trim();
                 let jpTeks = tr.cells[8].innerText.trim();
@@ -345,47 +475,13 @@
                 }
             });
 
-            // Simulasi Target JP Semester (Jika belum ada dari Controller)
-            // Bapak bisa mengganti angka 0 di bawah ini dengan variabel PHP jika sudah ditarik dari Kaldik
             const targetJpSemester = parseInt("<?= $totalJpTersedia ?? 0 ?>") || totalJpInput; 
             
-            if (totalJpInput !== targetJpSemester && targetJpSemester > 0) {
-                let konfirmasi = confirm(`⚠️ VALIDASI JP: Total JP di tabel (${totalJpInput} JP) tidak sama dengan Target JP Kaldik (${targetJpSemester} JP).\n\nApakah Anda tetap ingin melanjutkan proses AI?`);
-                if (!konfirmasi) return;
-            } */
-
-            // 2. VALIDASI BEBAN JP
-            let totalJpInput = 0;
-            let dataAtpMentah = [];
-            
-            allRows.forEach((tr, index) => {
-                // Pastikan baris memiliki data (bukan baris sisa jadwal kosong)
-                let tpTeks = tr.cells[3].innerText.trim();
-                let lingkupTeks = tr.cells[4].innerText.trim();
-                let jpTeks = tr.cells[8].innerText.trim();
-                let jp = parseInt(jpTeks) || 0;
-                
-                if (tpTeks !== '') {
-                    totalJpInput += jp;
-                    dataAtpMentah.push({
-                        id_asli: index,
-                        tp: tpTeks,
-                        lingkup: lingkupTeks,
-                        jp: jp
-                    });
-                }
-            });
-
-            // Simulasi Target JP Semester (Jika belum ada dari Controller)
-            const targetJpSemester = parseInt("<?= $totalJpTersedia ?? 0 ?>") || totalJpInput; 
-            
-            // 🌟 PERBAIKAN: Gunakan alert dan return mutlak agar tidak bisa dilanjutkan
             if (totalJpInput !== targetJpSemester && targetJpSemester > 0) {
                 alert(`❌ PROSES DIBATALKAN: Total JP materi (${totalJpInput} JP) belum sesuai dengan alokasi JP Kalender (${targetJpSemester} JP).\n\nSilakan sesuaikan jumlah JP pada tabel terlebih dahulu agar sama dengan target.`);
-                return; // Proses akan langsung berhenti di sini, tombol akan kembali normal
+                return; 
             }
 
-            // 3. SUSUN PROMPT UNTUK AI
             let promptUser = `Anda adalah Pakar Kurikulum Merdeka (Deep Learning) dan KBC Kemenag.
 Tugas Anda menganalisis daftar Tujuan Pembelajaran (TP) berikut:
 
@@ -409,7 +505,6 @@ Format JSON persis seperti ini:
   {"id_asli": 1, "aktivitas_kognitif": "Menganalisis, Mengevaluasi", "dpl": ["DPL3", "DPL5"], "pilar": ["P4"]}
 ]`;
 
-            // 4. PROSES LOADING
             btnAi.disabled = true;
             let originalText = btnAi.innerHTML;
             btnAi.innerHTML = '⏳ AI Sedang Menganalisis & Menyusun...';
@@ -419,29 +514,23 @@ Format JSON persis seperti ini:
             formData.append('message', promptUser);
             
             try {
-                // Panggil Controller AI yang sudah Bapak buat sebelumnya
                 const response = await fetch("<?= base_url('ai/analyze_cp') ?>", { 
                     method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } 
                 });
                 const resData = await response.json();
                 
                 if (resData.status === 'success') {
-                    // Bersihkan response dari markdown jika AI membandel
                     let cleanJsonStr = resData.reply.replace(/```json/g, '').replace(/```/g, '').trim();
                     let aiResult = JSON.parse(cleanJsonStr);
                     
-                    // Kosongkan Tabel Sementara
                     tbody.innerHTML = '';
                     
-                    // 5. TERAPKAN HASIL AI KE DALAM TABEL (REORDERING & CHECKING)
                     aiResult.forEach(item => {
                         let targetRow = allRows[item.id_asli];
                         if (!targetRow) return;
 
-                        // A. Isi Aktivitas Kognitif
                         targetRow.cells[5].innerHTML = `<span class="text-success font-weight-bold">${item.aktivitas_kognitif}</span>`;
                         
-                        // B. Centang DPL Otomatis
                         if(Array.isArray(item.dpl)) {
                             item.dpl.forEach(kodeDpl => {
                                 let chk = targetRow.querySelector(`input[value="${kodeDpl}"]`);
@@ -449,7 +538,6 @@ Format JSON persis seperti ini:
                             });
                         }
 
-                        // C. Centang Panca Cinta Otomatis
                         if(Array.isArray(item.pilar)) {
                             item.pilar.forEach(kodePilar => {
                                 let chk = targetRow.querySelector(`input[value="${kodePilar}"]`);
@@ -457,35 +545,33 @@ Format JSON persis seperti ini:
                             });
                         }
 
-                        // D. Masukkan kembali ke tabel dengan urutan baru
                         tbody.appendChild(targetRow);
-                        
-                        // Hapus row yang sudah diproses dari array asli
                         allRows[item.id_asli] = null; 
                     });
 
-                    // Masukkan sisa baris yang mungkin tidak ikut terproses AI (misal baris kosong sisa jadwal)
                     allRows.forEach(sisaRow => {
                         if (sisaRow) tbody.appendChild(sisaRow);
                     });
 
-                    // 6. RAPIKAN KEMBALI TANGGAL & NOMOR URUT (Seperti fitur moveRow)
+                    // 🌟 PERBAIKAN: Sinkronisasi tanggal setelah AI mengurutkan ulang (Sinkron dengan rowsData)
                     let newlyOrderedRows = tbody.querySelectorAll("tr");
+                    let newRowsData = [];
+
                     newlyOrderedRows.forEach((r, idx) => {
-                        let cellTgl = r.querySelector('.cell-tanggal');
                         let cellNo = r.querySelector('.cell-no');
-                        
-                        if (cellTgl && arrTanggal[idx]) {
-                            cellTgl.innerText = arrTanggal[idx];
-                        }
                         if (cellNo) {
                             cellNo.innerText = tingkatKelas + "." + (idx + 1);
                         }
                         
-                        // Beri efek highlight sukses
+                        let oldData = rowsData.find(data => data.rowElement === r);
+                        if(oldData) newRowsData.push(oldData);
+                        
                         r.style.backgroundColor = "#e8f5e9"; 
                         setTimeout(() => { r.style.backgroundColor = ""; }, 1500);
                     });
+
+                    rowsData = newRowsData;
+                    renderDynamicDates(); // Render ulang tanggal mengikuti urutan AI yang baru
 
                     alert("✅ AI Berhasil mengurutkan materi dan memetakan Profil Lulusan & Panca Cinta!");
 
@@ -503,83 +589,9 @@ Format JSON persis seperti ini:
         });
 
         // ====================================================================
-        // TRIGGER SIMPAN ATP KE DATABASE
-        // ====================================================================
-        document.querySelector('.btn-success').addEventListener('click', async function() {
-            const btnSave = this;
-            const tbody = document.getElementById('tbody-atp');
-            const rows = tbody.querySelectorAll('tr');
-            
-            if (rows.length === 0 || rows[0].innerText.includes('Belum ada data')) {
-                alert("Tidak ada data untuk disimpan."); return;
-            }
-
-            // 1. Kumpulkan semua data dari tabel HTML
-            let dataAtp = [];
-            let rombelId = document.querySelector('select[name="rombel_id"]').value;
-
-            rows.forEach((tr, index) => {
-                let cpId = tr.getAttribute('data-cpid');
-                if (!cpId) return;
-
-                // Ambil teks aktivitas kognitif (Abaikan span HTML-nya)
-                let selKognitif = tr.querySelector('.teks-kognitif');
-                let teksKognitif = selKognitif ? selKognitif.innerText.replace('Materi Tersedia:\n', '').trim() : '';
-                if(teksKognitif === 'Menunggu AI...') teksKognitif = '';
-
-                // Kumpulkan DPL yang dicentang
-                let dplTerpilih = [];
-                tr.querySelectorAll('input[id^="dpl_"]:checked').forEach(chk => dplTerpilih.push(chk.value));
-
-                // Kumpulkan Panca Cinta yang dicentang
-                let pilarTerpilih = [];
-                tr.querySelectorAll('input[id^="pc_"]:checked').forEach(chk => pilarTerpilih.push(chk.value));
-
-                dataAtp.push({
-                    cp_detail_id: cpId,
-                    urutan: index + 1, // Urutan berdasarkan posisi baris saat ini
-                    aktivitas_kognitif: teksKognitif,
-                    dpl: dplTerpilih.join(','), // Gabungkan dengan koma (Contoh: DPL1,DPL3)
-                    pilar: pilarTerpilih.join(',')
-                });
-            });
-
-            // 2. Kirim ke Controller
-            btnSave.disabled = true;
-            let originalText = btnSave.innerHTML;
-            btnSave.innerHTML = '⏳ Sedang Menyimpan...';
-
-            const formData = new FormData();
-            formData.append('rombel_id', rombelId);
-            formData.append('data_atp', JSON.stringify(dataAtp));
-
-            try {
-                const response = await fetch("<?= base_url('guru/atp/simpan') ?>", {
-                    method: 'POST',
-                    body: formData,
-                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
-                });
-                
-                const result = await response.json();
-                if (result.status === 'success') {
-                    alert("✅ " + result.message);
-                } else {
-                    alert("⚠️ Gagal: " + result.message);
-                }
-            } catch (error) {
-                console.error(error);
-                alert("⚠️ Terjadi kesalahan koneksi saat menyimpan data.");
-            } finally {
-                btnSave.disabled = false;
-                btnSave.innerHTML = originalText;
-            }
-        });
-
-        // ====================================================================
-        // TRIGGER RESET ATP KE AWAL (HAPUS DARI DATABASE)
+        // 5. TRIGGER RESET ATP KE AWAL (HAPUS DARI DATABASE)
         // ====================================================================
         document.querySelector('.btn-reset-atp').addEventListener('click', async function() {
-            // Berikan peringatan agar tidak terklik secara tidak sengaja
             if (!confirm("⚠️ PERINGATAN: Apakah Anda yakin ingin mereset susunan ini?\nSemua data ATP, Centang DPL, dan Panca Cinta untuk kelas ini akan dihapus permanen dan kembali ke urutan awal Analisis CP!")) {
                 return;
             }
@@ -592,7 +604,6 @@ Format JSON persis seperti ini:
                 alert("Tidak ada data untuk di-reset."); return;
             }
 
-            // Ambil ID Rombel dan kumpulan ID CP yang sedang tampil
             let rombelId = document.querySelector('select[name="rombel_id"]').value;
             let cpIds = [];
             rows.forEach((tr) => {
@@ -618,7 +629,6 @@ Format JSON persis seperti ini:
                 const result = await response.json();
                 if (result.status === 'success') {
                     alert("✅ " + result.message);
-                    // Reload halaman otomatis agar tabel kembali ke urutan Analisis CP
                     window.location.reload(); 
                 } else {
                     alert("⚠️ Gagal: " + result.message);
@@ -633,7 +643,7 @@ Format JSON persis seperti ini:
         });
 
         // ====================================================================
-        // TRIGGER COPY ATP DARI ROMBEL LAIN
+        // 6. TRIGGER COPY ATP DARI ROMBEL LAIN
         // ====================================================================
         document.getElementById('btn-proses-copy').addEventListener('click', async function() {
             let fromRombelId = document.getElementById('select-copy-from').value;
@@ -644,7 +654,6 @@ Format JSON persis seperti ini:
                 return;
             }
 
-            // Kumpulkan ID CP yang sedang tampil agar copy-nya tidak lari ke mapel lain
             let cpIds = [];
             document.querySelectorAll("#tbody-atp tr").forEach(tr => {
                 let cpId = tr.getAttribute('data-cpid');
@@ -680,7 +689,6 @@ Format JSON persis seperti ini:
                 const result = await response.json();
                 if (result.status === 'success') {
                     alert("✅ " + result.message);
-                    // Reload agar tabelnya memuat data yang baru saja dicopy
                     window.location.reload();
                 } else {
                     alert("⚠️ Gagal: " + result.message);
@@ -691,6 +699,80 @@ Format JSON persis seperti ini:
             } finally {
                 btn.innerHTML = originalText;
                 btn.disabled = false;
+            }
+        });
+
+        // ====================================================================
+        // 7. TRIGGER SIMPAN ATP KE DATABASE (TERMASUK ALOKASI TANGGAL)
+        // ====================================================================
+        document.querySelector('.btn-success').addEventListener('click', async function() {
+            const btnSave = this;
+            const tbody = document.getElementById('tbody-atp');
+            const rows = tbody.querySelectorAll('tr');
+            
+            if (rows.length === 0 || rows[0].innerText.includes('Belum ada data')) {
+                alert("Tidak ada data untuk disimpan."); return;
+            }
+
+            let dataAtp = [];
+            let rombelId = document.querySelector('select[name="rombel_id"]').value;
+
+            rows.forEach((tr, index) => {
+                let cpId = tr.getAttribute('data-cpid');
+                if (!cpId) return;
+
+                let selKognitif = tr.querySelector('.teks-kognitif');
+                let teksKognitif = selKognitif ? selKognitif.innerText.replace('Materi Tersedia:\n', '').trim() : '';
+                if(teksKognitif === 'Menunggu AI...') teksKognitif = '';
+
+                let dplTerpilih = [];
+                tr.querySelectorAll('input[id^="dpl_"]:checked').forEach(chk => dplTerpilih.push(chk.value));
+
+                let pilarTerpilih = [];
+                tr.querySelectorAll('input[id^="pc_"]:checked').forEach(chk => pilarTerpilih.push(chk.value));
+
+                let alokasiTanggal = tr.getAttribute('data-alokasi-tanggal') || '';
+                if (tr.style.display === 'none') {
+                    alokasiTanggal = '';
+                }
+
+                dataAtp.push({
+                    cp_detail_id: cpId,
+                    urutan: index + 1,
+                    aktivitas_kognitif: teksKognitif,
+                    dpl: dplTerpilih.join(','), 
+                    pilar: pilarTerpilih.join(','),
+                    alokasi_tanggal: alokasiTanggal
+                });
+            });
+
+            btnSave.disabled = true;
+            let originalText = btnSave.innerHTML;
+            btnSave.innerHTML = '⏳ Sedang Menyimpan...';
+
+            const formData = new FormData();
+            formData.append('rombel_id', rombelId);
+            formData.append('data_atp', JSON.stringify(dataAtp));
+
+            try {
+                const response = await fetch("<?= base_url('guru/atp/simpan') ?>", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                const result = await response.json();
+                if (result.status === 'success') {
+                    alert("✅ " + result.message);
+                } else {
+                    alert("⚠️ Gagal: " + result.message);
+                }
+            } catch (error) {
+                console.error(error);
+                alert("⚠️ Terjadi kesalahan koneksi saat menyimpan data.");
+            } finally {
+                btnSave.disabled = false;
+                btnSave.innerHTML = originalText;
             }
         });
     </script>
