@@ -180,16 +180,15 @@
                                     <td class="text-center font-weight-bold align-middle cell-no"><?= esc($tingkatKelas) . '.' . ($idx + 1) ?></td>
                                     
                                     <td dir="auto" class="text-justify"><?= esc($row['tujuan_pembelajaran'] ?? $row['tp'] ?? '-') ?></td>
-                                    <td class="font-weight-bold text-secondary"><?= esc($row['lingkup_materi'] ?? $row['lingkup'] ?? '-') ?></td>
-                                    
-                                    <td class="teks-kognitif">
-                                        <?php if(!empty($row['aktivitas_tarl'])): ?>
-                                            <span class="text-muted small">Materi Tersedia:</span><br>
-                                            <?= esc($row['aktivitas_tarl']) ?>
-                                        <?php else: ?>
-                                            <span class="text-muted italic">Menunggu AI...</span>
-                                        <?php endif; ?>
-                                    </td>
+                                    <td dir="auto" class="text-justify"><?= esc($row['lingkup_materi'] ?? $row['lingkup'] ?? '-') ?></td>
+
+                                    <td dir="auto" class="text-justify teks-kognitif">
+    <?php if(!empty($row['aktivitas_tarl'])): ?>
+        <?= esc($row['aktivitas_tarl']) ?>
+    <?php else: ?>
+        <span class="text-muted italic">Menunggu AI...</span>
+    <?php endif; ?>
+</td>
                                     
                                     <td>
                                         <div class="checklist-box">

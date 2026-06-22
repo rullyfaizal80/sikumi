@@ -68,7 +68,7 @@
     <div class="print-actions-wrapper">
         <div class="btn-group-top">
             <button class="btn-print" onclick="window.print()">🖨️ Cetak PDF</button>
-            <button class="btn-close" onclick="window.close()">❌ Tutup</button>
+            <button class="btn-close" onclick="window.close()">🗑️ Tutup</button>
         </div>
         <div class="control-panel">
             <p>Atur Posisi TTD Guru</p>
@@ -112,7 +112,7 @@
                         <th width="18%">Tujuan Pembelajaran</th>
                         <th width="16%">Lingkup Materi</th>
                         <th width="16%">Aktivitas Kognitif</th>
-                        <th width="15%">Profil Lulusan (DPL)</th>
+                        <th width="15%">Profil Lulusan</th>
                         <th width="15%">Panca Cinta</th>
                         <th width="5%">JP</th>
                         <th width="10%">Tanggal Pelaksanaan</th>
@@ -124,12 +124,88 @@
                     if(empty($dataAtp)): 
                     ?>
                         <tr><td colspan="8" class="text-center">Belum ada data ATP untuk kelas ini.</td></tr>
-                    <?php else: ?>
-                        <?php foreach($dataAtp as $idx => $row): 
+                    <?php else: 
+                        // =========================================================
+                        // 1. REKONSTRUKSI ALOKASI TANGGAL (SINKRON DENGAN MANAGE)
+                        // =========================================================
+                        $globalDates = [];
+                        $prosesData = [];
+                        
+                        foreach ($dataAtp as $row) {
+                            $tpTeks = trim($row['tujuan_pembelajaran'] ?? $row['tp'] ?? '');
+                            $isEmptyTP = ($tpTeks === '' || $tpTeks === '-');
+                            
+                            $tgl = $row['tanggal'] ?? '';
+                            $tglDefault = $row['tanggal_default'] ?? $tgl;
+                            
+                            $globalDates[] = $tglDefault; // Simpan memori seluruh tanggal asli kalender
+                            
+                            $isHabis = (strpos($tglDefault, 'Habis') !== false || strpos($tglDefault, 'Belum') !== false);
+                            
+                            $alloc = 1;
+                            if (!$isEmptyTP) {
+                                if ($tgl === '') {
+                                    $alloc = 0;
+                                } elseif (strpos($tgl, '&') !== false) {
+                                    $alloc = count(explode('&', $tgl)); // Deteksi jumlah jatah
+                                }
+                            }
+                            if ($isHabis) {
+                                $alloc = 1;
+                            }
+                            
+                            $row['is_empty_tp'] = $isEmptyTP;
+                            $row['allocation'] = $alloc;
+                            $prosesData[] = $row;
+                        }
+
+                        // 2. Hitung & Potong Jatah Berlebih di Baris Kosong Paling Bawah
+                        $totalRowsData = count($prosesData);
+                        $totalAlloc = array_sum(array_column($prosesData, 'allocation'));
+                        $diff = $totalAlloc - $totalRowsData;
+
+                        if ($diff > 0) {
+                            for ($i = count($prosesData) - 1; $i >= 0 && $diff > 0; $i--) {
+                                if ($prosesData[$i]['is_empty_tp'] && $prosesData[$i]['allocation'] > 0) {
+                                    $prosesData[$i]['allocation'] = 0; // Matikan jatah untuk sembunyikan baris
+                                    $diff--;
+                                }
+                            }
+                        }
+
+                        // 3. Pasangkan Ulang Tanggalnya Secara Kronologis!
+                        $dateCursor = 0;
+                        foreach ($prosesData as &$pd) {
+                            if ($pd['allocation'] > 0) {
+                                $assigned = [];
+                                for ($i = 0; $i < $pd['allocation']; $i++) {
+                                    if ($dateCursor < count($globalDates)) {
+                                        $assigned[] = $globalDates[$dateCursor];
+                                        $dateCursor++;
+                                    }
+                                }
+                                $pd['tanggal_render'] = implode(' & ', $assigned);
+                            } else {
+                                $pd['tanggal_render'] = '';
+                            }
+                        }
+                        unset($pd);
+
+                        // =========================================================
+                        // 🌟 PROSES CETAK TABEL
+                        // =========================================================
+                        $nomorCetak = 1;
+                        foreach($prosesData as $idx => $row): 
+                            
+                            // JIKA ALOKASI 0 (BARIS KOSONG YANG TANGGALNYA DIAMBIL), JANGAN DICETAK!
+                            if ($row['allocation'] === 0) {
+                                continue;
+                            }
+
                             $totalJp += (int)($row['estimasi_jp'] ?? $row['jp'] ?? 0);
-                        ?>
+                    ?>
                         <tr>
-                            <td class="text-center"><?= esc($tingkatKelas) . '.' . ($idx + 1) ?></td>
+                            <td class="text-center"><?= esc($tingkatKelas) . '.' . $nomorCetak++ ?></td>
                             <td dir="auto" style="text-align: justify;"><?= esc($row['tujuan_pembelajaran'] ?? $row['tp'] ?? '-') ?></td>
                             <td dir="auto"><?= esc($row['lingkup_materi'] ?? $row['lingkup'] ?? '-') ?></td>
                             <td dir="auto"><?= esc($row['aktivitas_tarl'] ?? $row['aktivitas_kognitif'] ?? '-') ?></td>
@@ -152,32 +228,39 @@
 
                             <td style="font-size: 10px; text-align: left; padding: 6px 8px;">
                                <?php 
-    $pc = $row['panca_cinta_terpilih'] ?? [];
-    if (is_string($pc)) $pc = array_filter(explode(',', $pc));
-    
-    if (!empty($pc)) {
-        foreach($pc as $kode) {
-            $kode = trim($kode);
-            
-            // Mengambil teks dari array berdasarkan kode asli (P1, P2, dst)
-            $teks = $listPancaCinta[$kode] ?? '';
-            
-            // Manipulasi string untuk tampilan: P1 -> Topik 1
-            // Hapus spasinya ('Topik') jika ingin tampilannya 'Topik1'
-            $tampilKode = str_replace('P', 'Topik ', $kode);
-            
-            // Cetak $tampilKode menggantikan $kode di dalam tag <b>
-            echo "<div style='margin-bottom: 4px;'><b>{$tampilKode}</b>: {$teks}</div>";
-        }
-    } else {
-        echo '<div class="text-center">-</div>';
-    }
-?>
+                                    $pc = $row['panca_cinta_terpilih'] ?? [];
+                                    if (is_string($pc)) $pc = array_filter(explode(',', $pc));
+                                    
+                                    if (!empty($pc)) {
+                                        foreach($pc as $kode) {
+                                            $kode = trim($kode);
+                                            $teks = $listPancaCinta[$kode] ?? '';
+                                            $tampilKode = str_replace('P', 'Topik ', $kode);
+                                            echo "<div style='margin-bottom: 4px;'><b>{$tampilKode}</b>: {$teks}</div>";
+                                        }
+                                    } else {
+                                        echo '<div class="text-center">-</div>';
+                                    }
+                                ?>
                             </td>
 
                             <td class="text-center font-weight-bold"><?= esc($row['estimasi_jp'] ?? $row['jp'] ?? 0) ?></td>
-                            <td class="text-center font-weight-bold <?= (strpos($row['tanggal'] ?? '', 'Habis') !== false) ? 'text-danger' : '' ?>">
-                                <?= esc($row['tanggal'] ?? 'Jadwal Habis') ?>
+                            
+                            <td class="text-center font-weight-bold <?= (strpos($row['tanggal_render'] ?? '', 'Habis') !== false) ? 'text-danger' : '' ?>">
+                                <?php 
+                                    $tanggalText = $row['tanggal_render'] ?? 'Jadwal Habis';
+                                    
+                                    if (strpos($tanggalText, '&') !== false) {
+                                        // Pecah teks berdasarkan karakter '&'
+                                        $tglArray = explode('&', $tanggalText);
+                                        // Bersihkan spasi dari masing-masing tanggal
+                                        $tglArray = array_map(function($t) { return esc(trim($t)); }, $tglArray);
+                                        // Gabungkan kembali menggunakan tag enter HTML (<br>)
+                                        echo implode('<br><br>', $tglArray); 
+                                    } else {
+                                        echo esc($tanggalText);
+                                    }
+                                ?>
                             </td>
                         </tr>
                         <?php endforeach; ?>
