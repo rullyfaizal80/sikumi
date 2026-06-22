@@ -38,7 +38,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h3 class="font-weight-bold mb-1" style="color: #FF9F00;">📑 Alur Tujuan Pembelajaran (ATP)</h3>
-                <p class="text-muted mb-0">Integrasi Kurikulum Merdeka (Deep Learning) & KBC Kemenag</p>
+                <p class="text-muted mb-0">Alur Pemetaan TP Secara Sistematis dan Kronologis</p>
             </div>
             <div>
                 <a href="<?= base_url('guru/atp?rombel_id='.$selectedRombelId.'&mapel_id='.$selectedMapelId.'&print=true') ?>" target="_blank" class="btn btn-secondary btn-sm font-weight-bold shadow-sm">
@@ -182,13 +182,31 @@
                                     <td dir="auto" class="text-justify"><?= esc($row['tujuan_pembelajaran'] ?? $row['tp'] ?? '-') ?></td>
                                     <td dir="auto" class="text-justify"><?= esc($row['lingkup_materi'] ?? $row['lingkup'] ?? '-') ?></td>
 
-                                    <td dir="auto" class="text-justify teks-kognitif">
-    <?php if(!empty($row['aktivitas_tarl'])): ?>
-        <?= esc($row['aktivitas_tarl']) ?>
-    <?php else: ?>
-        <span class="text-muted italic">Menunggu AI...</span>
-    <?php endif; ?>
-</td>
+                                 <?php
+                                    // Definisikan 6 tingkatan taksonomi kognitif
+                                    $listKognitif = [
+                                        'C1' => 'Mengingat',
+                                        'C2' => 'Memahami',
+                                        'C3' => 'Mengaplikasikan',
+                                        'C4' => 'Menganalisis',
+                                        'C5' => 'Mengevaluasi',
+                                        'C6' => 'Menciptakan'
+                                    ];
+                                    ?>
+                                    <td class="teks-kognitif" data-aktivitas-asli="<?= esc($row['aktivitas_cp_asli'] ?? '') ?>">
+                                        <div class="checklist-box">
+                                            <?php foreach($listKognitif as $kode => $teks): ?>
+                                            <?php 
+                                                // Cek apakah kode kognitif (misal 'C1') ada di dalam teks aktivitas_tarl dari DB
+                                                $isChecked = (!empty($row['aktivitas_tarl']) && strpos($row['aktivitas_tarl'], $kode) !== false) ? 'checked' : ''; 
+                                            ?>
+                                            <div class="custom-check">
+                                                <input type="checkbox" id="kog_<?= $idx ?>_<?= $kode ?>" value="<?= $kode ?>: <?= $teks ?>" <?= $isChecked ?>>
+                                                <label for="kog_<?= $idx ?>_<?= $kode ?>"><b><?= $kode ?></b>: <?= $teks ?></label>
+                                            </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </td>
                                     
                                     <td>
                                         <div class="checklist-box">
@@ -488,13 +506,18 @@
                 let jpTeks = tr.cells[8].innerText.trim();
                 let jp = parseInt(jpTeks) || 0;
                 
+                // 🌟 BACA ATRIBUT GAIB YANG BERISI AKTIVITAS BAWAAN CP
+                let selKognitif = tr.querySelector('.teks-kognitif');
+                let aktivitasCpAsli = selKognitif ? selKognitif.getAttribute('data-aktivitas-asli') : '';
+                
                 if (tpTeks !== '') {
                     totalJpInput += jp;
                     dataAtpMentah.push({
                         id_asli: index,
                         tp: tpTeks,
                         lingkup: lingkupTeks,
-                        jp: jp
+                        jp: jp,
+                        aktivitas_cp: aktivitasCpAsli // <--- Masukkan ke data mentah
                     });
                 }
             });
@@ -506,19 +529,28 @@
                 return; 
             }
 
-            // 🌟 PERBAIKAN PROMPT: Memasukkan Definisi DPL dan Panca Cinta
+           // 🌟 PERBAIKAN PROMPT: Memasukkan Definisi DPL, Panca Cinta, & Taksonomi Kognitif
             let promptUser = `Anda adalah Pakar Kurikulum Merdeka (Deep Learning) dan KBC Kemenag.
 Tugas Anda menganalisis daftar Tujuan Pembelajaran (TP) berikut:
 
 `;
+            
             dataAtpMentah.forEach(r => {
-                promptUser += `[ID: ${r.id_asli}] TP: ${r.tp} (Materi: ${r.lingkup})\n`;
+                promptUser += `[ID: ${r.id_asli}] TP: ${r.tp} (Materi: ${r.lingkup})\nReferensi Aktivitas CP: ${r.aktivitas_cp}\n\n`;
             });
 
             promptUser += `
+**REFERENSI AKTIVITAS KOGNITIF (Taksonomi Anderson dan Krathwohl):**
+- C1 (Mengingat): Mengingat kembali informasi, definisi, fakta-fakta, daftar urutan, atau menyebutkan kembali materi.
+- C2 (Memahami): Menjelaskan ide atau konsep, menginterpretasikan informasi, menyimpulkan, atau memparafrasa bacaan.
+- C3 (Mengaplikasikan): Menggunakan konsep, pengetahuan, atau informasi pada situasi berbeda dan relevan.
+- C4 (Menganalisis): Memecah informasi menjadi beberapa bagian, mengeksplorasi hubungan/korelasi, membandingkan, atau mengorganisasikan ide/konsep.
+- C5 (Mengevaluasi): Membuat keputusan, penilaian, mengajukan kritik, dan rekomendasi yang sistematis.
+- C6 (Menciptakan): Merangkaikan elemen menjadi hal baru yang utuh, mencari ide, memberi solusi, atau memberi nilai tambah.
+
 INSTRUKSI WAJIB:
 1. Urutkan ID secara pedagogis (dari materi dasar hingga materi lanjutan/kompleks).
-2. Tentukan Aktivitas Kognitif (contoh: Mengidentifikasi, Menganalisis, Mencipta).
+2. Tentukan Aktivitas Kognitif yang paling sesuai dengan TP berdasarkan referensi taksonomi di atas. (Sebutkan level dan namanya, contoh: "C2: Memahami, C4: Menganalisis").
 3. Petakan maksimal 3 DPL (Dimensi Profil Lulusan) yang relevan dengan TP berdasarkan daftar berikut:
    - DPL1: Keimanan dan ketakwaan terhadap Tuhan Yang Maha Esa
    - DPL2: Kewargaan
@@ -539,8 +571,8 @@ ATURAN FORMAT BALASAN (SANGAT KETAT):
 Jawab HANYA menggunakan format JSON Array murni. JANGAN gunakan tag markdown (\`\`\`json). JANGAN ada teks pengantar.
 Format JSON persis seperti ini:
 [
-  {"id_asli": 0, "aktivitas_kognitif": "Mengamati, Menjelaskan", "dpl": ["DPL1", "DPL3"], "pilar": ["P1", "P2"]},
-  {"id_asli": 1, "aktivitas_kognitif": "Menganalisis, Mengevaluasi", "dpl": ["DPL3", "DPL5"], "pilar": ["P4"]}
+  {"id_asli": 0, "aktivitas_kognitif": "C1: Mengingat, C2: Memahami", "dpl": ["DPL1", "DPL3"], "pilar": ["P1", "P2"]},
+  {"id_asli": 1, "aktivitas_kognitif": "C4: Menganalisis, C6: Menciptakan", "dpl": ["DPL3", "DPL5"], "pilar": ["P4"]}
 ]`;
 
             btnAi.disabled = true;
@@ -567,8 +599,19 @@ Format JSON persis seperti ini:
                         let targetRow = allRows[item.id_asli];
                         if (!targetRow) return;
 
-                        targetRow.cells[5].innerHTML = `<span class="text-success font-weight-bold">${item.aktivitas_kognitif}</span>`;
+                        // Reset semua centang kognitif pada baris ini terlebih dahulu
+                        targetRow.querySelectorAll('input[id^="kog_"]').forEach(chk => chk.checked = false);
                         
+                        // Otomatis mencentang checkbox berdasarkan jawaban dari AI
+                        if (item.aktivitas_kognitif) {
+                            targetRow.querySelectorAll('input[id^="kog_"]').forEach(chk => {
+                                let kode = chk.id.split('_')[2]; // Mengambil string 'C1', 'C2', dst.
+                                if (item.aktivitas_kognitif.includes(kode)) {
+                                    chk.checked = true;
+                                }
+                            });
+                        }
+
                         if(Array.isArray(item.dpl)) {
                             item.dpl.forEach(kodeDpl => {
                                 let chk = targetRow.querySelector(`input[value="${kodeDpl}"]`);
@@ -758,9 +801,10 @@ Format JSON persis seperti ini:
                 let cpId = tr.getAttribute('data-cpid');
                 if (!cpId) return;
 
-                let selKognitif = tr.querySelector('.teks-kognitif');
-                let teksKognitif = selKognitif ? selKognitif.innerText.replace('Materi Tersedia:\n', '').trim() : '';
-                if(teksKognitif === 'Menunggu AI...') teksKognitif = '';
+                // Gabungkan checkbox kognitif yang dicentang menjadi string text kembali
+                let kognitifTerpilih = [];
+                tr.querySelectorAll('input[id^="kog_"]:checked').forEach(chk => kognitifTerpilih.push(chk.value));
+                let teksKognitif = kognitifTerpilih.join(', ');
 
                 let dplTerpilih = [];
                 tr.querySelectorAll('input[id^="dpl_"]:checked').forEach(chk => dplTerpilih.push(chk.value));

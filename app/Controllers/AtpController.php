@@ -181,19 +181,24 @@ class AtpController extends BaseController
             // Gabungkan data mentah dengan data tersimpan
             foreach ($dataAtp as &$row) {
                 $cpId = $row['id'];
+                
+                // 🌟 1. SIMPAN MEMORI AKTIVITAS BAWAAN CP SEBELUM DIKOSONGKAN
+                $row['aktivitas_cp_asli'] = $row['aktivitas_tarl'] ?? '';
+
                 if (isset($savedAtpMap[$cpId])) {
-                    // Jika sudah pernah disimpan, timpa datanya
+                    // Jika sudah pernah disimpan, timpa datanya dengan yang di DB
                     $row['urutan'] = $savedAtpMap[$cpId]['urutan'];
                     $row['aktivitas_tarl'] = $savedAtpMap[$cpId]['aktivitas_kognitif'];
-                    
-                    // Pecah string "DPL1,DPL3" menjadi Array agar mudah dicentang di View
                     $row['dpl_terpilih'] = explode(',', $savedAtpMap[$cpId]['dpl_terpilih'] ?? '');
                     $row['panca_cinta_terpilih'] = explode(',', $savedAtpMap[$cpId]['panca_cinta_terpilih'] ?? '');
                 } else {
-                    // Jika belum pernah disimpan (Baru ditambahkan), taruh di paling bawah
+                    // Jika belum pernah disimpan, taruh di paling bawah
                     $row['urutan'] = 9999;
                     $row['dpl_terpilih'] = [];
                     $row['panca_cinta_terpilih'] = [];
+                    
+                    // 🌟 2. KOSONGKAN UNTUK UI AGAR TAMPIL "MENUNGGU AI..."
+                    $row['aktivitas_tarl'] = ''; 
                 }
             }
             unset($row);

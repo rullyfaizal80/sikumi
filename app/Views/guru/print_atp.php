@@ -109,9 +109,9 @@
                 <thead>
                     <tr>
                         <th width="5%">No</th>
-                        <th width="18%">Tujuan Pembelajaran</th>
+                        <th width="22%">Tujuan Pembelajaran</th>
                         <th width="16%">Lingkup Materi</th>
-                        <th width="16%">Aktivitas Kognitif</th>
+                        <th width="12%">Aktivitas Kognitif</th>
                         <th width="15%">Profil Lulusan</th>
                         <th width="15%">Panca Cinta</th>
                         <th width="5%">JP</th>
@@ -208,7 +208,21 @@
                             <td class="text-center"><?= esc($tingkatKelas) . '.' . $nomorCetak++ ?></td>
                             <td dir="auto" style="text-align: justify;"><?= esc($row['tujuan_pembelajaran'] ?? $row['tp'] ?? '-') ?></td>
                             <td dir="auto"><?= esc($row['lingkup_materi'] ?? $row['lingkup'] ?? '-') ?></td>
-                            <td dir="auto"><?= esc($row['aktivitas_tarl'] ?? $row['aktivitas_kognitif'] ?? '-') ?></td>
+                            <td dir="auto">
+                                <?php 
+                                    $aktivitasKognitif = $row['aktivitas_tarl'] ?? $row['aktivitas_kognitif'] ?? '-';
+                                    if (!empty($aktivitasKognitif) && $aktivitasKognitif !== '-') {
+                                        // Pecah berdasarkan koma jika ada lebih dari 1 aktivitas
+                                        $listKog = explode(',', $aktivitasKognitif);
+                                        foreach ($listKog as $itemKog) {
+                                            // Tampilkan tiap item di baris baru dengan membungkusnya dalam tag div
+                                            echo "<div style='margin-bottom: 2px;'>" . esc(trim($itemKog)) . "</div>";
+                                        }
+                                    } else {
+                                        echo '-';
+                                    }
+                                ?>
+                            </td>
                             
                             <td style="font-size: 10px; text-align: left; padding: 6px 8px;">
                                 <?php 
