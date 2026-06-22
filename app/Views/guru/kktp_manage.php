@@ -27,7 +27,7 @@
             </div>
             <div>
                 <a href="<?= base_url('/') ?>" class="btn btn-outline-secondary btn-sm font-weight-bold shadow-sm px-3 me-2">
-                    <i class="bi bi-house-door"></i> Dashboard
+                    🏠 Dashboard
                 </a>
                 <button type="button" class="btn btn-outline-primary btn-sm font-weight-bold shadow-sm px-3 me-2" data-bs-toggle="modal" data-bs-target="#modalCopyKktp">
                     📋 Copy dari Rombel Lain

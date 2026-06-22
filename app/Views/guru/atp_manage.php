@@ -304,10 +304,17 @@
                 globalDates.push(origDate); 
                 
                 let alloc = 1; 
-                if (savedAlokasi === '') {
-                    alloc = 0; 
-                } else if (savedAlokasi && savedAlokasi.includes('&')) {
-                    alloc = savedAlokasi.split('&').length;
+                
+                if (!isEmptyTP) {
+                    // Untuk baris yang ada TP-nya, pastikan baca jatah memori dari Database
+                    if (savedAlokasi === '') {
+                        alloc = 0; 
+                    } else if (savedAlokasi && savedAlokasi.includes('&')) {
+                        alloc = savedAlokasi.split('&').length;
+                    }
+                } else {
+                    // Untuk baris kosong (paling bawah), default sementara 1
+                    alloc = 1;
                 }
 
                 if(isHabis) {
@@ -322,6 +329,24 @@
                 });
             });
 
+            // 🌟 KUNCI PERBAIKAN: Sinkronisasi Jatah Tanggal
+            // Jika TP di atas memiliki tanggal lebih dari 1, artinya ia mencuri tanggal dari baris kosong di bawah.
+            // Kita harus mencari baris kosong tersebut dan mengubah alokasinya menjadi 0 agar otomatis tersembunyi.
+            let totalRows = rowsData.length;
+            let totalAlloc = rowsData.reduce((sum, r) => sum + r.allocation, 0);
+            let diff = totalAlloc - totalRows;
+
+            if (diff > 0) {
+                // Cari baris kosong dari urutan paling bawah, lalu cabut jatahnya (jadikan 0)
+                for (let i = rowsData.length - 1; i >= 0 && diff > 0; i--) {
+                    if (rowsData[i].isEmpty && rowsData[i].allocation > 0 && !rowsData[i].isHabis) {
+                        rowsData[i].allocation = 0;
+                        diff--;
+                    }
+                }
+            }
+
+            // Setelah jatah disesuaikan, jalankan fungsi render untuk mengatur UI
             renderDynamicDates();
         });
 
@@ -482,6 +507,7 @@
                 return; 
             }
 
+            // 🌟 PERBAIKAN PROMPT: Memasukkan Definisi DPL dan Panca Cinta
             let promptUser = `Anda adalah Pakar Kurikulum Merdeka (Deep Learning) dan KBC Kemenag.
 Tugas Anda menganalisis daftar Tujuan Pembelajaran (TP) berikut:
 
@@ -494,8 +520,21 @@ Tugas Anda menganalisis daftar Tujuan Pembelajaran (TP) berikut:
 INSTRUKSI WAJIB:
 1. Urutkan ID secara pedagogis (dari materi dasar hingga materi lanjutan/kompleks).
 2. Tentukan Aktivitas Kognitif (contoh: Mengidentifikasi, Menganalisis, Mencipta).
-3. Petakan maksimal 3 DPL (Dimensi Profil Lulusan) yang relevan. Pilihan: DPL1, DPL2, DPL3, DPL4, DPL5, DPL6, DPL7, DPL8.
-4. Petakan maksimal 2 Pilar Panca Cinta yang relevan. Pilihan: P1, P2, P3, P4, P5.
+3. Petakan maksimal 3 DPL (Dimensi Profil Lulusan) yang relevan dengan TP berdasarkan daftar berikut:
+   - DPL1: Keimanan dan ketakwaan terhadap Tuhan Yang Maha Esa
+   - DPL2: Kewargaan
+   - DPL3: Penalaran Kritis
+   - DPL4: Kreativitas
+   - DPL5: Kolaborasi
+   - DPL6: Kemandirian
+   - DPL7: Kesehatan
+   - DPL8: Komunikasi
+4. Petakan maksimal 2 Pilar Panca Cinta yang relevan dengan TP berdasarkan daftar berikut:
+   - P1: Cinta Allah dan Rasul-Nya
+   - P2: Cinta Ilmu
+   - P3: Cinta Lingkungan
+   - P4: Cinta Diri dan Sesama Manusia
+   - P5: Cinta Tanah Air
 
 ATURAN FORMAT BALASAN (SANGAT KETAT):
 Jawab HANYA menggunakan format JSON Array murni. JANGAN gunakan tag markdown (\`\`\`json). JANGAN ada teks pengantar.
@@ -553,7 +592,6 @@ Format JSON persis seperti ini:
                         if (sisaRow) tbody.appendChild(sisaRow);
                     });
 
-                    // 🌟 PERBAIKAN: Sinkronisasi tanggal setelah AI mengurutkan ulang (Sinkron dengan rowsData)
                     let newlyOrderedRows = tbody.querySelectorAll("tr");
                     let newRowsData = [];
 
@@ -571,7 +609,7 @@ Format JSON persis seperti ini:
                     });
 
                     rowsData = newRowsData;
-                    renderDynamicDates(); // Render ulang tanggal mengikuti urutan AI yang baru
+                    renderDynamicDates(); 
 
                     alert("✅ AI Berhasil mengurutkan materi dan memetakan Profil Lulusan & Panca Cinta!");
 

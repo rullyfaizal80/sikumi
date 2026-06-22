@@ -522,23 +522,27 @@ ${kumpulanCP}
 
         promptUser += `\n\nBerdasarkan data di atas, tolong berikan analisis lengkap dan pemetaan materi.
 
+**REFERENSI NILAI PANCA CINTA & DIMENSI PROFIL LULUSAN:**
+Gunakan daftar berikut sebagai acuan utama dalam menyusun narasi Tujuan Pembelajaran (TP) dan aktivitas:
+- **Panca Cinta:** P1 (Cinta Allah dan Rasul-Nya), P2 (Cinta Ilmu), P3 (Cinta Lingkungan), P4 (Cinta Diri dan Sesama Manusia), P5 (Cinta Tanah Air).
+- **Dimensi Profil Lulusan (DPL):** DPL1 (Keimanan dan ketakwaan terhadap Tuhan YME), DPL2 (Kewargaan), DPL3 (Penalaran Kritis), DPL4 (Kreativitas), DPL5 (Kolaborasi), DPL6 (Kemandirian), DPL7 (Kesehatan), DPL8 (Komunikasi).
+
 **PANDUAN PENYUSUNAN TUJUAN PEMBELAJARAN (TP) - GABUNGAN ABCD & KBC:**
 Setiap Tujuan Pembelajaran WAJIB memuat 5 komponen secara terintegrasi:
 1. **A (Audience):** Subjek belajar (Gunakan kata "Murid").
 2. **B (Behavior):** Gunakan Kata Kerja Operasional (KKO) yang BISA DIAMATI/DIUKUR. (DILARANG menggunakan kata abstrak seperti "memahami", "mengetahui").
 3. **C (Condition):** Konten atau kondisi spesifik saat materi dipelajari.
 4. **D (Degree):** Kriteria capaian keberhasilan secara teknis/sikap (misal: dengan benar, secara tepat, secara bijaksana).
-5. **Konteks KBC:** Kontekstualisasi dengan nilai-nilai Panca Cinta sebagai penutup kalimat (misal: "sebagai wujud cinta...").
+5. **Konteks KBC:** Kontekstualisasi dengan salah satu nilai **Panca Cinta** dari referensi di atas sebagai penutup kalimat (misal: "sebagai wujud cinta...").
 
-*Contoh TP:* "Murid [A] dapat menganalisis [B] syarat rukun wudu [C] secara tepat [D] sebagai wujud cinta kepada Allah [KBC]."
+*Contoh TP:* "Murid [A] dapat menganalisis [B] syarat rukun wudu [C] secara tepat [D] sebagai wujud Cinta Allah dan Rasul-Nya [KBC]."
 
 **ATURAN WAJIB FORMATTING & ISI KOLOM (SANGAT PENTING):**
 1. BATASAN JP: Pecah TP menjadi detail sehingga tiap baris TP berbobot rata-rata ${targetJp} JP. WAJIB perbanyak baris untuk mencapai total ${totalJpSemester} JP.
 2. ATURAN KOLOM KKTP (KRITERIA KETERCAPAIAN): Isi kolom KKTP HANYA dengan kalimat DESKRIPTIF kualitatif dan TETAP gunakan kata "Murid" sebagai subjeknya. **DILARANG KERAS menggunakan angka target kelas, KKM, atau persentase (seperti "90% murid dapat...").** Gunakan kalimat deskriptif untuk acuan rubrik, contoh: "Murid mampu menjelaskan 3 faktor penyebab..." atau "Murid menunjukkan sikap peduli terhadap...".
 3. ATURAN KOLOM AKTIVITAS: Penulisan pada kolom Aktivitas Pembelajaran WAJIB diawali dengan kata "Murid" sebagai subjek kalimat (contoh: "Murid melakukan diskusi kelompok terkait...", atau "Murid mengamati dan mencatat...").
 4. Jawab HANYA menggunakan tag tabel HTML murni (<table>, <thead>, <tbody>, <tr>, <th>, <td>). DILARANG menggunakan format Markdown.
-5. Buat tepat 6 kolom persis urutan ini: Elemen CP, Tujuan Pembelajaran, Lingkup Materi, KKTP, Aktivitas Pembelajaran, Estimasi JP. (Tanpa kolom Nomor!).`;
-        // ========================================================
+5. Buat tepat 6 kolom persis urutan ini: Elemen CP, Tujuan Pembelajaran, Lingkup Materi, KKTP, Aktivitas Pembelajaran, Estimasi JP. (Tanpa kolom Nomor!).`;// ========================================================
 
         areaHasil.style.display = 'block';
         areaHasil.innerHTML = `
