@@ -203,7 +203,7 @@
 
                             <div class="mb-3">
                                 <label class="small font-weight-bold text-dark">Topik Pembelajaran <span class="text-danger">*</span></label>
-                                <input type="text" name="topik_pembelajaran" class="form-control form-control-sm" value="<?= esc($modulData['topik_pembelajaran'] ?? '') ?>" placeholder="(Tuliskan sub-materi spesifik pada pertemuan ini. Contoh: Pengenalan Algoritma Dasar)" required>
+                                <textarea name="topik_pembelajaran" class="form-control form-control-sm" rows="2" placeholder="(Tuliskan sub-materi spesifik pada pertemuan ini. Contoh: Pengenalan Algoritma Dasar)" required><?= esc($modulData['topik_pembelajaran'] ?? '') ?></textarea>
                             </div>
 
                             <div class="mb-3">

@@ -87,12 +87,19 @@
         </div>
 
         <div class="row">
-            <?php if(empty($dataAtpTersimpan)): ?>
-                <div class="col-12 text-center py-5">
-                    <h5 class="text-muted">Belum ada Alur Tujuan Pembelajaran (ATP) yang tersimpan.</h5>
-                    <p class="small">Silakan kembali ke menu ATP dan simpan susunan materi Anda terlebih dahulu.</p>
-                </div>
-            <?php else: ?>
+           <?php if(empty($dataAtpTersimpan)): ?>
+                    <div class="alert alert-warning rounded-lg shadow-sm p-4 text-center border-warning">
+                        <i class="bi bi-exclamation-triangle text-warning mb-2" style="font-size: 3rem; display: block;"></i>
+                        <h5 class="font-weight-bold mt-2">Susunan ATP Belum Tersimpan!</h5>
+                        <p class="text-muted mb-4">
+                            Modul Ajar belum dapat disusun karena data Alur Tujuan Pembelajaran (ATP) untuk Rombel dan Mapel ini belum tersimpan ke dalam database.<br>
+                            Silakan selesaikan penyusunan dan penentuan tanggal pada menu ATP terlebih dahulu.
+                        </p>
+                        <a href="<?= base_url('guru/atp?mapel_id='.$selectedMapelId.'&rombel_id='.$selectedRombelId) ?>" class="btn btn-primary font-weight-bold shadow-sm px-4 rounded-pill">
+                            <i class="bi bi-arrow-right-circle me-1"></i> Buka Menu Penyusunan ATP
+                        </a>
+                    </div>
+                <?php else: ?>
                 
                 <?php 
                 // ==================================================
