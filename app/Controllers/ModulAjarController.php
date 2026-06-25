@@ -499,22 +499,30 @@ class ModulAjarController extends BaseController
             return $this->response->setJSON(['status' => 'error', 'message' => 'Kunci akses API belum dipasang.']);
         }
 
-        // 4. Mapping Nama HTML ke Format JSON AI (Disamakan dengan nama input HTML agar JS langsung mengenali)
         // 4. Mapping Nama HTML ke Format JSON AI
         $keyMapping = [
+            'capaian_pembelajaran' => 'capaian_pembelajaran', // Tambahan untuk rangkuman CP
             'insersi_kbc' => 'insersi_kbc',
             'kesiapan_murid' => 'kesiapan_murid',
-            'lintas_disiplin' => 'lintas_disiplin', // Tambahan baru
-            'topik_pembelajaran' => 'topik_pembelajaran',     // Tambahan baru
-            'praktik_pedagogis' => 'praktik_pedagogis',       // Tambahan baru
-            'kemitraan_pembelajaran' => 'kemitraan_pembelajaran', // Tambahan baru
-            'lingkungan_pembelajaran' => 'lingkungan_pembelajaran', // Tambahan baru
-            'pemanfaatan_digital' => 'pemanfaatan_digital',   // Tambahan baru
+            'lintas_disiplin' => 'lintas_disiplin', 
+            'topik_pembelajaran' => 'topik_pembelajaran',     
+            'praktik_pedagogis' => 'praktik_pedagogis',       
+            'kemitraan_pembelajaran' => 'kemitraan_pembelajaran', 
+            'lingkungan_pembelajaran' => 'lingkungan_pembelajaran', 
+            'pemanfaatan_digital' => 'pemanfaatan_digital',   
             'kegiatan[awal][isi]' => 'kegiatan_awal',
             'kegiatan[inti][memahami]' => 'kegiatan_inti_memahami',
             'kegiatan[inti][mengaplikasikan]' => 'kegiatan_inti_mengaplikasikan',
             'kegiatan[inti][merefleksi]' => 'kegiatan_inti_merefleksi',
-            'kegiatan[penutup][isi]' => 'kegiatan_penutup'
+            'kegiatan[penutup][isi]' => 'kegiatan_penutup',
+            'lampiran_materi' => 'lampiran_materi',
+            'lampiran_lkm' => 'lampiran_lkm',
+            'lampiran_rubrik' => 'lampiran_rubrik',
+            'sumber_belajar' => 'sumber_belajar',
+            'contoh_produk' => 'contoh_produk',
+            'asesmen_awal' => 'asesmen_awal',         
+            'asesmen_proses' => 'asesmen_proses', 
+            'asesmen_akhir' => 'asesmen_akhir'            
         ];
 
         $jsonKeysRequested = [];
@@ -587,6 +595,69 @@ class ModulAjarController extends BaseController
                            . "9. Jika meminta key 'pemanfaatan_digital':\n"
                            . "   - Tuliskan perangkat atau platform digital secara konkret (seperti video interaktif, LMS, perpustakaan digital, forum diskusi daring, atau aplikasi penilaian/kuiz).\n"
                            . "   - Jelaskan pemanfaatannya demi menciptakan interaksi belajar yang lebih kolaboratif, interaktif, dan kontekstual.\n\n"
+                           . "10. Jika meminta key 'kegiatan_awal':\n"
+                           . "    - Tuliskan langkah-langkah pembuka secara berurutan menggunakan angka 1 sampai 5.\n"
+                           . "    - Alur wajib:\n"
+                           . "      1. Guru membuka pelajaran dengan salam, menyapa murid, dan menanyakan kabar.\n"
+                           . "      2. Guru mengajak murid berdoa bersama sebelum belajar.\n"
+                           . "      3. Guru mengecek kehadiran murid.\n"
+                           . "      4. Guru melakukan apersepsi (mengaitkan materi sebelumnya atau pengalaman sehari-hari) dan memberikan contoh kalimat PERTANYAAN PEMANTIK yang spesifik sesuai materi.\n"
+                           . "      5. Guru menyampaikan Tujuan Pembelajaran yang akan dicapai.\n\n"
+                           . "11. Jika meminta key 'kegiatan_inti_memahami':\n"
+                           . "    - Tuliskan langkah awal (eksplorasi). Penomoran WAJIB melanjutkan dari kegiatan awal, yaitu menggunakan angka 6, 7, dan 8.\n"
+                           . "    - JANGAN gunakan kata 'Fase'. Langsung tuliskan aktivitasnya.\n"
+                           . "    - Alur wajib:\n"
+                           . "      6. Guru menyajikan masalah/gambar/video terkait topik utama.\n"
+                           . "      7. Murid mengamati dan memahami sajian masalah tersebut secara saksama.\n"
+                           . "      8. Guru membagi murid ke dalam beberapa kelompok heterogen dan membagikan Lembar Kerja Peserta Didik (LKPD).\n\n"
+                           . "12. Jika meminta key 'kegiatan_inti_mengaplikasikan':\n"
+                           . "    - Tuliskan langkah praktik dan kolaborasi. Penomoran WAJIB melanjutkan langkah sebelumnya, yaitu menggunakan angka 9, 10, dan 11.\n"
+                           . "    - JANGAN gunakan kata 'Fase'.\n"
+                           . "    - Alur wajib:\n"
+                           . "      9. Murid berdiskusi dan berkolaborasi di dalam kelompoknya untuk memecahkan masalah yang ada pada LKPD.\n"
+                           . "      10. Murid menyusun hasil diskusi kelompok menjadi sebuah karya atau laporan jawaban.\n"
+                           . "      11. Perwakilan kelompok mempresentasikan hasil karya atau jawaban diskusi mereka di depan kelas.\n\n"
+                           . "13. Jika meminta key 'kegiatan_inti_merefleksi':\n"
+                           . "    - Tuliskan langkah pemaknaan dan penguatan. Penomoran WAJIB melanjutkan langkah sebelumnya, yaitu menggunakan angka 12, 13, dan 14.\n"
+                           . "    - JANGAN gunakan kata 'Fase'.\n"
+                           . "    - Alur wajib:\n"
+                           . "      12. Guru memberikan apresiasi berupa tepuk tangan/pujian dan umpan balik terhadap hasil presentasi murid.\n"
+                           . "      13. Guru memberikan penguatan materi, mengklarifikasi, atau meluruskan miskonsepsi yang terjadi selama diskusi.\n"
+                           . "      14. Murid bersama guru menyimpulkan solusi atau inti sari dari materi pemecahan masalah yang telah dipelajari.\n\n"
+                           . "14. Jika meminta key 'kegiatan_penutup':\n"
+                           . "    - Tuliskan langkah penutup seluruh proses pembelajaran hari ini. Penomoran WAJIB melanjutkan langkah sebelumnya, yaitu menggunakan angka 15, 16, dan 17.\n"
+                           . "    - Alur wajib:\n"
+                           . "      15. Guru bersama murid melakukan refleksi singkat mengenai manfaat pembelajaran yang baru saja selesai serta menanyakan perasaan mereka (internalisasi nilai kebahagiaan/Joy).\n"
+                           . "      16. Guru memberikan informasi atau kisi-kisi singkat mengenai rencana kegiatan atau materi yang akan dipelajari pada pertemuan berikutnya.\n"
+                           . "      17. Guru bersama murid menutup rangkaian pembelajaran dengan doa bersama dan mengucapkan salam penutup.\n\n"
+                           . "15. Jika meminta key 'asesmen_awal':\n"
+                           . "    - Tuliskan rencana asesmen awal pembelajaran (diagnostik) kognitif maupun non-kognitif.\n"
+                           . "    - JANGAN HANYA menyebutkan jenis asesmennya. JELASKAN secara singkat BAGAIMANA asesmen ini dilakukan di kelas (misal: melalui permainan interaktif, tanya jawab klasikal, atau kuisioner singkat).\n"
+                           . "    - Sebutkan Teknik, Instrumennya, dan WAJIB berikan 1-2 contoh pertanyaan pemantik asesmen awal yang relevan dengan materi hari ini.\n\n"
+                           . "16. Jika meminta key 'asesmen_proses':\n"
+                           . "    - Tuliskan rencana asesmen formatif. WAJIB dibagi menjadi 3 aspek dengan format huruf (a, b, c). JANGAN HANYA menyebutkan tekniknya, tapi berikan PENJELASAN:\n"
+                           . "      a. Penilaian Sikap: Sebutkan tekniknya (observasi) dan JELASKAN indikator spesifik yang diamati (misal: kekhusyukan saat berdoa, tingkat kepedulian, atau kolaborasi saat diskusi).\n"
+                           . "      b. Penilaian Pengetahuan: Sebutkan tekniknya (misal: LKPD/Tanya jawab) dan JELASKAN bagaimana proses penilaian dilakukan selama aktivitas kelas berlangsung.\n"
+                           . "      c. Penilaian Keterampilan: Sebutkan tekniknya (misal: presentasi/unjuk kerja) dan JELASKAN rubrik atau aspek apa saja yang dinilai dari keterampilan murid tersebut.\n\n"
+                           . "17. Jika meminta key 'asesmen_akhir':\n"
+                           . "    - Tuliskan rencana asesmen sumatif di akhir proses pembelajaran.\n"
+                           . "    - JANGAN HANYA menyebutkan bentuk tesnya. JELASKAN mekanisme pelaksanaannya dan indikator keberhasilannya secara singkat.\n"
+                           . "    - Sebutkan Teknik (misal: Tes tertulis, Proyek akhir, atau Portofolio), Instrumennya (Soal PG/Esai/Rubrik), dan jelaskan fokus materi yang ditekankan dalam evaluasi ini.\n\n"
+                           . "18. Jika meminta key 'lampiran_materi':\n"
+                           . "    - Tuliskan rekomendasi dan penjelasan ringkas mengenai isi bahan ajar utama yang harus dipelajari murid hari ini (misal: ringkasan teori, infografis, atau poin presentasi slides).\n"
+                           . "    - Di akhir teks, wajib berikan ruang kosong profesional bagi guru untuk menaruh link, contoh format: '🔗 Tautan Dokumen Materi: [Masukkan Link File Materi di Sini]'.\n\n"
+                           . "19. Jika meminta key 'lampiran_lkm':\n"
+                           . "    - Tuliskan rekomendasi deskripsi atau kisi-kisi Lembar Kerja Murid / LKPD yang digunakan kelompok saat kegiatan diskusi inti agar sesuai topik materi hari ini.\n"
+                           . "    - Di akhir teks, wajib berikan ruang kosong untuk link, contoh format: '🔗 Tautan LKPD Kelompok: [Masukkan Link File LKM/LKPD di Sini]'.\n\n"
+                           . "20. Jika meminta key 'lampiran_rubrik':\n"
+                           . "    - Tuliskan rekomendasi kriteria pedoman penilaian atau rubrik skor (misal: rubrik penilaian sikap gotong royong, rubrik penilaian unjuk kerja presentasi, atau rubrik penilaian pengetahuan).\n"
+                           . "    - Di akhir teks, wajib berikan ruang kosong untuk link, contoh format: '🔗 Tautan Rubrik Penilaian: [Masukkan Link Rubrik di Sini]'.\n\n"
+                           . "21. Jika meminta key 'sumber_belajar':\n"
+                           . "    - Tuliskan rekomendasi referensi belajar digital tambahan yang relevan dengan topik (misal: artikel web terpercaya, buku paket cetak halaman tertentu, atau video edukasi YouTube).\n"
+                           . "    - Di akhir teks, wajib berikan ruang kosong untuk link, contoh format: '🔗 Tautan Video / Sumber Belajar Tambahan: [Masukkan Link Referensi di Sini]'.\n\n"
+                           . "22. Jika meminta key 'contoh_produk':\n"
+                           . "    - Tuliskan penjelasan atau contoh konkrit hasil produk/karya nyata murid yang ideal dan diharapkan setelah pembelajaran hari ini selesai (misal: bentuk resume, poster, mind mapping, atau laporan praktikum).\n"
+                           . "    - Di akhir teks, wajib berikan ruang kosong untuk link, contoh format: '🔗 Tautan Contoh Hasil Karya Terbaik Murid: [Masukkan Link Portofolio Produk di Sini]'.\n\n"                         
                            . "PANDUAN PEDAGOGIS KELAS:\n"
                            . "- KEGIATAN AWAL: Apersepsi kreatif, kesiapan emosional (Mind), pertanyaan pemantik.\n"
                            . "- KEGIATAN INTI: Berorientasi pada murid (student-centered), aktif, mendalam (Meaning).\n"
