@@ -550,7 +550,7 @@ Tugas Anda menganalisis daftar Tujuan Pembelajaran (TP) berikut:
 
 INSTRUKSI WAJIB:
 1. Urutkan ID secara pedagogis (dari materi dasar hingga materi lanjutan/kompleks).
-2. Tentukan Aktivitas Kognitif yang paling sesuai dengan TP berdasarkan referensi taksonomi di atas. (Sebutkan level dan namanya, contoh: "C2: Memahami, C4: Menganalisis").
+2. Tentukan Aktivitas Kognitif yang paling sesuai dengan TP berdasarkan referensi taksonomi di atas. (Sebutkan kodenya dan namanya, contoh: "C2: Memahami, C4: Menganalisis").
 3. Petakan maksimal 3 DPL (Dimensi Profil Lulusan) yang relevan dengan TP berdasarkan daftar berikut:
    - DPL1: Keimanan dan ketakwaan terhadap Tuhan Yang Maha Esa
    - DPL2: Kewargaan
@@ -568,8 +568,11 @@ INSTRUKSI WAJIB:
    - P5: Cinta Tanah Air
 
 ATURAN FORMAT BALASAN (SANGAT KETAT):
-Jawab HANYA menggunakan format JSON Array murni. JANGAN gunakan tag markdown (\`\`\`json). JANGAN ada teks pengantar.
-Format JSON persis seperti ini:
+- Jawab HANYA dengan format array JSON murni.
+- JANGAN sertakan teks pengantar, penutup, penjelasan, atau blok kode markdown (\`\`\`json).
+- Pastikan semua _key_ (id_asli, aktivitas_kognitif, dpl, pilar) ada pada setiap objek.
+
+Format JSON HARUS PERSIS seperti contoh ini:
 [
   {"id_asli": 0, "aktivitas_kognitif": "C1: Mengingat, C2: Memahami", "dpl": ["DPL1", "DPL3"], "pilar": ["P1", "P2"]},
   {"id_asli": 1, "aktivitas_kognitif": "C4: Menganalisis, C6: Menciptakan", "dpl": ["DPL3", "DPL5"], "pilar": ["P4"]}
@@ -590,8 +593,27 @@ Format JSON persis seperti ini:
                 const resData = await response.json();
                 
                 if (resData.status === 'success') {
-                    let cleanJsonStr = resData.reply.replace(/```json/g, '').replace(/```/g, '').trim();
-                    let aiResult = JSON.parse(cleanJsonStr);
+                    // --- PERBAIKAN RUTINITAS EKSTRAKSI JSON ---
+                    let rawAiReply = resData.reply || resData.data || '';
+                    let cleanJsonStr = '';
+                    
+                    // Mencari pola JSON Array di dalam teks jawaban jika AI tetap ngeyel memberi pengantar
+                    let matchJson = rawAiReply.match(/\[[\s\S]*\]/);
+                    if (matchJson) {
+                        cleanJsonStr = matchJson[0]; // Ambil hanya yang berada di antara [ ]
+                    } else {
+                        // Kalau tidak ketemu polanya, bersihkan manual dari markdown
+                        cleanJsonStr = rawAiReply.replace(/```json/gi, '').replace(/```html/gi, '').replace(/```/g, '').trim();
+                    }
+                    
+                    let aiResult = [];
+                    try {
+                        aiResult = JSON.parse(cleanJsonStr);
+                    } catch (e) {
+                         console.error("Gagal parse JSON:", cleanJsonStr);
+                         throw new Error("Format JSON dari AI tidak valid. Silakan coba klik tombol generate sekali lagi.");
+                    }
+                    // ------------------------------------------
                     
                     tbody.innerHTML = '';
                     

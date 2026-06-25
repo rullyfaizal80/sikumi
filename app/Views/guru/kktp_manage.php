@@ -33,8 +33,8 @@
                     📋 Copy dari Rombel Lain
                 </button>
                 <a href="<?= base_url('guru/kktp/print?rombel_id=' . ($selectedRombelId ?? '') . '&mapel_id=' . ($selectedMapelId ?? '')) ?>" target="_blank" class="btn btn-outline-danger btn-sm font-weight-bold shadow-sm px-3 me-2">
-    🖨️ Cetak KKTP
-</a>
+                    🖨️ Cetak KKTP
+                </a>
                 <button type="button" class="btn btn-primary btn-sm font-weight-bold shadow-sm px-3 btn-ai-kktp">
                     🤖 AI Generate Rubrik
                 </button>
@@ -90,15 +90,22 @@
                             <?php else: ?>
                                 <?php foreach($dataKktp as $idx => $row): ?>
                                 <tr data-cpid="<?= esc($row['id'] ?? '') ?>" data-acuan="<?= esc($row['acuan_kktp'] ?? '') ?>">
-                                    <td class="text-center font-weight-bold"><?= $idx + 1 ?></td>
-                                    <td class="text-center font-weight-bold text-muted"><?= esc($tingkatKelas) . '.' . esc($row['no_tp'] ?? ($idx + 1)) ?></td>
-                                    <td class="tp-text font-weight-bold"><?= esc($row['tujuan_pembelajaran']) ?></td>
-                                    <td><div class="editable-cell cell-indikator" contenteditable="true"><?= esc($row['indikator']) ?></div></td>
-                                    <td><div class="editable-cell cell-sb" contenteditable="true"><?= esc($row['skor_sangat_baik']) ?></div></td>
-                                    <td><div class="editable-cell cell-b" contenteditable="true"><?= esc($row['skor_baik']) ?></div></td>
-                                    <td><div class="editable-cell cell-c" contenteditable="true"><?= esc($row['skor_cukup']) ?></div></td>
-                                    <td><div class="editable-cell cell-pb" contenteditable="true"><?= esc($row['skor_perlu_bimbingan']) ?></div></td>
-                                </tr>
+    <td class="text-center font-weight-bold align-middle"><?= $idx + 1 ?></td>
+    <td class="text-center font-weight-bold text-muted align-middle"><?= esc($tingkatKelas) . '.' . esc($row['no_tp'] ?? ($idx + 1)) ?></td>
+    
+    <td>
+        <div class="tp-text font-weight-bold"><?= esc($row['tujuan_pembelajaran']) ?></div>
+        <button type="button" class="btn btn-sm btn-outline-info btn-ai-single mt-2 shadow-sm" style="font-size: 10px; padding: 3px 6px; border-radius: 4px; font-weight: 600;">
+            ✨ AI Baris Ini
+        </button>
+    </td>
+    
+    <td><div class="editable-cell cell-indikator" contenteditable="true"><?= esc($row['indikator']) ?></div></td>
+    <td><div class="editable-cell cell-sb" contenteditable="true"><?= esc($row['skor_sangat_baik']) ?></div></td>
+    <td><div class="editable-cell cell-b" contenteditable="true"><?= esc($row['skor_baik']) ?></div></td>
+    <td><div class="editable-cell cell-c" contenteditable="true"><?= esc($row['skor_cukup']) ?></div></td>
+    <td><div class="editable-cell cell-pb" contenteditable="true"><?= esc($row['skor_perlu_bimbingan']) ?></div></td>
+</tr>
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </tbody>
@@ -148,8 +155,12 @@
 
      <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
 
+    <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
+
     <script>
-        // FUNGSI BANTUAN MODAL VANILLA JS (BEBAS JQUERY)
+        // ==============================================================
+        // 0. FUNGSI BANTUAN MODAL VANILLA JS (YANG SEBELUMNYA HILANG)
+        // ==============================================================
         function showVanillaModal(modalId) {
             const modal = document.getElementById(modalId);
             if(modal) {
@@ -167,7 +178,7 @@
         }
 
         // ==============================================================
-        // 1. AI GENERATOR (VERSI 100% VANILLA JS BEBAS ERROR)
+        // 1. AI GENERATOR (VERSI 100% VANILLA JS BEBAS ERROR & MASSAL)
         // ==============================================================
         document.querySelector('.btn-ai-kktp').addEventListener('click', function(e) {
             e.preventDefault();
@@ -197,7 +208,7 @@
                             </div>
                             <div class="modal-footer bg-white border-top-0 py-2">
                                 <button type="button" class="btn btn-secondary btn-sm font-weight-bold px-3 shadow-sm btn-close-vanilla">Batal</button>
-                                <button type="button" id="btn-proses-ai-start" class="btn btn-success btn-sm font-weight-bold px-4 shadow-sm">🚀 Mulai Susun AI</button>
+                                <button type="button" id="btn-proses-ai-start" class="btn btn-success btn-sm font-weight-bold px-4 shadow-sm">🚀 Mulai Susun AI Massal</button>
                             </div>
                         </div>
                     </div>
@@ -209,65 +220,148 @@
                     btn.addEventListener('click', () => hideVanillaModal('modalAiPrompt'));
                 });
 
-                // Event Listener Eksekusi AI
+                // =========================================================================
+                // EVENT LISTENER EKSEKUSI AI SECARA MASSAL (BULK)
+                // =========================================================================
                 document.getElementById('btn-proses-ai-start').addEventListener('click', async function() {
                     const btnUtama = document.querySelector('.btn-ai-kktp');
                     const customPromptTxt = document.getElementById('custom-prompt').value.trim();
-                    let instruksiTambahan = customPromptTxt ? `\n\nINSTRUKSI TAMBAHAN WAJIB DARI GURU: "${customPromptTxt}"` : '';
 
                     let rowsToProcess = [];
+                    let inputPayload = []; // Array untuk menampung semua TP yang kosong
+
+                    // 1. Kumpulkan semua baris yang perlu diproses
                     allRows.forEach(tr => {
                         const cellSb = tr.querySelector('.cell-sb');
                         const txtSb = cellSb ? cellSb.innerText.trim() : '';
+                        
                         if (txtSb === "" || txtSb === "-" || txtSb.includes("Gagal") || txtSb.includes("Menganalisis")) {
                             rowsToProcess.push(tr);
+                            
+                            let id = tr.getAttribute('data-cpid');
+                            let tp = tr.querySelector('.tp-text').innerText.trim();
+                            let acuan = tr.getAttribute('data-acuan') || '';
+                            
+                            inputPayload.push({ id: id, tp: tp, acuan: acuan });
                         }
                     });
 
-                    if (rowsToProcess.length === 0) {
-                        alert("🎉 Semua baris di tabel ini sudah terisi! Tidak ada yang perlu diproses.");
+                    // 2. Validasi Jika Semua Penuh
+                    if (inputPayload.length === 0) {
+                        alert("🎉 Semua baris di tabel ini sudah terisi lengkap! Tidak ada yang perlu diproses.");
                         hideVanillaModal('modalAiPrompt');
                         return;
                     }
 
+                    // 3. Persiapan Tampilan (Loading)
                     hideVanillaModal('modalAiPrompt');
                     btnUtama.disabled = true;
                     let originalText = btnUtama.innerHTML;
-                    btnUtama.innerHTML = `⏳ AI Memproses ${rowsToProcess.length} Baris...`;
+                    btnUtama.innerHTML = `⏳ AI Menyusun ${inputPayload.length} Rubrik...`;
 
-                    for (let tr of rowsToProcess) {
-                        let tp = tr.querySelector('.tp-text').innerText.trim();
-                        let acuanKktp = tr.getAttribute('data-acuan') || ''; // 🌟 TANGKAP ACUAN KKTP DARI DATABASE
+                    rowsToProcess.forEach(tr => {
+                        if (tr.querySelector('.cell-indikator')) tr.querySelector('.cell-indikator').innerHTML = `<span class="text-muted">⏳ Menganalisis...</span>`;
+                        tr.querySelector('.cell-sb').innerHTML = `<span class="text-muted">⏳...</span>`;
+                        tr.querySelector('.cell-b').innerHTML = `<span class="text-muted">⏳...</span>`;
+                        tr.querySelector('.cell-c').innerHTML = `<span class="text-muted">⏳...</span>`;
+                        tr.querySelector('.cell-pb').innerHTML = `<span class="text-muted">⏳...</span>`;
+                    });
+
+                    // 4. Eksekusi FETCH Massal ke Server
+                    try {
+                        const fd = new FormData();
+                        fd.append('rows', JSON.stringify(inputPayload)); 
+                        fd.append('instruksi_tambahan', customPromptTxt);
+
+                        const response = await fetch("<?= base_url('ai/generate_kktp_bulk') ?>", {
+                            method: 'POST',
+                            body: fd
+                        });
                         
-                        const cellIndikator = tr.querySelector('.cell-indikator');
-                        const cellSb = tr.querySelector('.cell-sb');
-                        const cellB = tr.querySelector('.cell-b');
-                        const cellC = tr.querySelector('.cell-c');
-                        const cellPb = tr.querySelector('.cell-pb');
+                        if (!response.ok) throw new Error("Koneksi server aplikasi bermasalah.");
+                        
+                        const res = await response.json();
+                        if (res.status !== 'success') throw new Error(res.reply || res.message || "Gagal memperoleh respons AI.");
+                        
+                        let rawReply = res.reply || res.data || "";
+                        let jsonMatch = rawReply.match(/\[[\s\S]*\]/); 
+                        if (!jsonMatch) throw new Error("Format data yang dikembalikan AI cacat atau bukan array.");
+                        
+                        let jsonString = jsonMatch[0].trim().replace(/[\u0000-\u001F\u007F-\u009F]/g, ""); 
+                        let aiResults = JSON.parse(jsonString);
+                        
+                        // 5. Petakan Hasil Balasan
+                        aiResults.forEach(item => {
+                            let tr = document.querySelector(`#tbody-kktp tr[data-cpid="${item.id}"]`);
+                            if (tr) {
+                                if (tr.querySelector('.cell-indikator')) tr.querySelector('.cell-indikator').innerText = item.indikator || '';
+                                tr.querySelector('.cell-sb').innerText = item.sb || '';
+                                tr.querySelector('.cell-b').innerText = item.b || '';
+                                tr.querySelector('.cell-c').innerText = item.c || '';
+                                tr.querySelector('.cell-pb').innerText = item.pb || '';
+                            }
+                        });
 
-                        const oldIndikator = cellIndikator ? cellIndikator.innerText : '';
-                        const oldSb = cellSb.innerText;
-                        const oldB = cellB.innerText;
-                        const oldC = cellC.innerText;
-                        const oldPb = cellPb.innerText;
+                        alert("✅ AI Berhasil merumuskan seluruh Rubrik KKTP secara massal!");
 
-                        let success = false;
-                        let retries = 2; 
+                    } catch(e) { 
+                        console.error(e);
+                        alert("⚠️ Terjadi Kendala: " + e.message);
+                        
+                        rowsToProcess.forEach(tr => {
+                            if (tr.querySelector('.cell-indikator')) tr.querySelector('.cell-indikator').innerHTML = `<span class="text-danger small font-weight-bold">⚠️ Gagal (Klik Lagi)</span>`;
+                            tr.querySelector('.cell-sb').innerText = '-';
+                            tr.querySelector('.cell-b').innerText = '-';
+                            tr.querySelector('.cell-c').innerText = '-';
+                            tr.querySelector('.cell-pb').innerText = '-';
+                        });
+                    } finally {
+                        btnUtama.disabled = false;
+                        btnUtama.innerHTML = originalText;
+                    }
+                });
+            }
 
-                        while (!success && retries >= 0) {
-                            if (cellIndikator) cellIndikator.innerHTML = `<span class="text-muted">⏳ Menganalisis... ${retries < 2 ? '(Ulang)' : ''}</span>`;
-                            cellSb.innerHTML = `<span class="text-muted">⏳...</span>`;
-                            cellB.innerHTML = `<span class="text-muted">⏳...</span>`;
-                            cellC.innerHTML = `<span class="text-muted">⏳...</span>`;
-                            cellPb.innerHTML = `<span class="text-muted">⏳...</span>`;
+            // Tampilkan Modal
+            showVanillaModal('modalAiPrompt');
+        });
 
-                            let prompt = `Anda adalah pakar Kurikulum Merdeka. Buatkan deskripsi Rubrik Penilaian KKTP berdasarkan acuan berikut:
+        // ==============================================================
+        // 1.2. AI GENERATOR SATUAN (PER BARIS) 
+        // ==============================================================
+        document.querySelectorAll('.btn-ai-single').forEach(btn => {
+            btn.addEventListener('click', async function(e) {
+                e.preventDefault();
+                
+                const tr = this.closest('tr');
+                if (!tr) return;
+
+                let tp = tr.querySelector('.tp-text').innerText.trim();
+                let acuanKktp = tr.getAttribute('data-acuan') || ''; 
+                
+                const cellIndikator = tr.querySelector('.cell-indikator');
+                const cellSb = tr.querySelector('.cell-sb');
+                const cellB = tr.querySelector('.cell-b');
+                const cellC = tr.querySelector('.cell-c');
+                const cellPb = tr.querySelector('.cell-pb');
+
+                let originalBtnHTML = this.innerHTML;
+                this.innerHTML = '⏳ Proses...';
+                this.disabled = true;
+
+                if (cellIndikator) cellIndikator.innerHTML = `<span class="text-muted">⏳ AI Menganalisis...</span>`;
+                cellSb.innerHTML = `<span class="text-muted">⏳...</span>`;
+                cellB.innerHTML = `<span class="text-muted">⏳...</span>`;
+                cellC.innerHTML = `<span class="text-muted">⏳...</span>`;
+                cellPb.innerHTML = `<span class="text-muted">⏳...</span>`;
+
+                let prompt = `Anda adalah pakar Kurikulum Merdeka. Buatkan deskripsi Rubrik Penilaian KKTP berdasarkan acuan berikut:
 - Tujuan Pembelajaran (TP): "${tp}"
 - Kriteria Acuan Utama (Target): "${acuanKktp}"
 
 Tugas Anda:
-Berdasarkan "Kriteria Acuan Utama" di atas, jabarkan menjadi 4 tingkat pencapaian siswa.${instruksiTambahan}
-Output WAJIB berupa raw JSON murni 1 baris saja (TANPA markdown, TANPA enter/newline):
+Berdasarkan "Kriteria Acuan Utama" di atas, jabarkan menjadi 4 tingkat pencapaian siswa.
+Output WAJIB berupa raw JSON murni 1 baris saja (TANPA markdown, TANPA kata pengantar):
 {"indikator":"", "sb":"", "b":"", "c":"", "pb":""}
 Aturan teks rubrik:
 - "indikator" diisi ringkasan target acuan.
@@ -275,68 +369,49 @@ Aturan teks rubrik:
 - "b" (Baik/Mencapai acuan persis).
 - "c" (Cukup/Hampir mencapai acuan).
 - "pb" (Perlu Bimbingan/Belum mencapai acuan).
-- JANGAN gunakan enter atau baris baru di dalam teks. JANGAN gunakan tanda petik ganda (") di dalam nilai teks, gunakan petik tunggal (') jika perlu. Bahasa harus operasional dan mudah dipahami.`;
+- JANGAN gunakan enter atau baris baru di dalam teks. JANGAN gunakan tanda petik ganda (") di dalam nilai teks, gunakan petik tunggal (') jika perlu.`;
 
-                            try {
-                                const fd = new FormData();
-                                fd.append('message', prompt);
+                try {
+                    const fd = new FormData();
+                    fd.append('message', prompt);
 
-                                const response = await fetch("<?= base_url('ai/analyze_cp') ?>", {
-                                    method: 'POST',
-                                    body: fd
-                                });
-                                
-                                if (!response.ok) throw new Error("Koneksi drop");
-                                
-                                const res = await response.json();
-                                let rawReply = res.reply || "";
-                                let jsonMatch = rawReply.match(/\{[\s\S]*\}/);
-                                
-                                if (!jsonMatch) throw new Error("Bukan JSON");
-                                
-                                let jsonString = jsonMatch[0].trim().replace(/[\u0000-\u001F\u007F-\u009F]/g, ""); 
-                                let data = JSON.parse(jsonString);
-                                
-                                let valIndikator = data.indikator || data.evidence || data.bukti || '';
-                                let valSb = data.sb || data.sangat_baik || data['sangat baik'] || '';
-                                let valB = data.b || data.baik || '';
-                                let valC = data.c || data.cukup || '';
-                                let valPb = data.pb || data.perlu_bimbingan || data['perlu bimbingan'] || '';
-
-                                if (!valSb && !valB && !valC) throw new Error("Data kosong");
-
-                                if(cellIndikator) cellIndikator.innerText = valIndikator;
-                                cellSb.innerText = valSb;
-                                cellB.innerText = valB;
-                                cellC.innerText = valC;
-                                cellPb.innerText = valPb;
-                                
-                                success = true; 
-
-                            } catch(e) { 
-                                retries--;
-                                if (retries < 0) {
-                                    if(cellIndikator) cellIndikator.innerHTML = oldIndikator || `<span class="text-danger small font-weight-bold">⚠️ Gagal (Klik Lagi)</span>`;
-                                    cellSb.innerText = oldSb || '-';
-                                    cellB.innerText = oldB || '-';
-                                    cellC.innerText = oldC || '-';
-                                    cellPb.innerText = oldPb || '-';
-                                } else {
-                                    await new Promise(resolve => setTimeout(resolve, 600));
-                                }
-                            }
-                        }
-                        await new Promise(resolve => setTimeout(resolve, 300));
-                    }
+                    const response = await fetch("<?= base_url('ai/generate_kktp') ?>", {
+                        method: 'POST',
+                        body: fd
+                    });
                     
-                    btnUtama.disabled = false;
-                    btnUtama.innerHTML = originalText;
-                    alert("✅ AI selesai memeriksa dan mengisi baris!");
-                });
-            }
+                    if (!response.ok) throw new Error("Koneksi server aplikasi bermasalah (Error HTTP). Pastikan route AI sudah didaftarkan.");
+                    
+                    const res = await response.json();
+                    if (res.status !== 'success') throw new Error(res.reply || res.message || "Gagal memperoleh respons AI.");
 
-            // Tampilkan Modal secara native JS
-            showVanillaModal('modalAiPrompt');
+                    let rawReply = res.reply || res.data || "";
+                    let jsonMatch = rawReply.match(/\{[\s\S]*\}/); 
+                    if (!jsonMatch) throw new Error("Format data balasan AI bukan JSON objek yang valid.");
+                    
+                    let jsonString = jsonMatch[0].trim().replace(/[\u0000-\u001F\u007F-\u009F]/g, ""); 
+                    let data = JSON.parse(jsonString);
+                    
+                    if(cellIndikator) cellIndikator.innerText = data.indikator || '';
+                    cellSb.innerText = data.sb || '';
+                    cellB.innerText = data.b || '';
+                    cellC.innerText = data.c || '';
+                    cellPb.innerText = data.pb || '';
+
+                } catch(error) {
+                    console.error(error);
+                    alert("⚠️ Gagal menyusun baris ini: " + error.message);
+                    
+                    if(cellIndikator) cellIndikator.innerHTML = `<span class="text-danger small font-weight-bold">⚠️ Gagal</span>`;
+                    cellSb.innerText = '-';
+                    cellB.innerText = '-';
+                    cellC.innerText = '-';
+                    cellPb.innerText = '-';
+                } finally {
+                    this.innerHTML = originalBtnHTML;
+                    this.disabled = false;
+                }
+            });
         });
 
         // ==============================================================
@@ -418,6 +493,7 @@ Aturan teks rubrik:
                 btnReset.innerHTML = originalText;
             }
         });
+        
         // ==============================================================
         // 4. COPY KKTP DARI ROMBEL LAIN
         // ==============================================================
@@ -432,7 +508,6 @@ Aturan teks rubrik:
                     return;
                 }
 
-                // Kumpulkan ID CP yang sedang tampil
                 let cpIds = [];
                 document.querySelectorAll("#tbody-kktp tr[data-cpid]").forEach(tr => {
                     let cpId = tr.getAttribute('data-cpid');
@@ -444,9 +519,7 @@ Aturan teks rubrik:
                     return;
                 }
 
-                if (!confirm("Apakah Anda yakin ingin menimpa Rubrik KKTP rombel ini dengan data dari rombel yang dipilih?")) {
-                    return;
-                }
+                if (!confirm("Apakah Anda yakin ingin menimpa Rubrik KKTP rombel ini dengan data dari rombel yang dipilih?")) return;
 
                 let btn = this;
                 let originalText = btn.innerHTML;
@@ -468,7 +541,7 @@ Aturan teks rubrik:
                     const result = await response.json();
                     if (result.status === 'success') {
                         alert("✅ " + result.message);
-                        window.location.reload(); // Reload agar tabel update
+                        window.location.reload(); 
                     } else {
                         alert("⚠️ Gagal: " + result.message);
                     }
