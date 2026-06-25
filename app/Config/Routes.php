@@ -202,3 +202,7 @@ $routes->get('guru/kktp/print', 'KktpController::printKktp');
 $routes->post('guru/modul-ajar/generate-ai', 'ModulAjarController::generateAi');
 
 $routes->get('guru/modul-ajar/print/(:num)', 'ModulAjarController::printModul/$1');
+
+$routes->get('profile', 'ProfileController::index');
+$routes->post('profile/update', 'ProfileController::updateProfile');
+$routes->post('profile/update-password', 'ProfileController::updatePassword');

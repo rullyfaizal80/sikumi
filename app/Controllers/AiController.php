@@ -24,47 +24,60 @@ class AiController extends BaseController
         return view('admin/ai/chat', $data);
     }
 
-    public function sendMessage()
+   public function sendMessage()
     {
         $pesanUser = $this->request->getPost('message');
 
         if (empty($pesanUser)) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Pesan tidak boleh kosong.']);
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Pesan tidak boleh kosong.', 'reply' => 'Pesan tidak boleh kosong.']);
         }
 
         // ==============================================================================
-        // 📥 1. AMBIL PENGATURAN API DARI DATABASE
+        // 📥 1. AMBIL KUNCI API (Prioritas: Akun Guru -> Default Server)
         // ==============================================================================
         $db = \Config\Database::connect();
+        $session = session();
         
-        // Ambil API Key
-        $apiKeySetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_api_key')->get()->getRowArray() : null;
-        $apiKey = $apiKeySetting ? trim($apiKeySetting['value']) : '';
+        $userId = $session->get('id') ?? $session->get('user_id') ?? user_id();
+        $apiKey = '';
 
-        // Ambil URL Endpoint dari kolom ai_provider
-        $apiProviderSetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_provider')->get()->getRowArray() : null;
-        // Jika di database kosong, gunakan URL Groq sebagai fallback (cadangan) default
-        $apiUrl = (!empty($apiProviderSetting['value'])) ? trim($apiProviderSetting['value']) : 'https://api.groq.com/openai/v1/chat/completions';
+        // [LANGKAH A] Coba ambil API Key mandiri milik guru dari tabel 'users'
+        if ($userId) {
+            $userRow = $db->table('users')->select('api_key_ai')->where('id', $userId)->get()->getRowArray();
+            if ($userRow && !empty(trim($userRow['api_key_ai']))) {
+                $apiKey = trim($userRow['api_key_ai']);
+            }
+        }
 
+        // [LANGKAH B] Bila guru belum punya, ambil kunci default dari tabel 'settings'
+        if (empty($apiKey)) {
+            $apiKeySetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_api_key')->get()->getRowArray() : null;
+            $apiKey = $apiKeySetting ? trim($apiKeySetting['value']) : '';
+        }
+
+        // Validasi: Jika tidak ada kunci sama sekali
         if (empty($apiKey)) {
             return $this->response->setJSON([
-                'status' => 'success', 
-                'reply' => 'Maaf, kunci akses API belum dipasang di database pengaturan.'
+                'status' => 'error', 
+                'message' => 'Anda belum memasukkan Groq API Key di Pengaturan Akun.',
+                'reply' => 'Fitur AI ditangguhkan. Anda belum memasukkan token Groq API Key di halaman Pengaturan Akun Anda.'
             ]);
         }
 
         // ==============================================================================
-        // 🧠 2. SYSTEM INSTRUCTION (Membentuk Karakter AI)
+        // 🔗 2. TETAPKAN URL GROQ SECARA PERMANEN (MENCEGAH ERROR 'MALFORMED')
+        // ==============================================================================
+        // URL ini langsung dikunci di dalam sistem agar tidak terjadi salah alamat.
+        $apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+
+        // ==============================================================================
+        // 🧠 3. SUSUN DATA UNTUK API
         // ==============================================================================
         $systemInstruction = "Anda adalah SiKuMi, Asisten AI Pintar terintegrasi di sistem SmartKurikulum MIMHa (MTs Miftahul Huda Bandung). "
                            . "Tugas utama Anda adalah membantu guru merancang perangkat ajar, membedah Capaian Pembelajaran (CP) menjadi Tujuan Pembelajaran (TP) dan Alur Tujuan Pembelajaran (ATP), serta menyusun Modul Ajar berstandar Kurikulum Merdeka. "
                            . "Anda menguasai pendekatan Understanding by Design (UbD), Teaching at the Right Level (TaRL), dan Experiential Learning (EL). "
-                           . "Anda sangat mahir dan menguasai SEMUA mata pelajaran umum tingkat MTs (seperti PAI, Matematika, IPA, IPS, Bahasa Indonesia, Bahasa Inggris, Informatika, PKn, dll). "
-                           . "Berikan jawaban yang terstruktur, rapi, praktis, dan langsung pada intinya. JANGAN gunakan pengantar bertele-tele.";
+                           . "Anda sangat mahir dan menguasai SEMUA mata pelajaran umum tingkat MTs. Berikan jawaban yang terstruktur, rapi, praktis, dan langsung pada intinya.";
 
-        // ==============================================================================
-        // 🚀 3. SUSUN DATA UNTUK API (Groq / OpenAI Compatible)
-        // ==============================================================================
         $data = [
             'model' => 'llama-3.3-70b-versatile', 
             'messages' => [
@@ -80,64 +93,87 @@ class AiController extends BaseController
             'Content-Type: application/json'
         ];
 
-        // ... (di dalam fungsi sendMessage)
-
-        // 4. EKSEKUSI API MENGGUNAKAN cURL (Simpan header ke variabel)
+        // ==============================================================================
+        // 🚀 4. EKSEKUSI cURL
+        // ==============================================================================
         $ch = curl_init($apiUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); 
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_HEADER, true); // <--- TAMBAHKAN INI untuk menangkap Header
+        curl_setopt($ch, CURLOPT_HEADER, true); 
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
-
-        $responseRaw = curl_exec($ch);
-        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE); // <--- TAMBAHKAN INI
-        $headerStr = substr($responseRaw, 0, $headerSize); // <--- TAMBAHKAN INI
-        $body = substr($responseRaw, $headerSize); // <--- TAMBAHKAN INI
         
+        $responseRaw = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch); 
+        
+        // JIKA KONEKSI INTERNET SERVER GAGAL
+        if ($responseRaw === false) {
+            curl_close($ch);
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Gagal menghubungi server Groq. Detail cURL: ' . $curlError,
+                'reply' => 'Maaf, gagal menghubungi server AI. Pastikan server aplikasi Anda memiliki koneksi internet aktif. Detail: ' . $curlError
+            ]);
+        }
+
+        // Pisahkan Header dan Body
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE); 
+        $headerStr = substr($responseRaw, 0, $headerSize); 
+        $body = substr($responseRaw, $headerSize); 
         curl_close($ch);
 
-        // 5. TANGANI BALASAN
+        // ==============================================================================
+        // 📥 5. TANGANI BALASAN DARI GROQ
+        // ==============================================================================
         $responseData = json_decode($body, true);
 
-        // Jika kena limit (HTTP 429 Too Many Requests)
+        // Jika respons bukan JSON (Server down/Error 500)
+        if (!$responseData && $httpCode >= 400) {
+             return $this->response->setJSON([
+                'status' => 'error',
+                'message' => "Sistem AI Menolak (Code $httpCode): Respons server gagal dibaca.",
+                'reply' => "Sistem AI Menolak (Code $httpCode): Respons server cacat atau gagal terbaca."
+            ]);
+        }
+
+        // Jika kena limit (HTTP 429)
         if ($httpCode == 429) {
-            // Mencari info reset dari header "x-ratelimit-reset-requests"
             preg_match('/x-ratelimit-reset-requests:\s*([0-9a-zA-Z]+)/i', $headerStr, $matches);
             $resetWaktu = $matches[1] ?? 'segera';
             
             return $this->response->setJSON([
                 'status' => 'error',
-                'reply' => "Kuota SiKuMi habis. Sistem akan mereset otomatis dalam <b>{$resetWaktu}</b>. Mohon bersabar ya!"
+                'message' => "Kuota AI API habis. Reset otomatis dalam {$resetWaktu}.",
+                'reply' => "Kuota Limit Token Anda habis. Sistem akan mereset otomatis dalam <b>{$resetWaktu}</b>. Mohon bersabar!"
             ]);
         }
 
-        // Jika berhasil (HTTP Status 200 OK)
+        // Jika BERHASIL (HTTP Status 200 OK)
         if ($httpCode >= 200 && $httpCode < 300) {
             if (isset($responseData['choices'][0]['message']['content'])) {
-                
                 $balasanSiKuMi = $responseData['choices'][0]['message']['content'];
                 
                 // Merapikan format Markdown menjadi HTML
                 $balasanSiKuMi = preg_replace('/\*\*(.*?)\*\*/s', '<b>$1</b>', $balasanSiKuMi);
-                $balasanSiKuMi = str_replace('```html', '', $balasanSiKuMi);
-                $balasanSiKuMi = str_replace('```', '', $balasanSiKuMi);
+                $balasanSiKuMi = str_replace(['```html', '```'], '', $balasanSiKuMi);
                 
                 return $this->response->setJSON([
                     'status' => 'success',
+                    'data' => trim($balasanSiKuMi),
                     'reply' => trim($balasanSiKuMi)
                 ]);
             }
         }
 
-        // Tampilkan ERROR JIKA GAGAL
-        $errorMessage = $responseData['error']['message'] ?? 'Kesalahan tidak dikenal dari server AI.';
+        // Jika Terjadi Kesalahan Lain (Kunci Salah, Model Tidak Ada, dsb)
+        $errorMessage = $responseData['error']['message'] ?? 'Kesalahan identitas atau kredensial API.';
         
         return $this->response->setJSON([
             'status' => 'error',
-            'reply' => "Sistem AI Menolak: " . $errorMessage
+            'message' => "Groq Error (Code $httpCode): " . $errorMessage,
+            'reply' => "Groq Server Menolak (Code $httpCode): " . $errorMessage
         ]);
     }
 
@@ -146,20 +182,45 @@ class AiController extends BaseController
         $pesanUser = $this->request->getPost('message');
 
         if (empty($pesanUser)) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Data CP tidak boleh kosong.']);
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Data CP tidak boleh kosong.', 'reply' => 'Data CP tidak boleh kosong.']);
         }
 
+        // ==============================================================================
+        // 📥 1. AMBIL KUNCI API (Prioritas: Akun Guru -> Default Server)
+        // ==============================================================================
         $db = \Config\Database::connect();
+        $session = session();
         
-        $apiKeySetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_api_key')->get()->getRowArray() : null;
-        $apiKey = $apiKeySetting ? trim($apiKeySetting['value']) : '';
+        $userId = $session->get('id') ?? $session->get('user_id') ?? user_id();
+        $apiKey = '';
 
-        $apiProviderSetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_provider')->get()->getRowArray() : null;
-        $apiUrl = (!empty($apiProviderSetting['value'])) ? trim($apiProviderSetting['value']) : 'https://api.groq.com/openai/v1/chat/completions';
-
-        if (empty($apiKey)) {
-            return $this->response->setJSON(['status' => 'error', 'reply' => 'Maaf, kunci akses API AI belum dipasang.']);
+        // [LANGKAH A] Coba ambil API Key mandiri milik guru dari tabel 'users'
+        if ($userId) {
+            $userRow = $db->table('users')->select('api_key_ai')->where('id', $userId)->get()->getRowArray();
+            if ($userRow && !empty(trim($userRow['api_key_ai']))) {
+                $apiKey = trim($userRow['api_key_ai']);
+            }
         }
+
+        // [LANGKAH B] Bila guru belum punya, ambil kunci default dari tabel 'settings'
+        if (empty($apiKey)) {
+            $apiKeySetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_api_key')->get()->getRowArray() : null;
+            $apiKey = $apiKeySetting ? trim($apiKeySetting['value']) : '';
+        }
+
+        // Validasi: Jika tidak ada kunci sama sekali
+        if (empty($apiKey)) {
+            return $this->response->setJSON([
+                'status' => 'error', 
+                'message' => 'Anda belum memasukkan Groq API Key di Pengaturan Akun.',
+                'reply' => 'Fitur AI ditangguhkan. Anda belum memasukkan token Groq API Key di halaman Pengaturan Akun Anda.'
+            ]);
+        }
+
+        // ==============================================================================
+        // 🔗 2. TETAPKAN URL GROQ SECARA PERMANEN (MENCEGAH ERROR 'MALFORMED')
+        // ==============================================================================
+        $apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
         // SYSTEM PROMPT KHUSUS DARI PAK RULLY
         $systemInstruction = "Anda adalah Kurikulum AI Expert yang ahli dalam pengembangan Kurikulum Merdeka dan pendekatan Understanding by Design (UbD). Tugas Anda adalah membantu guru menganalisis Capaian Pembelajaran (CP) untuk menghasilkan dokumen perencanaan yang siap pakai.\n"
@@ -187,28 +248,91 @@ class AiController extends BaseController
             'max_tokens' => 3000
         ];
 
-        $headers = [ 'Authorization: Bearer ' . $apiKey, 'Content-Type: application/json' ];
+        $headers = [
+            'Authorization: Bearer ' . $apiKey,
+            'Content-Type: application/json'
+        ];
 
+        // ==============================================================================
+        // 🚀 3. EKSEKUSI cURL (Dengan Proteksi Header & Koneksi)
+        // ==============================================================================
         $ch = curl_init($apiUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); 
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HEADER, true); // Aktifkan pembacaan header untuk rate-limit
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
 
         $responseRaw = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
+
+        // JIKA KONEKSI INTERNET SERVER GAGAL
+        if ($responseRaw === false) {
+            curl_close($ch);
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Gagal menghubungi server Groq. Detail cURL: ' . $curlError,
+                'reply' => 'Maaf, analisis CP gagal dikirim. Terjadi masalah koneksi internet pada server aplikasi Anda. Detail: ' . $curlError
+            ]);
+        }
+
+        // Pisahkan Header dan Body
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE); 
+        $headerStr = substr($responseRaw, 0, $headerSize); 
+        $body = substr($responseRaw, $headerSize); 
         curl_close($ch);
 
-        $responseData = json_decode($responseRaw, true);
+        // ==============================================================================
+        // 📥 4. TANGANI BALASAN DARI GROQ
+        // ==============================================================================
+        $responseData = json_decode($body, true);
 
+        // Jika respons bukan JSON (Server down/Error 500)
+        if (!$responseData && $httpCode >= 400) {
+             return $this->response->setJSON([
+                'status' => 'error',
+                'message' => "Sistem AI Menolak (Code $httpCode): Respons server gagal dibaca.",
+                'reply' => "Sistem AI Menolak (Code $httpCode): Respons server dari Groq cacat atau gagal terbaca."
+            ]);
+        }
+
+        // Jika kena rate limit (HTTP 429 Too Many Requests)
+        if ($httpCode == 429) {
+            preg_match('/x-ratelimit-reset-requests:\s*([0-9a-zA-Z]+)/i', $headerStr, $matches);
+            $resetWaktu = $matches[1] ?? 'segera';
+            
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => "Kuota AI API habis. Reset otomatis dalam {$resetWaktu}.",
+                'reply' => "Beban analisis CP sedang penuh (Rate Limit). Sistem akan mereset otomatis dalam <b>{$resetWaktu}</b>. Mohon dicoba beberapa saat lagi ya!"
+            ]);
+        }
+
+        // Jika BERHASIL (HTTP Status 200 OK)
         if ($httpCode >= 200 && $httpCode < 300) {
             if (isset($responseData['choices'][0]['message']['content'])) {
                 $balasanSiKuMi = $responseData['choices'][0]['message']['content'];
-                return $this->response->setJSON(['status' => 'success', 'reply' => trim($balasanSiKuMi)]);
+                
+                // Membersihkan sisa markdown code block jika model AI tidak sengaja menuliskannya
+                $balasanSiKuMi = str_replace(['```html', '```'], '', $balasanSiKuMi);
+                
+                return $this->response->setJSON([
+                    'status' => 'success',
+                    'data' => trim($balasanSiKuMi),
+                    'reply' => trim($balasanSiKuMi)
+                ]);
             }
         }
 
-        return $this->response->setJSON(['status' => 'error', 'reply' => "Sistem AI Menolak permintaan."]);
+        // Jika Terjadi Kesalahan Lain (Kunci Salah, Model Tidak Ada, dsb)
+        $errorMessage = $responseData['error']['message'] ?? 'Kesalahan identitas atau kredensial API.';
+        
+        return $this->response->setJSON([
+            'status' => 'error',
+            'message' => "Groq Error (Code $httpCode): " . $errorMessage,
+            'reply' => "Sistem AI Menolak Analisis (Code $httpCode): " . $errorMessage
+        ]);
     }
 }
