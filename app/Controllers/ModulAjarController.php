@@ -488,16 +488,46 @@ class ModulAjarController extends BaseController
             }
         }
 
-        // 3. Ambil Pengaturan API
-        $apiKeySetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_api_key')->get()->getRowArray() : null;
-        $apiKey = $apiKeySetting ? trim($apiKeySetting['value']) : '';
+       // ==============================================================================
+        // 📥 FIX AKSES: SKEMA MULTI-FALLBACK API KEY (USER PROFILE -> GLOBAL SETTINGS)
+        // ==============================================================================
+        $session = session();
+        $userId = $session->get('id') ?? $session->get('user_id') ?? (function_exists('user_id') ? user_id() : 0);
+        $apiKey = '';
 
-        $apiProviderSetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_provider')->get()->getRowArray() : null;
-        $apiUrl = (!empty($apiProviderSetting['value'])) ? trim($apiProviderSetting['value']) : 'https://api.groq.com/openai/v1/chat/completions';
-
-        if (empty($apiKey)) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Kunci akses API belum dipasang.']);
+        // Jalur Utama: Ambil dari profil guru masing-masing
+        if ($userId && $db->tableExists('users')) {
+            $userRow = $db->table('users')->select('api_key_ai')->where('id', $userId)->get()->getRowArray();
+            if ($userRow && !empty(trim($userRow['api_key_ai']))) {
+                $apiKey = trim($userRow['api_key_ai']);
+            }
         }
+
+        // Jalur Cadangan: Jika di profil kosong, ambil dari global settings
+        if (empty($apiKey) && $db->tableExists('settings')) {
+            $apiKeySetting = $db->table('settings')->where('key', 'ai_api_key')->get()->getRowArray();
+            if ($apiKeySetting && !empty(trim($apiKeySetting['value']))) {
+                $apiKey = trim($apiKeySetting['value']);
+            }
+        }
+
+        // Proteksi jika kunci tidak ditemukan di kedua tempat
+        if (empty($apiKey)) {
+            return $this->response->setJSON([
+                'status' => 'error', 
+                'message' => 'API Key AI belum dikonfigurasi di profil Anda maupun Pengaturan sistem.'
+            ]);
+        }
+
+        // Ambil URL Provider Endpoint
+        $apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+        if ($db->tableExists('settings')) {
+            $providerSetting = $db->table('settings')->where('key', 'ai_provider')->get()->getRowArray();
+            if ($providerSetting && !empty(trim($providerSetting['value']))) {
+                $apiUrl = trim($providerSetting['value']);
+            }
+        }
+        // ==============================================================================
 
         // 4. Mapping Nama HTML ke Format JSON AI
         $keyMapping = [

@@ -71,7 +71,7 @@
                                     <i class="fas fa-lightbulb mr-2"></i> Pengaturan Token AI Mandiri
                                 </h5>
                                 <p class="small text-secondary mb-2">
-                                    Untuk menggunakan fitur cetak modul ajar, Anda wajib memasukkan token API Key milik sendiri yang didapatkan secara gratis dari platform Groq.
+                                    Untuk menggunakan fitur layanan SiKuMi AI, Anda wajib memasukkan token API Key milik sendiri yang didapatkan secara gratis dari platform Groq.
                                 </p>
                                 <a href="https://console.groq.com/keys" target="_blank" class="btn btn-xs btn-dark font-weight-bold">
                                     <i class="fas fa-external-link-alt mr-1"></i> Buka Groq Console (Gratis)
