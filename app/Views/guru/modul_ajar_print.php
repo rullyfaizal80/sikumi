@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cetak Modul Ajar - SiKuMi</title>
+    <title>Cetak RPP - SiKuMi</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Times New Roman', Times, serif; color: #000; margin: 0; padding: 20px 0; background-color: #525659; }
@@ -93,7 +93,7 @@
             <div class="header-content">
                 <img src="<?= base_url('assets/img/logo_kaldik1.png') ?>" alt="Logo Yayasan">
                 <div class="header-text">
-                    <h5>MODUL AJAR KURIKULUM BERBASIS CINTA</h5>
+                    <h5>RENCANA PELAKSANAAN PEMBELAJARAN KBC</h5>
                     <h5 style="font-size: 18px; margin-top: 2px;"><?= strtoupper(esc($namaMadrasah ?? 'MTs MIFTAHUL HUDA (MIMHa)')) ?></h5>
                     <h6>TAHUN PELAJARAN <?= $tahunAktif ? esc($tahunAktif['academic_year']) : '-' ?></h6>
                     <span class="badge-semester">
@@ -114,157 +114,223 @@
             <tr><td>Guru Pengampu</td><td>:</td><td><?= esc($namaGuruCetak) ?></td></tr>
         </table>
 
-        <table class="content-table">
-            <tr>
-                <td class="label">Peserta Didik</td>
-                <td style="text-align: justify;"><?= nl2br(esc($modulData['kesiapan_murid'] ?? '-')) ?></td>
-            </tr>
-            <tr>
-                <td class="label">Materi Pelajaran</td>
-                <td style="text-align: justify;"><?= nl2br(esc($modulData['topik_pembelajaran'] ?? '-')) ?></td>
-            </tr>
-            <tr>
-                <td class="label">Dimensi Profil Lulusan</td>
-                <td>
-                    <div class="grid-3-col">
-                        <?php 
-                        $semuaDpl = [
-                            'DPL1' => 'Keimanan dan Ketakwaan', 'DPL4' => 'Kreativitas', 'DPL7' => 'Kesehatan',
-                            'DPL2' => 'Kewargaan', 'DPL5' => 'Kolaborasi', 'DPL8' => 'Komunikasi',
-                            'DPL3' => 'Penalaran Kritis', 'DPL6' => 'Kemandirian', '' => ''
-                        ];
-                        foreach($semuaDpl as $k => $v) {
-                            if($k === '') { echo "<div></div>"; continue; }
-                            $isChecked = in_array($k, $dplArray) ? '☑' : '☐';
-                            echo "<div class='check-item'><span class='check-box'>{$isChecked}</span> <span><b>{$k}</b> {$v}</span></div>";
-                        }
-                        ?>
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <td class="label">Identifikasi Lima Pilar Panca Cinta</td>
-                <td>
-                    <div class="grid-2-col">
-                        <?php 
-                        $semuaPilar = [
-                            'P1' => 'Cinta kepada Allah dan Rasul-Nya', 'P4' => 'Cinta kepada Lingkungan',
-                            'P2' => 'Cinta kepada Ilmu', 'P5' => 'Cinta kepada Tanah Air',
-                            'P3' => 'Cinta kepada Diri Sendiri dan Sesama', '' => ''
-                        ];
-                        foreach($semuaPilar as $k => $v) {
-                            if($k === '') continue;
-                            $isChecked = in_array($k, $pancaCintaArray) ? '☑' : '☐';
-                            echo "<div class='check-item'><span class='check-box'>{$isChecked}</span> <span>{$v}</span></div>";
-                        }
-                        ?>
-                    </div>
-                </td>
-            </tr>
-            <tr>
-                <td class="label">Integrasi Kurikulum Berbasis Cinta (KBC)</td>
-                <td style="text-align: justify;"><?= nl2br(esc($modulData['insersi_kbc'] ?? '-')) ?></td>
-            </tr>
-        </table>
+        <table class="content-table" style="width: 100%; table-layout: fixed;">
+    <colgroup>
+        <col style="width: 25%;">
+        <col style="width: 75%;">
+    </colgroup>
 
-        <table class="content-table">
-            <tr>
-                <td class="label">Capaian Pembelajaran</td>
-                <td style="text-align: justify;"><?= nl2br(esc($modulData['capaian_pembelajaran'] ?? '-')) ?></td>
-            </tr>
-            <tr>
-                <td class="label">Tujuan Pembelajaran</td>
-                <td style="text-align: justify;"><?= nl2br(esc($tujuanPembelajaranTeks)) ?></td>
-            </tr>
-            <tr>
-                <td class="label">Lintas Disiplin Ilmu</td>
-                <td style="text-align: justify;"><?= nl2br(esc($modulData['lintas_disiplin'] ?? '-')) ?></td>
-            </tr>
-            <tr>
-                <td class="label">Praktik Pedagogis & Pemanfaatan Digital</td>
-                <td style="text-align: justify;">
-                    <b>Pedagogis:</b> <?= nl2br(esc($modulData['praktik_pedagogis'] ?? '-')) ?><br><br>
-                    <b>Digital:</b> <?= nl2br(esc($modulData['pemanfaatan_digital'] ?? '-')) ?>
-                </td>
-            </tr>
-            <tr>
-                <td class="label">Kemitraan & Lingkungan</td>
-                <td style="text-align: justify;">
-                    <b>Kemitraan:</b> <?= nl2br(esc($modulData['kemitraan_pembelajaran'] ?? '-')) ?><br><br>
-                    <b>Lingkungan:</b> <?= nl2br(esc($modulData['lingkungan_pembelajaran'] ?? '-')) ?>
-                </td>
-            </tr>
-        </table>
+    <tr>
+        <td colspan="2" style="background-color: #004080; color: #ffffff; text-align: center; vertical-align: middle; font-weight: bold; padding: 6px;">
+            IDENTIFIKASI
+        </td>
+    </tr>
+    
+    <tr>
+        <td class="label">Kesiapan Murid</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['kesiapan_murid'] ?? '-')) ?></td>
+    </tr>
+    <tr>
+        <td class="label">Materi Pelajaran</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['topik_pembelajaran'] ?? '-')) ?></td>
+    </tr>
+    <tr>
+        <td class="label">Dimensi Profil Lulusan</td>
+        <td>
+            <div class="grid-3-col">
+                <?php 
+                $semuaDpl = [
+                    'DPL1' => 'Keimanan dan Ketakwaan', 'DPL4' => 'Kreativitas', 'DPL7' => 'Kesehatan',
+                    'DPL2' => 'Kewargaan', 'DPL5' => 'Kolaborasi', 'DPL8' => 'Komunikasi',
+                    'DPL3' => 'Penalaran Kritis', 'DPL6' => 'Kemandirian', '' => ''
+                ];
+                foreach($semuaDpl as $k => $v) {
+                    if($k === '') { echo "<div></div>"; continue; }
+                    $isChecked = in_array($k, $dplArray) ? '☑' : '☐';
+                    echo "<div class='check-item'><span class='check-box'>{$isChecked}</span> <span><b>{$k}</b> {$v}</span></div>";
+                }
+                ?>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td class="label">Topik Panca Cinta</td>
+        <td>
+            <div class="grid-2-col">
+                <?php 
+                $semuaPilar = [
+                    'P1' => 'Cinta kepada Allah dan Rasul-Nya', 'P4' => 'Cinta kepada Lingkungan',
+                    'P2' => 'Cinta kepada Ilmu', 'P5' => 'Cinta kepada Tanah Air',
+                    'P3' => 'Cinta kepada Diri Sendiri dan Sesama', '' => ''
+                ];
+                foreach($semuaPilar as $k => $v) {
+                    if($k === '') continue;
+                    $isChecked = in_array($k, $pancaCintaArray) ? '☑' : '☐';
+                    echo "<div class='check-item'><span class='check-box'>{$isChecked}</span> <span>{$v}</span></div>";
+                }
+                ?>
+            </div>
+        </td>
+    </tr>
+    <tr>
+        <td class="label">Materi Integrasi KBC</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['insersi_kbc'] ?? '-')) ?></td>
+    </tr>
+</table>
 
-        <table class="content-table kegiatan-table">
-            <tr>
-                <th width="20%">Tahap Kegiatan</th>
-                <th width="65%">Deskripsi Skenario Pembelajaran</th>
-                <th width="15%">Waktu</th>
-            </tr>
-            <tr>
-                <td class="font-weight-bold">Kegiatan Awal</td>
-                <td style="text-align: justify;"><?= nl2br(esc($kegiatan['awal']['isi'] ?? '-')) ?></td>
-                <td class="text-center font-weight-bold"><?= esc($kegiatan['awal']['menit'] ?? 0) ?> Menit</td>
-            </tr>
-            <tr>
-                <td class="font-weight-bold">Kegiatan Inti<br><br><span style="font-weight:normal; font-style:italic;">Pendekatan Deep Learning</span></td>
-                <td style="text-align: justify;">
-                    <b>a. Memahami (Meaningful Learning):</b><br>
-                    <?= nl2br(esc($kegiatan['inti']['memahami'] ?? '-')) ?><br><br>
-                    
-                    <b>b. Mengaplikasikan (Joyful Learning):</b><br>
-                    <?= nl2br(esc($kegiatan['inti']['mengaplikasikan'] ?? '-')) ?><br><br>
+       <table class="content-table" style="width: 100%; table-layout: fixed;">
+    <colgroup>
+        <col style="width: 25%;"> <col style="width: 75%;"> </colgroup>
 
-                    <b>c. Merefleksi (Mindful Learning):</b><br>
-                    <?= nl2br(esc($kegiatan['inti']['merefleksi'] ?? '-')) ?>
-                </td>
-                <td class="text-center font-weight-bold"><?= esc($kegiatan['inti']['menit'] ?? 0) ?> Menit</td>
-            </tr>
-            <tr>
-                <td class="font-weight-bold">Kegiatan Penutup</td>
-                <td style="text-align: justify;"><?= nl2br(esc($kegiatan['penutup']['isi'] ?? '-')) ?></td>
-                <td class="text-center font-weight-bold"><?= esc($kegiatan['penutup']['menit'] ?? 0) ?> Menit</td>
-            </tr>
-        </table>
+    <tr>
+        <td colspan="2" style="background-color: #004080; color: #ffffff; text-align: center; vertical-align: middle; font-weight: bold; padding: 6px;">
+            DESAIN PEMBELAJARAN
+        </td>
+    </tr>
+    
+    <tr>
+        <td class="label">Capaian Pembelajaran</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['capaian_pembelajaran'] ?? '-')) ?></td>
+    </tr>
+    <tr>
+        <td class="label">Tujuan Pembelajaran</td>
+        <td style="text-align: justify;"><?= nl2br(esc($tujuanPembelajaranTeks)) ?></td>
+    </tr>
+    <tr>
+        <td class="label">Topik Pembelajaran</td>
+        <td style="text-align: justify;"><?= nl2br(esc($topikPembelajaranTeks)) ?></td>
+    </tr>
+    <tr>
+        <td class="label">Lintas Disiplin Ilmu</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['lintas_disiplin'] ?? '-')) ?></td>
+    </tr>
+    <tr>
+        <td class="label">Praktik Pedagogis</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['praktik_pedagogis'] ?? '-')) ?></td>
+    </tr>
+    <tr>
+        <td class="label">Kemitraan Pembelajaran</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['kemitraan_pembelajaran'] ?? '-')) ?></td>
+    </tr>
+    <tr>
+        <td class="label">Lingkungan Pembelajaran</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['lingkungan_pembelajaran'] ?? '-')) ?></td>
+    </tr>
+    <tr>
+        <td class="label">Pemanfaatan Digital</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['pemanfaatan_digital'] ?? '-')) ?></td>
+    </tr>
+</table>
 
-        <table class="content-table">
-            <tr>
-                <td class="label">Asesmen Awal (Diagnostik)</td>
-                <td style="text-align: justify;"><?= nl2br(esc($modulData['asesmen_awal'] ?? '-')) ?></td>
-            </tr>
-            <tr>
-                <td class="label">Asesmen Proses (Formatif)</td>
-                <td style="text-align: justify;"><?= nl2br(esc($modulData['asesmen_proses'] ?? '-')) ?></td>
-            </tr>
-            <tr>
-                <td class="label">Asesmen Akhir (Sumatif)</td>
-                <td style="text-align: justify;"><?= nl2br(esc($modulData['asesmen_akhir'] ?? '-')) ?></td>
-            </tr>
-        </table>
+        <table class="content-table kegiatan-table" style="width: 100%; table-layout: fixed;">
+    <colgroup>
+        <col style="width: 20%;">
+        <col style="width: 68%;">
+        <col style="width: 12%;">
+    </colgroup>
 
-        <table class="content-table">
-            <tr>
-                <td class="label">Bahan Bacaan / Materi</td>
-                <td style="text-align: justify;"><?= nl2br(esc($modulData['lampiran_materi'] ?? '-')) ?></td>
-            </tr>
-            <tr>
-                <td class="label">LKM (Lembar Kerja Murid)</td>
-                <td style="text-align: justify;"><?= nl2br(esc($modulData['lampiran_lkm'] ?? '-')) ?></td>
-            </tr>
-            <tr>
-                <td class="label">Rubrik Penilaian</td>
-                <td style="text-align: justify;"><?= nl2br(esc($modulData['lampiran_rubrik'] ?? '-')) ?></td>
-            </tr>
-            <tr>
-                <td class="label">Sumber Belajar Utama</td>
-                <td style="text-align: justify;"><?= nl2br(esc($modulData['sumber_belajar'] ?? '-')) ?></td>
-            </tr>
-            <tr>
-                <td class="label">Contoh Produk (Output)</td>
-                <td style="text-align: justify;"><?= nl2br(esc($modulData['contoh_produk'] ?? '-')) ?></td>
-            </tr>
-        </table>
+    <tr>
+        <td colspan="3" style="background-color: #004080; color: #ffffff; text-align: center; vertical-align: middle; font-weight: bold; padding: 6px;">
+            PENGALAMAN BELAJAR
+        </td>
+    </tr>
+
+    <tr>
+        <th style="text-align: center; font-weight: bold; padding: 6px;">Tahap Kegiatan</th>
+        <th style="text-align: center; font-weight: bold; padding: 6px;">Langkah-langkah Pembelajaran</th>
+        <th style="text-align: center; font-weight: bold; padding: 6px;">Waktu</th>
+    </tr>
+
+    <tr>
+        <td class="font-weight-bold" style="vertical-align: top; padding: 6px;">Kegiatan Awal</td>
+        <td style="text-align: justify; padding: 6px;"><?= nl2br(esc($kegiatan['awal']['isi'] ?? '-')) ?></td>
+        <td class="text-center font-weight-bold" style="vertical-align: middle; padding: 6px;"><?= esc($kegiatan['awal']['menit'] ?? 0) ?> Menit</td>
+    </tr>
+
+    <tr>
+        <td class="font-weight-bold" style="vertical-align: top; padding: 6px;">
+            Kegiatan Inti<br><br>
+            <span style="font-weight:normal; font-style:italic; font-size: 11px;">Pendekatan Pembelajaran Mendalam</span>
+        </td>
+        <td style="text-align: justify; padding: 6px;">
+            <b>A. Memahami :</b><br>
+            <?= nl2br(esc($kegiatan['inti']['memahami'] ?? '-')) ?><br><br>
+            
+            <b>B. Mengaplikasikan :</b><br>
+            <?= nl2br(esc($kegiatan['inti']['mengaplikasikan'] ?? '-')) ?><br><br>
+
+            <b>C. Merefleksi :</b><br>
+            <?= nl2br(esc($kegiatan['inti']['merefleksi'] ?? '-')) ?>
+        </td>
+        <td class="text-center font-weight-bold" style="vertical-align: middle; padding: 6px;"><?= esc($kegiatan['inti']['menit'] ?? 0) ?> Menit</td>
+    </tr>
+
+    <tr>
+        <td class="font-weight-bold" style="vertical-align: top; padding: 6px;">Kegiatan Penutup</td>
+        <td style="text-align: justify; padding: 6px;"><?= nl2br(esc($kegiatan['penutup']['isi'] ?? '-')) ?></td>
+        <td class="text-center font-weight-bold" style="vertical-align: middle; padding: 6px;"><?= esc($kegiatan['penutup']['menit'] ?? 0) ?> Menit</td>
+    </tr>
+</table>
+
+        <table class="content-table" style="width: 100%; table-layout: fixed;">
+    <colgroup>
+        <col style="width: 25%;">
+        <col style="width: 75%;">
+    </colgroup>
+
+    <tr>
+        <td colspan="2" style="background-color: #004080; color: #ffffff; text-align: center; vertical-align: middle; font-weight: bold; padding: 6px;">
+            ASESMEN PEMBELAJARAN
+        </td>
+    </tr>
+    
+    <tr>
+        <td class="label">Asesmen pada Awal Pembelajaran (Diagnostik)</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['asesmen_awal'] ?? '-')) ?></td>
+    </tr>
+    <tr>
+        <td class="label">Asesmen pada Proses Pembelajaran (Formatif)</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['asesmen_proses'] ?? '-')) ?></td>
+    </tr>
+    <tr>
+        <td class="label">Asesmen pada Akhir Pembelajaran (Sumatif)</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['asesmen_akhir'] ?? '-')) ?></td>
+    </tr>
+</table>
+
+        <table class="content-table" style="width: 100%; table-layout: fixed;">
+    <colgroup>
+        <col style="width: 25%;">
+        <col style="width: 75%;">
+    </colgroup>
+
+    <tr>
+        <td colspan="2" style="background-color: #004080; color: #ffffff; text-align: center; vertical-align: middle; font-weight: bold; padding: 6px;">
+            LAMPIRAN
+        </td>
+    </tr>
+    
+    <tr>
+        <td class="label">Bahan Bacaan / Materi</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['lampiran_materi'] ?? '-')) ?></td>
+    </tr>
+    <tr>
+        <td class="label">LKM (Lembar Kerja Murid)</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['lampiran_lkm'] ?? '-')) ?></td>
+    </tr>
+    <tr>
+        <td class="label">Rubrik Penilaian</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['lampiran_rubrik'] ?? '-')) ?></td>
+    </tr>
+    <tr>
+        <td class="label">Sumber Belajar Utama</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['sumber_belajar'] ?? '-')) ?></td>
+    </tr>
+    <tr>
+        <td class="label">Contoh Produk (Output)</td>
+        <td style="text-align: justify;"><?= nl2br(esc($modulData['contoh_produk'] ?? '-')) ?></td>
+    </tr>
+</table>
 
         <div class="d-flex justify-content-between signature-section">
             <div class="text-center" style="width: 250px; line-height: 1;">

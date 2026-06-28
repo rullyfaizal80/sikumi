@@ -849,7 +849,7 @@ class ModulAjarController extends BaseController
         $npkKepalaRow     = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_npk')->get()->getRowArray() : null;
 
         $guruNpk = '-';
-        $namaGuruCetak = '.....................................'; // Default garis titik-titik
+        $namaGuruCetak = '.....................................'; 
 
         // Langkah 1: Ambil dari tabel teacher_profiles
         if ($db->tableExists('teacher_profiles')) {
@@ -860,7 +860,7 @@ class ModulAjarController extends BaseController
             }
         }
         
-        // Langkah 2: Jika di profil kosong, ambil dari tabel users (bawaan login)
+        // Langkah 2: Jika di profil kosong, ambil dari tabel users
         if ($namaGuruCetak == '.....................................' && $db->tableExists('users')) {
             $userData = $db->table('users')->where('id', $userId)->get()->getRowArray();
             if ($userData) {
@@ -868,16 +868,14 @@ class ModulAjarController extends BaseController
             }
         }
         
-        // Langkah 3: Fallback terakhir ke Session jika DB kosong
+        // Langkah 3: Fallback terakhir ke Session
         if ($namaGuruCetak == '.....................................') {
             $namaGuruCetak = session()->get('nama_guru') ?? session()->get('fullname') ?? session()->get('name') ?? 'Guru Pengampu';
         }
 
-        // Pembersihan string nama & NPK dari prefix duplikat
         $namaGuruCetak = trim(str_ireplace(['Nama :', 'Nama: ', 'Nama '], '', $namaGuruCetak));
         $guruNpk = trim(str_ireplace(['NIM :', 'NIM: ', 'NIM ', 'NPK :', 'NPK: ', 'NPK ', 'NIP :', 'NIP: '], '', $guruNpk));
 
-        // Format Titi Mangsa (Mencegah double tanggal)
         $titimangsaValue = $titiMangsaRow ? trim($titiMangsaRow['value']) : 'Bandung';
         if (strpos($titimangsaValue, ',') !== false) {
             $titiMangsa = $titimangsaValue;
@@ -897,14 +895,15 @@ class ModulAjarController extends BaseController
             'namaMapelAktif'         => $namaMapelAktif, 
             'namaRombel'             => $namaRombel,
             'tujuanPembelajaranTeks' => $tujuanPembelajaranTeks,
+            
+            // 🌟 TAMBAHAN: Mengirim data Topik Pembelajaran ke View
+            'topikPembelajaranTeks'  => $modulData['topik_pembelajaran'] ?? '-',
+            
             'dplArray'               => $dplArray,                 
             'pancaCintaArray'        => $pancaCintaArray,   
-            
-            // Mengirim 2 versi key kepala sekolah agar aman sesuai kebutuhan view
             'kepalaNama'             => $kepalaSekolahRow ? $kepalaSekolahRow['value'] : 'Rully Faizal, S.T.',
             'kepalaSekolah'          => $kepalaSekolahRow ? $kepalaSekolahRow['value'] : 'Rully Faizal, S.T.',
             'kepalaNpk'              => $npkKepalaRow ? trim($npkKepalaRow['value']) : '-',
-            
             'titiMangsa'             => $titiMangsa,
             'userId'                 => $userId,
             'namaGuruCetak'          => trim($namaGuruCetak),
