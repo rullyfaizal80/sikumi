@@ -537,6 +537,70 @@
                 btn.disabled = false;
             });
         }
+
+    // ==========================================
+    // ⏱️ FUNGSI AUTO-KALKULASI WAKTU CERDAS (DUA ARAH)
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', function() {
+        const alokasiJp = parseInt(document.querySelector('input[name="alokasi_jp"]').value) || 0;
+        const inputMenitPerJp = document.querySelector('input[name="menit_per_jp"]');
+        
+        const inputAwal = document.querySelector('input[name="kegiatan[awal][menit]"]');
+        const inputInti = document.querySelector('input[name="kegiatan[inti][menit]"]');
+        const inputPenutup = document.querySelector('input[name="kegiatan[penutup][menit]"]');
+
+        // Menghitung Total Waktu (JP x Menit per JP)
+        function hitungTotal() {
+            return alokasiJp * (parseInt(inputMenitPerJp.value) || 0);
+        }
+
+        // FUNGSI 1: Distribusi Proporsional (Terpicu jika Guru mengganti "Menit per JP")
+        function distribusiProporsional() {
+            let total = hitungTotal();
+            if (total === 0) return;
+
+            // Hitung 15% untuk Awal & Penutup (Dibulatkan ke kelipatan 5)
+            let proporsi = Math.round((total * 0.15) / 5) * 5;
+            if (proporsi === 0 && total > 0) proporsi = 5;
+
+            inputAwal.value = proporsi;
+            inputPenutup.value = proporsi;
+            inputInti.value = total - (proporsi * 2);
+        }
+
+        // FUNGSI 2: Inti Mengalah (Terpicu jika Guru merubah Awal atau Akhir)
+        function sesuaikanInti() {
+            let total = hitungTotal();
+            let awal = parseInt(inputAwal.value) || 0;
+            let akhir = parseInt(inputPenutup.value) || 0;
+            
+            let sisa = total - awal - akhir;
+            inputInti.value = sisa < 0 ? 0 : sisa; // Cegah hasil minus
+        }
+
+        // FUNGSI 3: Penutup Mengalah (Terpicu jika Guru sengaja merubah Inti secara manual)
+        function sesuaikanPenutup() {
+            let total = hitungTotal();
+            let awal = parseInt(inputAwal.value) || 0;
+            let inti = parseInt(inputInti.value) || 0;
+            
+            let sisa = total - awal - inti;
+            inputPenutup.value = sisa < 0 ? 0 : sisa; // Cegah hasil minus
+        }
+
+        // --- Pemasangan Pemicu (Event Listeners) ---
+        inputMenitPerJp.addEventListener('input', distribusiProporsional);
+        
+        // Jika Awal/Penutup diubah, Inti menyesuaikan
+        inputAwal.addEventListener('input', sesuaikanInti);
+        inputPenutup.addEventListener('input', sesuaikanInti);
+        
+        // Jika Inti diubah manual, Penutup menyesuaikan
+        inputInti.addEventListener('input', sesuaikanPenutup); 
+        
+        // Catatan: Tidak ada lagi atribut 'readonly' yang ditambahkan, 
+        // sehingga semua kolom 100% bisa diketik secara manual oleh Guru.
+    });
     </script>
 </body>
 </html>

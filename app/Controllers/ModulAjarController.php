@@ -179,7 +179,7 @@ class ModulAjarController extends BaseController
         return view('guru/modul_ajar_manage', $data);
     }
 
-    public function create()
+   public function create()
     {
         $db = \Config\Database::connect();
         $request = \Config\Services::request();
@@ -274,16 +274,25 @@ class ModulAjarController extends BaseController
             }
         }
 
-        $menitPerJp = $modulData['menit_per_jp'] ?? 30;
+        // =========================================================================
+        // 🌟 PERBAIKAN: FORMULA DEFAULT PROPORSIONAL KELIPATAN 5 MENIT
+        // =========================================================================
+        $menitPerJp = (int)($modulData['menit_per_jp'] ?? 30);
         $totalWaktu = $totalJp * $menitPerJp;
 
-        $defaultAwal = round($totalWaktu / 6);
-        $defaultPenutup = round($totalWaktu / 6);
-        $defaultInti = $totalWaktu - $defaultAwal - $defaultPenutup; 
+        // Hitung jatah awal & penutup sebesar 15% dari total waktu, dibulatkan ke kelipatan 5 terdekat
+        $defaultAwal = round(($totalWaktu * 0.15) / 5) * 5;
+        if ($defaultAwal == 0 && $totalWaktu > 0) $defaultAwal = 5; // Batas minimal 5 menit jika waktu sangat kecil
 
-        $menitAwal = $kegiatan['awal']['menit'] ?? $defaultAwal;
-        $menitInti = $kegiatan['inti']['menit'] ?? $defaultInti;
+        $defaultPenutup = $defaultAwal; // Akhir disamakan persentasenya dengan awal
+        $defaultInti    = $totalWaktu - $defaultAwal - $defaultPenutup;
+        if ($defaultInti < 0) $defaultInti = 0;
+
+        // Terapkan nilai ke variabel view (Gunakan data tersimpan jika ada, jika tidak pakai nilai default proporsional)
+        $menitAwal    = $kegiatan['awal']['menit'] ?? $defaultAwal;
+        $menitInti    = $kegiatan['inti']['menit'] ?? $defaultInti;
         $menitPenutup = $kegiatan['penutup']['menit'] ?? $defaultPenutup;
+        // =========================================================================
 
         $data = [
             'rombelId'        => $rombelId,
@@ -296,12 +305,8 @@ class ModulAjarController extends BaseController
             'selectedAtpData' => $selectedAtpData,
             'totalJp'         => $totalJp,
             'gabunganMateri'  => implode('; ', $gabunganMateri),
-            
-            // --- DUA BARIS INI YANG SEBELUMNYA TERLEWAT ---
             'gabunganDpl'     => $gabunganDpl,
             'gabunganPilar'   => $gabunganPilar,
-            // ----------------------------------------------
-            
             'modulId'         => $modulId,
             'modulData'       => $modulData,
             'kegiatan'        => $kegiatan,
@@ -314,7 +319,6 @@ class ModulAjarController extends BaseController
         ];
 
         return view('guru/modul_ajar_create', $data);
-    
     }
 
     public function store()
