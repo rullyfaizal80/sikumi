@@ -209,3 +209,6 @@ $routes->post('profile/update-password', 'ProfileController::updatePassword');
 
 $routes->post('ai/generate_kktp_bulk', 'AiController::generateKktpBulk');
 $routes->post('ai/generate_kktp', 'AiController::generateKktp');
+
+$routes->get('jurnal-mengajar', 'JurnalGuruController::index');
+$routes->post('jurnal-mengajar/simpan', 'JurnalGuruController::simpanJurnal');
