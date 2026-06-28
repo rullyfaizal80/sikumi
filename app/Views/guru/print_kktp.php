@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Print ATP - SiKuMi</title>
+    <title>Print KKTP - SiKuMi</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: 'Times New Roman', Times, serif; color: #000; margin: 0; padding: 20px 0; background-color: #525659; }

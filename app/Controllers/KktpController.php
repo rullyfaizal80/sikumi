@@ -322,46 +322,51 @@ class KktpController extends BaseController
     // ==============================================================
     // 🌟 PERBAIKAN TOTAL: FUNGSI UNTUK CETAK/PRINT RUBRIK KKTP
     // ==============================================================
-    public function printKktp()
+   public function printKktp()
     {
         $db = \Config\Database::connect();
         $request = \Config\Services::request();
 
-        // 1. INFO HEADER (SINKRONISASI TOTAL DATABASE)
+        // 1. INFO HEADER & TAHUN AKTIF
         $tahunAktif = $db->tableExists('academic_years') ? $db->table('academic_years')->where('is_active', 1)->get()->getRowArray() : null;
         $userId = session()->get('user_id') ?? (function_exists('user_id') ? user_id() : 0);
         
+        // ==============================================================
+        // 📥 AMBIL PENGATURAN MADRASAH & TTD (DISAMAKAN DENGAN ACUAN)
+        // ==============================================================
         $namaMadrasah  = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_lembaga_nama')->get()->getRowArray() : null;
-        if (!$namaMadrasah) {
+        if (!$namaMadrasah) { // Tambahan fallback khusus jika kaldik_lembaga_nama kosong
             $namaMadrasah = $db->tableExists('settings') ? $db->table('settings')->where('key', 'nama_madrasah')->get()->getRowArray() : null;
         }
         $titiMangsa    = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_titi_mangsa')->get()->getRowArray() : null;
         $kepalaSekolah = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_nama')->get()->getRowArray() : null;
         $npkKepala     = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_npk')->get()->getRowArray() : null;
 
-        // Tarik NPK Guru (SINKRON DENGAN INDEX)
-        $guruNpk = '.....................................';
+        $guruNpk = '-';
+        $namaGuruCetak = '.....................................'; // Default garis titik-titik
+
+        // 1. Coba ambil nama & NPK dari tabel teacher_profiles
         if ($db->tableExists('teacher_profiles')) {
             $guruProfile = $db->table('teacher_profiles')->where('user_id', $userId)->get()->getRowArray();
             if ($guruProfile) {
-                $guruNpk = $guruProfile['nip'] ?? $guruProfile['npk'] ?? '.....................................';
+                $guruNpk = $guruProfile['nip'] ?? $guruProfile['npk'] ?? '-';
+                $namaGuruCetak = $guruProfile['nama_guru'] ?? $guruProfile['nama'] ?? $guruProfile['full_name'] ?? $namaGuruCetak;
             }
         }
-
-        // Tarik Nama Guru dari teacher_profiles / users (SINKRON DENGAN INDEX)
-        $namaGuruCetak = '.....................................';
-        if ($db->tableExists('teacher_profiles')) {
-            $guru = $db->table('teacher_profiles')->where('user_id', $userId)->get()->getRowArray();
-            if ($guru) {
-                $namaGuruCetak = $guru['nama_guru'] ?? $guru['nama'] ?? $guru['full_name'] ?? 'Guru Pengampu';
+        
+        // 2. Jika di teacher_profiles tidak ada, coba ambil dari tabel users (bawaan login)
+        if ($namaGuruCetak == '.....................................' && $db->tableExists('users')) {
+            $userData = $db->table('users')->where('id', $userId)->get()->getRowArray();
+            if ($userData) {
+                $namaGuruCetak = $userData['fullname'] ?? $userData['name'] ?? $userData['username'] ?? $namaGuruCetak;
             }
         }
-        if (($namaGuruCetak == '.....................................' || $namaGuruCetak == 'Guru Pengampu') && $db->tableExists('users')) {
-            $guruData = $db->table('users')->where('id', $userId)->get()->getRowArray();
-            if ($guruData) {
-                $namaGuruCetak = $guruData['fullname'] ?? $guruData['name'] ?? $guruData['username'] ?? 'Nama Guru Belum Diatur';
-            }
+        
+        // 3. Fallback terakhir ke Session jika DB gagal
+        if ($namaGuruCetak == '.....................................') {
+            $namaGuruCetak = session()->get('nama_guru') ?? session()->get('fullname') ?? session()->get('name') ?? 'Guru Pengampu';
         }
+        // ==============================================================
 
         // 2. PARAMETER FILTER & AMBIL NAMA ROMBEL
         $selectedRombelId = $request->getGet('rombel_id');

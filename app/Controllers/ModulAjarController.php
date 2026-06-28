@@ -833,61 +833,82 @@ class ModulAjarController extends BaseController
         $dplArray = array_unique(array_filter($dplArray));
         $pancaCintaArray = array_unique(array_filter($pancaCintaArray));
 
-        // 5. Ambil Pengaturan Global
+        // 5. INFO HEADER & TAHUN AKTIF
         $tahunAktif = $db->tableExists('academic_years') ? $db->table('academic_years')->where('is_active', 1)->get()->getRowArray() : null;
-        $settings = $db->tableExists('settings') ? $db->table('settings')->get()->getResultArray() : [];
-        $set = []; foreach($settings as $s) { $set[$s['key']] = $s['value']; }
-
-        $namaMadrasah = $set['nama_madrasah'] ?? $set['nama_sekolah'] ?? 'MTs MIFTAHUL HUDA';
-        $kepalaNama = $set['kaldik_kepala_nama'] ?? $set['kepala_nama'] ?? 'Yana Purnama, S.Pd.';
-        $kepalaNpk = $set['kaldik_kepala_npk'] ?? $set['kepala_npk'] ?? '-';
-
-        // 6. Tangkap Identitas Guru (Diperkuat agar tidak gagal load)
         $userId = session()->get('user_id') ?? session()->get('id') ?? (function_exists('user_id') ? user_id() : 0);
-        $namaGuruCetak = session()->get('nama') ?? session()->get('full_name') ?? 'Guru Pengampu'; 
-        $guruNpk = session()->get('npk') ?? session()->get('nim') ?? session()->get('nuptk') ?? '-';
 
+        // ==============================================================
+        // 📥 SINKRONISASI PENGATURAN MADRASAH & TTD (SESUAI ACUAN)
+        // ==============================================================
+        $namaMadrasahRow = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_lembaga_nama')->get()->getRowArray() : null;
+        if (!$namaMadrasahRow) {
+            $namaMadrasahRow = $db->tableExists('settings') ? $db->table('settings')->where('key', 'nama_madrasah')->get()->getRowArray() : null;
+        }
+        $titiMangsaRow    = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_titi_mangsa')->get()->getRowArray() : null;
+        $kepalaSekolahRow = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_nama')->get()->getRowArray() : null;
+        $npkKepalaRow     = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_kepala_npk')->get()->getRowArray() : null;
+
+        $guruNpk = '-';
+        $namaGuruCetak = '.....................................'; // Default garis titik-titik
+
+        // Langkah 1: Ambil dari tabel teacher_profiles
         if ($db->tableExists('teacher_profiles')) {
-            $guru = $db->table('teacher_profiles')->where('user_id', $userId)->get()->getRowArray();
-            if ($guru) {
-                $namaGuruCetak = !empty($guru['nama_guru']) ? $guru['nama_guru'] : (!empty($guru['nama']) ? $guru['nama'] : (!empty($guru['full_name']) ? $guru['full_name'] : $namaGuruCetak));
-                $guruNpk = !empty($guru['npk']) ? $guru['npk'] : (!empty($guru['nip']) ? $guru['nip'] : (!empty($guru['nuptk']) ? $guru['nuptk'] : $guruNpk));
+            $guruProfile = $db->table('teacher_profiles')->where('user_id', $userId)->get()->getRowArray();
+            if ($guruProfile) {
+                $guruNpk = $guruProfile['nip'] ?? $guruProfile['npk'] ?? '-';
+                $namaGuruCetak = $guruProfile['nama_guru'] ?? $guruProfile['nama'] ?? $guruProfile['full_name'] ?? $namaGuruCetak;
             }
         }
+        
+        // Langkah 2: Jika di profil kosong, ambil dari tabel users (bawaan login)
+        if ($namaGuruCetak == '.....................................' && $db->tableExists('users')) {
+            $userData = $db->table('users')->where('id', $userId)->get()->getRowArray();
+            if ($userData) {
+                $namaGuruCetak = $userData['fullname'] ?? $userData['name'] ?? $userData['username'] ?? $namaGuruCetak;
+            }
+        }
+        
+        // Langkah 3: Fallback terakhir ke Session jika DB kosong
+        if ($namaGuruCetak == '.....................................') {
+            $namaGuruCetak = session()->get('nama_guru') ?? session()->get('fullname') ?? session()->get('name') ?? 'Guru Pengampu';
+        }
 
-        // Membersihkan dari kata "Nama:" atau "NIM:" yang dobel
+        // Pembersihan string nama & NPK dari prefix duplikat
         $namaGuruCetak = trim(str_ireplace(['Nama :', 'Nama: ', 'Nama '], '', $namaGuruCetak));
-        $guruNpk = trim(str_ireplace(['NIM :', 'NIM: ', 'NIM ', 'NPK :', 'NPK: ', 'NPK '], '', $guruNpk));
+        $guruNpk = trim(str_ireplace(['NIM :', 'NIM: ', 'NIM ', 'NPK :', 'NPK: ', 'NPK ', 'NIP :', 'NIP: '], '', $guruNpk));
 
-        // 7. Format Titi Mangsa (Mencegah double tanggal)
-        $titimangsaSetting = trim($set['kaldik_titi_mangsa'] ?? $set['titimangsa_print'] ?? 'Bandung');
-        if (strpos($titimangsaSetting, ',') !== false) {
-            // Jika di pengaturan sudah ada koma (misal: "Bandung, 1 Juli 2026"), pakai yang itu saja
-            $titiMangsa = $titimangsaSetting;
+        // Format Titi Mangsa (Mencegah double tanggal)
+        $titimangsaValue = $titiMangsaRow ? trim($titiMangsaRow['value']) : 'Bandung';
+        if (strpos($titimangsaValue, ',') !== false) {
+            $titiMangsa = $titimangsaValue;
         } else {
-            // Jika hanya nama kota, tambahkan tanggal hari ini
             $bulanIndo = ['', 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
             $tanggalCetak = date('j') . ' ' . $bulanIndo[(int)date('m')] . ' ' . date('Y');
-            $titiMangsa = $titimangsaSetting . ', ' . $tanggalCetak;
+            $titiMangsa = $titimangsaValue . ', ' . $tanggalCetak;
         }
+        // ==============================================================
 
         // 8. Susun Variabel untuk View
         $data = [
-            'modulId' => $modulId,
-            'modulData' => $modulData,
-            'namaMadrasah' => $namaMadrasah,
-            'tahunAktif' => $tahunAktif,
-            'namaMapelAktif' => $namaMapelAktif, 
-            'namaRombel' => $namaRombel,
+            'modulId'                => $modulId,
+            'modulData'              => $modulData,
+            'namaMadrasah'           => $namaMadrasahRow ? $namaMadrasahRow['value'] : 'MTs MIFTAHUL HUDA (MIMHa)',
+            'tahunAktif'             => $tahunAktif,
+            'namaMapelAktif'         => $namaMapelAktif, 
+            'namaRombel'             => $namaRombel,
             'tujuanPembelajaranTeks' => $tujuanPembelajaranTeks,
-            'dplArray' => $dplArray,                 
-            'pancaCintaArray' => $pancaCintaArray,   
-            'kepalaNama' => $kepalaNama,
-            'kepalaNpk' => trim($kepalaNpk),
-            'titiMangsa' => $titiMangsa,
-            'userId' => $userId,
-            'namaGuruCetak' => trim($namaGuruCetak),
-            'guruNpk' => trim($guruNpk)
+            'dplArray'               => $dplArray,                 
+            'pancaCintaArray'        => $pancaCintaArray,   
+            
+            // Mengirim 2 versi key kepala sekolah agar aman sesuai kebutuhan view
+            'kepalaNama'             => $kepalaSekolahRow ? $kepalaSekolahRow['value'] : 'Rully Faizal, S.T.',
+            'kepalaSekolah'          => $kepalaSekolahRow ? $kepalaSekolahRow['value'] : 'Rully Faizal, S.T.',
+            'kepalaNpk'              => $npkKepalaRow ? trim($npkKepalaRow['value']) : '-',
+            
+            'titiMangsa'             => $titiMangsa,
+            'userId'                 => $userId,
+            'namaGuruCetak'          => trim($namaGuruCetak),
+            'guruNpk'                => trim($guruNpk)
         ];
 
         return view('guru/modul_ajar_print', $data);

@@ -31,7 +31,6 @@
         .header-text { text-align: center; margin: 0; line-height: 1.2; }
         .header-text h5 { margin: 0 0 2px 0; font-weight: 800; color: #002060; font-size: 16px; letter-spacing: 0.5px; }
         .header-text h6 { margin: 2px 0; font-weight: 700; font-size: 12px; }
-        .badge-semester { font-weight: bold; text-transform: uppercase; color: #fff; font-size: 10px; background-color: #002060 !important; border-radius: 3px; padding: 2px 8px; display: inline-block; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 
         /* IDENTITAS AWAL (Kop Atas) */
         .info-table { width: 100%; margin-bottom: 15px; font-weight: bold; font-size: 13px; }
@@ -43,8 +42,7 @@
         .content-table td.label { font-weight: bold; width: 28%; background-color: #f4f4f4 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         
         /* GRID UNTUK CHECKBOX DPL & PANCA CINTA */
-        
-        .grid-3-col {display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 6px; }
+        .grid-3-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
         .grid-2-col { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
         .check-item { display: flex; align-items: flex-start; font-size: 12px; }
         .check-box { font-size: 16px; line-height: 1; margin-right: 6px; font-family: Arial, sans-serif; }
@@ -94,11 +92,8 @@
                 <img src="<?= base_url('assets/img/logo_kaldik1.png') ?>" alt="Logo Yayasan">
                 <div class="header-text">
                     <h5>MODUL AJAR KURIKULUM BERBASIS CINTA</h5>
-                    <h5 style="font-size: 18px; margin-top: 2px;"><?= strtoupper(esc($namaMadrasah ?? 'MTs MIFTAHUL HUDA (MIMHa)')) ?></h5>
+                    <h5 style="font-size: 18px; margin-top: 2px;"><?= strtoupper(esc($namaMadrasah)) ?></h5>
                     <h6>TAHUN PELAJARAN <?= $tahunAktif ? esc($tahunAktif['academic_year']) : '-' ?></h6>
-                    <span class="badge-semester">
-                        SEMESTER <?= strtoupper(esc($tahunAktif['semester'] ?? '-')) ?>
-                    </span>
                 </div>
                 <img src="<?= base_url('assets/img/logo_kaldik2.png') ?>" alt="Logo MTs">
             </div>
@@ -106,12 +101,19 @@
 
         <?php $kegiatan = json_decode($modulData['kegiatan_pembelajaran'] ?? '{}', true); ?>
 
-         <table class="info-table">
-            <tr><td width="120">Mata Pelajaran</td><td width="10">:</td><td><?= esc($namaMapelAktif) ?></td></tr>
-            <tr><td>Fase / Kelas</td><td>:</td><td>D / <?= esc($namaRombel) ?></td></tr>            
-            <tr><td>Pertemuan Ke-</td><td>:</td><td><?= esc($modulData['pertemuan_ke'] ?? '-') ?></td></tr>
-            <tr><td>Alokasi Waktu</td><td>:</td><td><?= esc($modulData['alokasi_jp'] ?? 0) ?> JP (<?= esc($modulData['alokasi_jp'] ?? 0) ?> x <?= esc($modulData['menit_per_jp'] ?? 0) ?> Menit)</td></tr>
-            <tr><td>Guru Pengampu</td><td>:</td><td><?= esc($namaGuruCetak) ?></td></tr>
+        <table class="info-table">
+            <tr>
+                <td width="150">Satuan Pendidikan</td><td width="10">:</td><td width="250"><?= esc($namaMadrasah) ?></td>
+                <td width="130">Alokasi Waktu</td><td width="10">:</td><td><?= esc($modulData['alokasi_jp'] ?? 0) ?> JP (<?= esc($modulData['alokasi_jp'] ?? 0) ?> x <?= esc($modulData['menit_per_jp'] ?? 0) ?> Menit)</td>
+            </tr>
+            <tr>
+                <td>Mata Pelajaran</td><td>:</td><td><?= esc($namaMapelAktif) ?></td>
+                <td>Pertemuan Ke-</td><td>:</td><td><?= esc($modulData['pertemuan_ke'] ?? '-') ?></td>
+            </tr>
+            <tr>
+                <td>Fase / Kelas</td><td>:</td><td>D / <?= esc($namaRombel) ?></td>
+                <td>Semester</td><td>:</td><td><?= strtoupper(esc($tahunAktif['semester'] ?? '-')) ?></td>
+            </tr>
         </table>
 
         <table class="content-table">
