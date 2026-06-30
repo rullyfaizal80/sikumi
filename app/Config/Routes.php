@@ -206,6 +206,7 @@ $routes->get('guru/modul-ajar/print/(:num)', 'ModulAjarController::printModul/$1
 $routes->get('profile', 'ProfileController::index');
 $routes->post('profile/update', 'ProfileController::updateProfile');
 $routes->post('profile/update-password', 'ProfileController::updatePassword');
+$routes->get('profile/download-ttd', 'ProfileController::downloadTtd');
 
 $routes->post('ai/generate_kktp_bulk', 'AiController::generateKktpBulk');
 $routes->post('ai/generate_kktp', 'AiController::generateKktp');

@@ -49,7 +49,7 @@
                             <i class="fas fa-id-card mr-2"></i> Profil & Integrasi Groq AI
                         </h4>
                     </div>
-                    <form action="<?= base_url('profile/update') ?>" method="POST">
+                    <form action="<?= base_url('profile/update') ?>" method="POST" enctype="multipart/form-data">
                         <?= csrf_field() ?>
                         <div class="card-body">
                             
@@ -62,6 +62,36 @@
                             <div class="form-group">
                                 <label for="username" class="font-weight-bold">Nama Lengkap & Gelar</label>
                                 <input type="text" class="form-control" id="username" name="username" value="<?= esc($user['username']) ?>" required placeholder="Contoh: Nama Guru, S.Pd.">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="npk" class="font-weight-bold">NPK (Nomor Pokok Kepegawaian)</label>
+                                <input type="text" class="form-control" id="npk" name="npk" value="<?= esc($user['nip'] ?? '') ?>" placeholder="Masukkan nomor NPK anda">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="ttd" class="font-weight-bold">Foto Tanda Tangan (TTD)</label>
+                                <input type="file" class="form-control-file" id="ttd" name="ttd" accept="image/png, image/jpeg, image/jpg">
+                                <small class="text-muted small">Format: PNG/JPG/JPEG. Upload baru langsung otomatis menimpa file TTD lama Anda.</small>
+                                
+                                <?php 
+                                $ttdPath = 'assets/img/ttd_' . $user['id'] . '.png';
+                                if (file_exists(FCPATH . $ttdPath)): 
+                                ?>
+                                    <div class="mt-3 p-2 border rounded bg-white text-center shadow-sm" style="max-width: 220px;">
+                                        <p class="small text-muted font-weight-bold mb-2">Pratinjau TTD Aktif:</p>
+                                        <img src="<?= base_url($ttdPath) . '?v=' . time() ?>" alt="Tanda Tangan" class="img-fluid border mb-2" style="max-height: 90px; object-fit: contain;">
+                                        <div>
+                                            <a href="<?= base_url('profile/download-ttd') ?>" class="btn btn-xs btn-success font-weight-bold btn-block">
+                                                <i class="fas fa-download mr-1"></i> Unduh File TTD
+                                            </a>
+                                        </div>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="mt-2 text-secondary small">
+                                        <i class="fas fa-info-circle text-warning mr-1"></i> Anda belum mengunggah file tanda tangan.
+                                    </div>
+                                <?php endif; ?>
                             </div>
 
                             <hr class="my-4">
