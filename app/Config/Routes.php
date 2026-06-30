@@ -213,3 +213,4 @@ $routes->post('ai/generate_kktp', 'AiController::generateKktp');
 
 $routes->get('jurnal-mengajar', 'JurnalGuruController::index');
 $routes->post('jurnal-mengajar/simpan', 'JurnalGuruController::simpanJurnal');
+$routes->get('jurnal-mengajar/print', 'JurnalGuruController::printJurnal');
