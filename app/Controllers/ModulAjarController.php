@@ -917,4 +917,178 @@ class ModulAjarController extends BaseController
         return view('guru/modul_ajar_print', $data);
     }
 
+    public function copyAllModul()
+{
+    $db = \Config\Database::connect();
+    $request = \Config\Services::request();
+
+    $fromRombelId = $request->getPost('from_rombel_id');
+    $toRombelId   = $request->getPost('to_rombel_id');
+    $mapelId      = $request->getPost('mapel_id');
+    
+    $userId = session()->get('user_id') ?? session()->get('id') ?? (function_exists('user_id') ? user_id() : 0);
+
+    // 🌟 AMBIL TAHUN AJARAN AKTIF
+    $tahunAktif = $db->tableExists('academic_years') ? $db->table('academic_years')->where('is_active', 1)->get()->getRowArray() : null;
+    $tahunAktifId = $tahunAktif ? $tahunAktif['id'] : 0;
+
+    if (!$fromRombelId || !$toRombelId || !$mapelId) {
+        return $this->response->setJSON(['status' => 'error', 'message' => 'Parameter pengiriman tidak lengkap.']);
+    }
+
+    // 1. VALIDASI KETAT TINGKAT KELAS
+    $fromRombel = $db->table('class_rombel')->where('id', $fromRombelId)->get()->getRowArray();
+    $toRombel   = $db->table('class_rombel')->where('id', $toRombelId)->get()->getRowArray();
+
+    if (!$fromRombel || !$toRombel) {
+        return $this->response->setJSON(['status' => 'error', 'message' => 'Data Kelas/Rombel tidak ditemukan.']);
+    }
+
+    if ($fromRombel['master_class_id'] != $toRombel['master_class_id']) {
+        return $this->response->setJSON([
+            'status' => 'error', 
+            'message' => 'Gagal! Penyalinan masal hanya diperbolehkan untuk Rombel di tingkat yang sama.'
+        ]);
+    }
+
+    // 2. NORMALISASI FORMAT MAPEL ID (Sapu Bersih Semua Format DB)
+    $cleanMapelId = preg_replace('/[^0-9]/', '', $mapelId);
+    $kemungkinanMapelId = [
+        $mapelId,
+        $cleanMapelId,
+        'S_' . $cleanMapelId,
+        'C_' . $cleanMapelId,
+        'M_' . $cleanMapelId
+    ];
+
+    // Ambil semua modul dari rombel sumber
+    $sourceModuls = $db->table('kurikulum_modul_ajar')
+                       ->where('academic_year_id', $tahunAktifId)
+                       ->where('rombel_id', $fromRombelId)
+                       ->whereIn('mapel_id', $kemungkinanMapelId)
+                       ->get()->getResultArray();
+
+    if (empty($sourceModuls)) {
+        return $this->response->setJSON([
+            'status' => 'error', 
+            'message' => "Rombel sumber belum memiliki data Modul Ajar untuk mapel ini."
+        ]);
+    }
+
+    // ========================================================
+    // 3. JALANKAN TRANSAKSI DATABASE
+    // ========================================================
+    $db->transStart();
+
+    // Hapus data modul lama di rombel tujuan agar tidak ganda
+    $db->table('kurikulum_modul_ajar')
+       ->where('rombel_id', $toRombelId)
+       ->whereIn('mapel_id', $kemungkinanMapelId) // Gunakan whereIn juga untuk menghapus
+       ->delete();
+
+    // Ambil list ATP Rombel Tujuan untuk mereset relasi Modul lama & mencari tanggal
+    $targetAtpList = $db->table('kurikulum_atp')
+                        ->where('rombel_id', $toRombelId)
+                        ->get()->getResultArray();
+                        
+    $targetAtpIds = array_column($targetAtpList, 'id');
+    
+    // Reset/Kosongkan modul_id pada ATP di rombel tujuan agar siap diisi modul baru
+    if (!empty($targetAtpIds)) {
+        $db->table('kurikulum_atp')->whereIn('id', $targetAtpIds)->update(['modul_id' => null]);
+    }
+
+    $insertedCount = 0;
+
+    foreach ($sourceModuls as $modul) {
+        
+        // 🌟 A. CARI ATP DI ROMBEL SUMBER YANG MENGGUNAKAN MODUL INI
+        $sourceAtps = $db->table('kurikulum_atp')
+                         ->where('modul_id', $modul['id'])
+                         ->get()->getResultArray();
+                         
+        $resolvedTanggal = null;
+        $matchedTargetAtpIds = []; // Tempat menampung ID ATP Target yang akan dipasang Modul Baru
+        
+        foreach ($sourceAtps as $sAtp) {
+            $cpDetailId = $sAtp['cp_detail_id'];
+            
+            // Cari padanan ATP-nya di Rombel Tujuan (Berdasarkan CP Detail ID)
+            $matchTargetAtp = $db->table('kurikulum_atp')
+                                 ->where('rombel_id', $toRombelId)
+                                 ->where('cp_detail_id', $cpDetailId)
+                                 ->get()->getRowArray();
+                                 
+            if ($matchTargetAtp) {
+                $matchedTargetAtpIds[] = $matchTargetAtp['id'];
+                
+                // Ambil tanggal jadwal dari ATP target pertama yang cocok
+                if ($resolvedTanggal === null) {
+                    $resolvedTanggal = $matchTargetAtp['alokasi_tanggal'] ?? $matchTargetAtp['tanggal'] ?? null;
+                }
+            }
+        }
+
+        // Jika tidak ketemu jadwal di target, pakai jadwal dari modul asli
+        if (empty($resolvedTanggal)) {
+            $resolvedTanggal = $modul['tanggal_pelaksanaan'];
+        }
+
+        // 🌟 B. SIAPKAN DATA DUPLIKASI MODUL (Memasukkan seluruh kolom dari database)
+        $newModulData = [
+            'academic_year_id'        => $tahunAktifId,
+            'master_class_id'         => $toRombel['master_class_id'],
+            'mapel_id'                => $modul['mapel_id'], // Tetap pakai format asli di modul sumber
+            'rombel_id'               => $toRombelId,
+            'teacher_id'              => $userId,
+            'pertemuan_ke'            => $modul['pertemuan_ke'],
+            'tanggal_pelaksanaan'     => $resolvedTanggal, // 👈 Sudah otomatis ambil dari jadwal rombel tujuan
+            'alokasi_jp'              => $modul['alokasi_jp'] ?? 0,
+            'menit_per_jp'            => $modul['menit_per_jp'] ?? 30,
+            'kesiapan_murid'          => $modul['kesiapan_murid'],
+            'lintas_disiplin'         => $modul['lintas_disiplin'],
+            'topik_pembelajaran'      => $modul['topik_pembelajaran'],
+            'praktik_pedagogis'       => $modul['praktik_pedagogis'],
+            'kemitraan_pembelajaran'  => $modul['kemitraan_pembelajaran'],
+            'lingkungan_pembelajaran' => $modul['lingkungan_pembelajaran'],
+            'pemanfaatan_digital'     => $modul['pemanfaatan_digital'],
+            'insersi_kbc'             => $modul['insersi_kbc'],
+            'capaian_pembelajaran'    => $modul['capaian_pembelajaran'],
+            'kegiatan_pembelajaran'   => $modul['kegiatan_pembelajaran'],
+            'sumber_belajar'          => $modul['sumber_belajar'],
+            'contoh_produk'           => $modul['contoh_produk'],
+            'asesmen_awal'            => $modul['asesmen_awal'],
+            'asesmen_proses'          => $modul['asesmen_proses'],
+            'asesmen_akhir'           => $modul['asesmen_akhir'],
+            'lampiran_materi'         => $modul['lampiran_materi'],
+            'lampiran_lkm'            => $modul['lampiran_lkm'],
+            'lampiran_rubrik'         => $modul['lampiran_rubrik'],
+            'created_at'              => date('Y-m-d H:i:s')
+        ];
+
+        // 🌟 C. INSERT MODUL SATU PER SATU UNTUK MENDAPATKAN ID BARU
+        $db->table('kurikulum_modul_ajar')->insert($newModulData);
+        $newModulId = $db->insertID(); // Tangkap ID Modul yang baru
+        $insertedCount++;
+
+        // 🌟 D. SAMBUNGKAN KEMBALI RELASI ATP DI ROMBEL TUJUAN KE MODUL BARU INI
+        if (!empty($matchedTargetAtpIds)) {
+            $db->table('kurikulum_atp')
+               ->whereIn('id', $matchedTargetAtpIds)
+               ->update(['modul_id' => $newModulId]);
+        }
+    }
+
+    $db->transComplete();
+
+    if ($db->transStatus() === FALSE) {
+        return $this->response->setJSON(['status' => 'error', 'message' => 'Terjadi kegagalan sistem saat menyalin data ke database.']);
+    }
+
+    return $this->response->setJSON([
+        'status' => 'success', 
+        'message' => 'Sempurna! Berhasil menyalin ' . $insertedCount . ' Modul Ajar.'
+    ]);
+}
+
 }

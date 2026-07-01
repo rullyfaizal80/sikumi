@@ -18,6 +18,25 @@
     </style>
 </head>
 <body class="layout-fixed">
+<?php
+$db = \Config\Database::connect();
+// Ambil infomasi master_class_id dan tahun akademik dari rombel saat ini
+$currentRombel = $db->table('class_rombel')->where('id', $selectedRombelId)->get()->getRowArray();
+$listRombelSatuTingkat = [];
+
+if ($currentRombel) {
+    $listRombelSatuTingkat = $db->table('class_rombel cr')
+        ->select('cr.id, cr.rombel_name, mc.class_name')
+        ->join('master_classes mc', 'mc.id = cr.master_class_id')
+        ->where('cr.master_class_id', $currentRombel['master_class_id'])
+        ->where('cr.id !=', $selectedRombelId) // Blokir rombel sendiri agar tidak muncul pilihan
+        ->where('cr.academic_year_id', $currentRombel['academic_year_id'])
+        ->orderBy('cr.rombel_name', 'ASC')
+        ->get()->getResultArray();
+}
+?>
+
+
     <div class="wrapper p-4">
         
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -26,7 +45,9 @@
                 <p class="text-muted mb-0">Penyusunan Modul Ajar Berdasarkan Alur Tujuan Pembelajaran (ATP)</p>
             </div>
             <div>
-                <button class="btn btn-primary btn-sm font-weight-bold shadow-sm me-2">🖨️ Cetak Rekap Modul</button>
+               <button type="button" class="btn btn-info btn-sm shadow-sm fw-bold ms-2" data-bs-toggle="modal" data-bs-target="#modalCopyMasal">
+                    💾 Salin Semua Modul
+                </button>
                 <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm font-weight-bold shadow-sm">🏠 Dashboard</a>
             </div>
         </div>
@@ -210,6 +231,49 @@
 
     </div>
 
+   <div class="modal fade" id="modalCopyMasal" tabindex="-1" aria-labelledby="modalCopyMasalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title fw-bold" id="modalCopyMasalLabel">
+                    <i class="bi bi-arrow-left-right me-2"></i> Salin Seluruh Modul Ajar (Satu Tingkat)
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small text-muted">Fitur ini akan menyalin <strong>SELURUH</strong> Modul Ajar mapel ini dari Rombel saat ini ke Rombel tujuan dalam satu tingkat secara masal.</p>
+                
+                <div class="alert alert-warning py-2 small d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill text-danger fs-5 me-2"></i> 
+                    <div><strong>Perhatian:</strong> Data Modul Ajar lama yang ada di Rombel tujuan untuk mata pelajaran ini akan dihapus dan digantikan penuh oleh salinan baru ini!</div>
+                </div>
+                
+                <div class="mt-3">
+                    <label class="fw-bold text-dark small mb-1">Pilih Rombel Target (Tingkat yang Sama):</label>
+                    <select id="target_rombel_copy" class="form-select form-select-sm">
+                        <option value="">-- Pilih Rombel Tujuan --</option>
+                        <?php if(!empty($listRombelSatuTingkat)): ?>
+                            <?php foreach($listRombelSatuTingkat as $target): ?>
+                                <option value="<?= $target['id'] ?>">
+                                    Kelas <?= esc($target['class_name']) ?> - Rombel <?= esc($target['rombel_name']) ?>
+                                </option>
+                            <?php endforeach; ?>
+                        <?php else: ?>
+                            <option value="" disabled>Tidak ditemukan Rombel paralel lain di tingkat ini.</option>
+                        <?php endif; ?>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer bg-light py-2">
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-info btn-sm fw-bold" onclick="eksekusiCopyModulMasal(this)">
+                    <i class="bi bi-check2-circle me-1"></i> Mulai Salin Data
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
     <script>
         const checkboxes = document.querySelectorAll('.tp-checkbox');
         const btnGabung = document.getElementById('btnGabungModul');
@@ -250,6 +314,63 @@
         checkboxes.forEach(chk => {
             chk.addEventListener('change', updateTombolGabung);
         });
+
+        async function eksekusiCopyModulMasal(btn) {
+    const toRombelId = document.getElementById('target_rombel_copy').value;
+    const fromRombelId = "<?= $selectedRombelId ?>";
+    const mapelId = "<?= $selectedMapelId ?>";
+
+    if (!toRombelId) {
+        alert("⚠️ Silakan pilih Rombel tujuan terlebih dahulu!");
+        return;
+    }
+
+    if (!confirm("Apakah Anda yakin ingin menyalin SELURUH Modul Ajar ke rombel tersebut?\nProses ini tidak dapat dibatalkan.")) {
+        return;
+    }
+
+    // Kunci Tombol & Tampilkan Efek Loading
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sedang Menyalin...';
+    btn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('from_rombel_id', fromRombelId);
+    formData.append('to_rombel_id', toRombelId);
+    formData.append('mapel_id', mapelId);
+
+    try {
+        const response = await fetch("<?= base_url('guru/modul-ajar/copy-all') ?>", {
+            method: 'POST',
+            body: formData,
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+
+        const result = await response.json();
+
+        if (result.status === 'success') {
+            alert("✅ " + result.message);
+            
+            // CARA MENUTUP MODAL DI BOOTSTRAP 5
+            const modalEl = document.getElementById('modalCopyMasal');
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+            
+            // Refresh halaman agar data terbaru termuat
+            window.location.reload();
+        } else {
+            alert("⚠️ " + result.message);
+        }
+    } catch (error) {
+        console.error(error);
+        alert("❌ Terjadi kesalahan jaringan atau kendala server.");
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+}
     </script>
     
     <?php if(session()->getFlashdata('success')): ?>
@@ -263,5 +384,7 @@
             alert("❌ <?= session()->getFlashdata('error') ?>");
         </script>
     <?php endif; ?>
+
+    <script src="<?= base_url('assets/js/bootstrap.bundle.min.js') ?>"></script>
 </body>
 </html>
