@@ -20,6 +20,19 @@
         </a>
         <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm">Dashboard</a>
     </div>
+    
+</div>
+<div class="row">
+    <div class="col-md-4 offset-md-8">
+        <form action="<?= base_url('/siswa/import') ?>" method="post" enctype="multipart/form-data">
+    <?= csrf_field() ?>
+            <div class="input-group">
+                <input type="file" name="file_excel" class="form-control form-control-sm" accept=".xlsx, .xls">
+                <button type="submit" class="btn btn-primary btn-sm">Upload & Update Massal</button>
+            </div>
+            <small class="text-muted">Pastikan format kolom: NIS, NISN, Tanggal Lahir</small>
+        </form>
+    </div>
 </div>
         <?php if (session()->getFlashdata('sukses')): ?>
             <div class="alert alert-success alert-dismissible fade show shadow-sm mb-3" role="alert">

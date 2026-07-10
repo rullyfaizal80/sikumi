@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class UserSiswaController extends BaseController
 {
@@ -353,6 +354,107 @@ class UserSiswaController extends BaseController
         }
 
         return redirect()->to(base_url('admin/users/siswa-tes'))->with('sukses', '✔️ Akun siswa berhasil dipulihkan! Akun tersebut kini aktif kembali di daftar utama.');
+    }
+
+    public function importInsert()
+    {
+        $file = $this->request->getFile('file_excel');
+        
+        if (!$file->isValid()) {
+            return redirect()->back()->with('error', 'Gagal upload file Excel.');
+        }
+
+        $spreadsheet = IOFactory::load($file->getTempName());
+        $sheetData   = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+        
+        $db = \Config\Database::connect();
+        
+        $jumlahSukses = 0;
+        $jumlahGagal  = 0;
+
+        foreach ($sheetData as $rowIndex => $row) {
+            
+            // Lewati baris 1 (Header Excel)
+            if ($rowIndex == 1) {
+                continue; 
+            }
+
+            $nis = trim($row['A'] ?? '');
+            
+            // Lewati jika NIS kosong
+            if (empty($nis)) {
+                continue; 
+            }
+
+            // =========================================================
+            // BLOK PENGECEKAN DUPLIKAT DIHAPUS/DIMATIKAN DI SINI
+            // =========================================================
+
+            $nisn        = trim($row['B'] ?? '');
+            $nama        = trim($row['C'] ?? '');
+            $email       = trim($row['D'] ?? '');
+            $tempatLahir = trim($row['E'] ?? '');
+            $tglLahir    = trim($row['F'] ?? '');
+            $gender      = trim($row['G'] ?? '');
+            $noHp        = trim($row['H'] ?? '');
+            $password    = trim($row['I'] ?? '');
+            
+            // Auto-password menggunakan NIS jika kolom I kosong
+            if (empty($password)) {
+                $password = $nis;
+            }
+
+            $db->transStart();
+            
+            // --- A. Insert ke tabel users ---
+            $db->table('users')->insert([
+                'username'   => $nama,
+                'active'     => 1,
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+            
+            $userId = $db->insertID();
+
+            // --- B. Insert ke tabel auth_identities ---
+            $db->table('auth_identities')->insert([
+                'user_id'    => $userId,
+                'type'       => 'email_password',
+                'secret'     => $email,
+                'secret2'    => password_hash($password, PASSWORD_BCRYPT),
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+
+            // --- C. Insert ke tabel student_profiles ---
+            $db->table('student_profiles')->insert([
+                'user_id'     => $userId,
+                'nis'         => $nis,
+                'nisn'        => $nisn,
+                'birth_place' => $tempatLahir,
+                'birth_date'  => $tglLahir,
+                'gender'      => $gender,
+                'phone_ortu'  => $noHp,
+            ]);
+
+            // --- D. Insert ke auth_groups_users (Grup 'siswa') ---
+            $db->table('auth_groups_users')->insert([
+                'user_id'    => $userId,
+                'group'      => 'siswa',
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+
+            $db->transComplete();
+            
+            if ($db->transStatus() !== FALSE) {
+                $jumlahSukses++;
+            } else {
+                // Gagal biasanya karena ada error SQL saat insert (misal duplikat unique key)
+                $jumlahGagal++;
+            }
+        }
+        
+        return redirect()->back()->with('sukses', "Import selesai! $jumlahSukses data siswa ditambahkan. $jumlahGagal data gagal diproses.");
     }
 
 }
