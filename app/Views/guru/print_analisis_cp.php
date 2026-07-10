@@ -54,9 +54,11 @@
         .print-actions-wrapper { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
         .btn-group-top { display: flex; gap: 10px; }
         .btn-print { background: #002060; color: #fff; padding: 8px 16px; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .btn-word { background: #2b579a; color: #fff; padding: 8px 16px; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         .btn-close { background: #dc3545; color: #fff; padding: 8px 16px; border: none; border-radius: 5px; font-size: 13px; cursor: pointer; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
-        .control-panel { background: #fff; padding: 12px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid #ddd; text-align: center; width: 140px; }
+        .control-panel { background: #fff; padding: 12px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 1px solid #ddd; text-align: center; width: auto; max-width: 320px; }
         .control-panel p { margin: 0 0 8px 0; font-size: 11px; font-weight: bold; color: #333; }
+        .control-panels-wrapper { display: flex; gap: 15px; margin-bottom: 8px; }
         .d-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; justify-items: center; }
         .btn-dpad { background: #e9ecef; border: 1px solid #ced4da; border-radius: 4px; width: 30px; height: 30px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
         .btn-dpad:hover { background: #dee2e6; }
@@ -67,22 +69,48 @@
 
     <div class="print-actions-wrapper">
         <div class="btn-group-top">
+            <button class="btn-word" onclick="exportToWord('Analisis_CP.doc')">📝 Download Word</button>
             <button class="btn-print" onclick="window.print()">🖨️ Cetak PDF</button>
             <button class="btn-close" onclick="window.close()">🆇 Tutup</button>
         </div>
+        
         <div class="control-panel">
-            <p>Atur Posisi TTD Guru</p>
-            <div class="d-pad">
-                <div></div><button class="btn-dpad" onclick="moveTtd(0, -3)">⬆️</button><div></div>
-                <button class="btn-dpad" onclick="moveTtd(-3, 0)">⬅️</button>
-                <button class="btn-dpad" onclick="moveTtd(0, 3)">⬇️</button>
-                <button class="btn-dpad" onclick="moveTtd(3, 0)">➡️</button>
+            <div class="control-panels-wrapper">
+                <!-- Panel TTD Kepala -->
+                <div>
+                    <p>TTD Kepala</p>
+                    <div class="d-pad">
+                        <div></div><button class="btn-dpad" onclick="moveKamad(0, -3)">⬆️</button><div></div>
+                        <button class="btn-dpad" onclick="moveKamad(-3, 0)">⬅️</button>
+                        <button class="btn-dpad" onclick="moveKamad(0, 3)">⬇️</button>
+                        <button class="btn-dpad" onclick="moveKamad(3, 0)">➡️</button>
+                    </div>
+                    <div style="display: flex; gap: 4px; justify-content: center; margin-top: 5px;">
+                        <button class="btn-dpad" style="width: 100%; height: 26px; font-weight: bold;" onclick="zoomKamad(0.05)">➕</button>
+                        <button class="btn-dpad" style="width: 100%; height: 26px; font-weight: bold;" onclick="zoomKamad(-0.05)">➖</button>
+                    </div>
+                </div>
+
+                <!-- Panel TTD Guru -->
+                <div>
+                    <p>TTD Guru</p>
+                    <div class="d-pad">
+                        <div></div><button class="btn-dpad" onclick="moveTtd(0, -3)">⬆️</button><div></div>
+                        <button class="btn-dpad" onclick="moveTtd(-3, 0)">⬅️</button>
+                        <button class="btn-dpad" onclick="moveTtd(0, 3)">⬇️</button>
+                        <button class="btn-dpad" onclick="moveTtd(3, 0)">➡️</button>
+                    </div>
+                    <div style="display: flex; gap: 4px; justify-content: center; margin-top: 5px;">
+                        <button class="btn-dpad" style="width: 100%; height: 26px; font-weight: bold;" onclick="zoomTtd(0.05)">➕</button>
+                        <button class="btn-dpad" style="width: 100%; height: 26px; font-weight: bold;" onclick="zoomTtd(-0.05)">➖</button>
+                    </div>
+                </div>
             </div>
-            <button class="btn-reset" onclick="resetTtd()">🔄 Reset Posisi</button>
+            <button class="btn-reset" onclick="resetTtd()">🔄 Reset Semua</button>
         </div>
     </div>
 
-    <div class="a4-paper">
+    <div class="a4-paper" id="exportContent">
         <!-- HEADER KOP SURAT -->
         <div class="header-container">
             <div class="header-content">
@@ -106,9 +134,7 @@
             <tr><td>Guru Pengampu</td><td>:</td><td><?= esc($namaGuruCetak) ?></td></tr>
         </table>
 
-        <!-- ============================================================== -->
-        <!-- BAGIAN A: TABEL DESKRIPSI CP (DRAFT ELEMEN)                    -->
-        <!-- ============================================================== -->
+        <!-- BAGIAN A -->
         <div class="section-title">A. ELEMEN & DESKRIPSI CAPAIAN PEMBELAJARAN (CP)</div>
         <div class="table-container">
             <table>
@@ -135,9 +161,7 @@
             </table>
         </div>
 
-        <!-- ============================================================== -->
-        <!-- BAGIAN B: TABEL ANALISIS TP & KKTP                             -->
-        <!-- ============================================================== -->
+        <!-- BAGIAN B -->
         <div class="section-title">B. HASIL ANALISIS CAPAIAN PEMBELAJARAN (CP)</div>
         <div class="table-container">
             <table class="table table-bordered" style="table-layout: fixed; word-wrap: break-word;">
@@ -188,7 +212,8 @@
             <div class="text-center" style="width: 250px; line-height: 1;">
                 <p class="mb-0">Mengetahui,</p>
                 <p class="font-weight-bold" style="font-weight: 700; margin-top: 3px; margin-bottom: -15px; position: relative; z-index: 1;">Kepala Madrasah,</p>
-                <img src="<?= base_url('assets/img/ttd_kamad.png') ?>" alt="TTD Kamad" 
+                <!-- TAMBAHAN ID ttd-kamad -->
+                <img id="ttd-kamad" src="<?= base_url('assets/img/ttd_kamad.png') ?>" alt="TTD Kamad" 
                      style="height: 90px; width: auto; object-fit: contain; margin-top: -8px; margin-bottom: -30px; position: relative; z-index: 2; mix-blend-mode: multiply; transform: scale(0.85); left: -25px;" 
                      onerror="this.style.opacity='0'">
                 <p class="font-weight-bold mb-0 d-inline-block" style="font-weight: 800; position: relative; z-index: 3;"><?= esc($kepalaNama ?? '.............................................') ?></p>
@@ -199,6 +224,7 @@
                 <p class="mb-0"><?= esc($titiMangsa ?? 'Bandung, ....................................') ?></p>
                 <p class="font-weight-bold" style="font-weight: 700; margin-top: 3px; margin-bottom: -15px; position: relative; z-index: 1;">Guru Mata Pelajaran,</p>
                 <div style="width: 100%; position: relative; z-index: 2;">
+                    <!-- ID ttd-guru -->
                     <img id="ttd-guru" src="<?= base_url('assets/img/ttd_' . esc($userId) . '.png') ?>" alt="TTD Guru" 
                          style="height: 78px; width: auto; object-fit: contain; top: 0px; margin-top: 3px; margin-bottom: -28px; position: relative; mix-blend-mode: multiply; transform: scale(0.85); left: 0px;" 
                          onerror="this.style.opacity='0'">
@@ -211,17 +237,153 @@
     </div>
 
     <script>
-        let ttdPosX = 0; let ttdPosY = 0;
+        // State Guru
+        let ttdPosX = 0; let ttdPosY = 0; let ttdScale = 0.85; 
         const imgTtdGuru = document.getElementById('ttd-guru');
 
+        // State Kepala (left awal diset ke -25px berdasarkan html asli Anda)
+        let kamadPosX = -25; let kamadPosY = 0; let kamadScale = 0.85;
+        const imgTtdKamad = document.getElementById('ttd-kamad');
+
+        // Fungsi TTD Guru
         function moveTtd(x, y) {
             ttdPosX += x; ttdPosY += y;
             if(imgTtdGuru) { imgTtdGuru.style.left = ttdPosX + 'px'; imgTtdGuru.style.top = ttdPosY + 'px'; }
         }
+        function zoomTtd(factor) {
+            ttdScale += factor;
+            if(imgTtdGuru) { imgTtdGuru.style.transform = 'scale(' + ttdScale + ')'; }
+        }
 
+        // Fungsi TTD Kepala
+        function moveKamad(x, y) {
+            kamadPosX += x; kamadPosY += y;
+            if(imgTtdKamad) { imgTtdKamad.style.left = kamadPosX + 'px'; imgTtdKamad.style.top = kamadPosY + 'px'; }
+        }
+        function zoomKamad(factor) {
+            kamadScale += factor;
+            if(imgTtdKamad) { imgTtdKamad.style.transform = 'scale(' + kamadScale + ')'; }
+        }
+
+        // Reset Keduanya
         function resetTtd() {
-            ttdPosX = 0; ttdPosY = 0;
-            if(imgTtdGuru) { imgTtdGuru.style.left = ttdPosX + 'px'; imgTtdGuru.style.top = ttdPosY + 'px'; }
+            ttdPosX = 0; ttdPosY = 0; ttdScale = 0.85; 
+            kamadPosX = -25; kamadPosY = 0; kamadScale = 0.85; 
+            
+            if(imgTtdGuru) { 
+                imgTtdGuru.style.left = ttdPosX + 'px'; 
+                imgTtdGuru.style.top = ttdPosY + 'px'; 
+                imgTtdGuru.style.transform = 'scale(' + ttdScale + ')'; 
+            }
+            if(imgTtdKamad) { 
+                imgTtdKamad.style.left = kamadPosX + 'px'; 
+                imgTtdKamad.style.top = kamadPosY + 'px'; 
+                imgTtdKamad.style.transform = 'scale(' + kamadScale + ')'; 
+            }
+        }
+
+        // FUNGSI EXPORT WORD 
+        function exportToWord(filename = 'Analisis_CP.doc') {
+            var exportSource = document.getElementById('exportContent');
+            var cloneDiv = exportSource.cloneNode(true);
+            
+            // Hapus spasi berlebih
+            var textElements = cloneDiv.querySelectorAll('h5, h6, p');
+            for (var i = 0; i < textElements.length; i++) {
+                textElements[i].style.margin = '0px';
+                textElements[i].style.padding = '0px';
+                textElements[i].style.lineHeight = '1';
+            }
+
+            // Garis tabel
+            var tables = cloneDiv.getElementsByTagName('table');
+            for (var i = 0; i < tables.length; i++) {
+                tables[i].setAttribute('border', '1');
+                tables[i].setAttribute('cellpadding', '4');
+                tables[i].setAttribute('cellspacing', '0');
+                tables[i].style.borderCollapse = 'collapse';
+                tables[i].style.marginBottom = '10px';
+            }
+            
+            // Tabel Info
+            var infoTables = cloneDiv.getElementsByClassName('info-table');
+            for (var i = 0; i < infoTables.length; i++) {
+                infoTables[i].setAttribute('border', '0');
+                infoTables[i].style.marginBottom = '5px';
+                var tds = infoTables[i].getElementsByTagName('td');
+                for(var j = 0; j < tds.length; j++){
+                    tds[j].style.padding = '1px';
+                    tds[j].style.border = 'none';
+                }
+            }
+
+            // Kunci ukuran zoom gambar TTD (termasuk Kamad) ke piksel
+            var originalImgs = exportSource.getElementsByTagName('img');
+            var cloneImgs = cloneDiv.getElementsByTagName('img');
+            for (var i = 0; i < originalImgs.length; i++) {
+                var rect = originalImgs[i].getBoundingClientRect();
+                cloneImgs[i].style.transform = 'none'; 
+                cloneImgs[i].style.width = Math.round(rect.width) + 'px';
+                cloneImgs[i].style.height = Math.round(rect.height) + 'px';
+                cloneImgs[i].setAttribute('width', Math.round(rect.width));
+                cloneImgs[i].setAttribute('height', Math.round(rect.height));
+                cloneImgs[i].style.marginTop = '0px';
+                cloneImgs[i].style.marginBottom = '0px';
+            }
+
+            // Layout Kop Surat
+            var cloneHeader = cloneDiv.querySelector('.header-container');
+            if (cloneHeader) {
+                var headerImgs = cloneHeader.getElementsByTagName('img');
+                var img1 = headerImgs[0] ? headerImgs[0].outerHTML : '';
+                var img2 = headerImgs[1] ? headerImgs[1].outerHTML : '';
+                var hText = cloneHeader.querySelector('.header-text').innerHTML;
+                
+                var headerTable = '<table style="width:100%; border-bottom: 3px double #000; margin-bottom: 10px; text-align:center;" border="0" cellpadding="0" cellspacing="0">' +
+                                  '<tr><td style="width:15%; border:none; vertical-align:middle; padding:0;">' + img1 + '</td>' +
+                                  '<td style="width:70%; border:none; vertical-align:middle; padding:0;">' + hText + '</td>' +
+                                  '<td style="width:15%; border:none; vertical-align:middle; padding:0;">' + img2 + '</td></tr></table>';
+                cloneHeader.outerHTML = headerTable;
+            }
+
+            // Layout Tanda Tangan
+            var cloneSig = cloneDiv.querySelector('.signature-section');
+            if (cloneSig) {
+                var leftContent = cloneSig.children[0].innerHTML;
+                var rightContent = cloneSig.children[1].innerHTML;
+                var sigTable = '<table style="width:100%; border:none; text-align:center; margin-top:10px;" border="0" cellpadding="0" cellspacing="0">' +
+                               '<tr><td style="width:50%; border:none; vertical-align:bottom; padding:0;">' + leftContent + '</td>' +
+                               '<td style="width:50%; border:none; vertical-align:bottom; padding:0;">' + rightContent + '</td></tr></table>';
+                cloneSig.outerHTML = sigTable;
+            }
+
+            // Style Ms. Word (Landscape & Narrow Margin)
+            var msoStyles = "<style>" +
+                            "@page WordSection1 { size: 841.9pt 595.3pt; mso-page-orientation: landscape; margin: 36.0pt 36.0pt 36.0pt 36.0pt; mso-header-margin: 36.0pt; mso-footer-margin: 36.0pt; mso-paper-source: 0; }" +
+                            "div.WordSection1 { page: WordSection1; }" +
+                            "table { font-size: 11px; font-family: 'Times New Roman', Times, serif; }" +
+                            "</style>";
+
+            // Format Akhir
+            var preHtml = "<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'><head><meta charset='utf-8'><title>Analisis CP</title>" + msoStyles + "</head><body><div class='WordSection1'>";
+            var postHtml = "</div></body></html>";
+            var html = preHtml + cloneDiv.innerHTML + postHtml;
+
+            // Eksekusi Unduhan
+            var blob = new Blob(['\ufeff', html], { type: 'application/msword' });
+            var downloadLink = document.createElement("a");
+            document.body.appendChild(downloadLink);
+            
+            if (navigator.msSaveOrOpenBlob) {
+                navigator.msSaveOrOpenBlob(blob, filename);
+            } else {
+                var url = URL.createObjectURL(blob);
+                downloadLink.href = url;
+                downloadLink.download = filename;
+                downloadLink.click();
+                URL.revokeObjectURL(url);
+            }
+            document.body.removeChild(downloadLink);
         }
     </script>
 </body>
