@@ -219,6 +219,7 @@ $routes->get('jurnal-mengajar/print', 'JurnalGuruController::printJurnal');
 // Jika Anda menggunakan method POST untuk form upload
 $routes->post('/admin/users/importSmart', 'UserSiswaController::importSmart');
 $routes->get('/admin/users/downloadExcelAktif', 'UserSiswaController::downloadExcelAktif');
+$routes->post('admin/users/role-store', 'AdminController::storeRole');
 
 $routes->group('admin/absensi', static function($routes) {
     // Halaman Index (Daftar Rombel)

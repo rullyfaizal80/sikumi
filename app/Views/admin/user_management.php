@@ -125,19 +125,19 @@
                                             <ul class="pagination pagination-sm mb-0">
                                                 
                                                 <li class="page-item <?= $currentPage <= 1 ? 'disabled' : '' ?>">
-                                                    <a class="page-link text-dark" href="<?= base_url('admin/users?page=' . ($currentPage - 1)) ?>">⏮️</a>
+                                                    <a class="page-link text-dark" href="<?= base_url('admin/users?show_siswa=' . $showSiswa . '&page=' . ($currentPage - 1)) ?>">⏮️</a>
                                                 </li>
 
                                                 <?php for ($i = 1; $i <= $pageCount; $i++): ?>
                                                     <li class="page-item <?= $currentPage == $i ? 'active' : '' ?>">
-                                                        <a class="page-link <?= $currentPage == $i ? 'bg-warning border-warning text-dark font-weight-bold' : 'text-dark' ?>" href="<?= base_url('admin/users?page=' . $i) ?>">
+                                                        <a class="page-link <?= $currentPage == $i ? 'bg-warning border-warning text-dark font-weight-bold' : 'text-dark' ?>" href="<?= base_url('admin/users?show_siswa=' . $showSiswa . '&page=' . $i) ?>">
                                                             <?= $i ?>
                                                         </a>
                                                     </li>
                                                 <?php endfor; ?>
 
                                                 <li class="page-item <?= $currentPage >= $pageCount ? 'disabled' : '' ?>">
-                                                    <a class="page-link text-dark" href="<?= base_url('admin/users?page=' . ($currentPage + 1)) ?>">⏭️</a>
+                                                    <a class="page-link text-dark" href="<?= base_url('admin/users?show_siswa=' . $showSiswa . '&page=' . ($currentPage + 1)) ?>">⏭️</a>
                                                 </li>
                                                 
                                             </ul>
@@ -155,7 +155,7 @@
                                 </div>
                                 <div class="card-body">
                                     <!-- Form diarahkan ke fungsi simpan di Controller -->
-                                    <form action="<?= base_url('admin/roles/store') ?>" method="POST">
+                                    <form action="<?= base_url('admin/users/role-store') ?>" method="POST">
                                         <?= csrf_field() ?> <!-- Fitur Pengaman Token CSRF -->
                                         
                                         <div class="mb-3">
