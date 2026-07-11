@@ -219,3 +219,14 @@ $routes->get('jurnal-mengajar/print', 'JurnalGuruController::printJurnal');
 // Jika Anda menggunakan method POST untuk form upload
 $routes->post('/admin/users/importSmart', 'UserSiswaController::importSmart');
 $routes->get('/admin/users/downloadExcelAktif', 'UserSiswaController::downloadExcelAktif');
+
+$routes->group('admin/absensi', static function($routes) {
+    // Halaman Index (Daftar Rombel)
+    $routes->get('/', 'AbsensiController::index');
+    
+    // Halaman Input Absensi per Rombel
+    $routes->get('input/(:num)', 'AbsensiController::input/$1');
+    
+    // Proses Simpan Data
+    $routes->post('store', 'AbsensiController::store');
+});
