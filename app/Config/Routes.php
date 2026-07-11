@@ -223,10 +223,12 @@ $routes->get('/admin/users/downloadExcelAktif', 'UserSiswaController::downloadEx
 $routes->group('admin/absensi', static function($routes) {
     // Halaman Index (Daftar Rombel)
     $routes->get('/', 'AbsensiController::index');
-    
     // Halaman Input Absensi per Rombel
-    $routes->get('input/(:num)', 'AbsensiController::input/$1');
-    
+    $routes->get('input/(:num)', 'AbsensiController::input/$1');   
     // Proses Simpan Data
     $routes->post('store', 'AbsensiController::store');
+    $routes->get('rekap', 'AbsensiController::rekap');
+    $routes->get('rekap-sekolah', 'AbsensiController::rekapSekolah');
+    $routes->post('rekap-sekolah/set-hari', 'AbsensiController::setHariEfektif');
+    $routes->get('rekap-sekolah/get-hari', 'AbsensiController::getHariEfektif');
 });

@@ -14,7 +14,7 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
                 <h3 class="mb-0" style="color: #FF9F00; font-weight: 700;">🏫 Pilih Rombel / Kelas</h3>
-                <p class="text-muted small mb-0">Silakan pilih kelas untuk memulai input absensi harian.</p>
+                <p class="text-muted small mb-0">Silakan pilih kelas untuk menginput atau melihat rekap absensi.</p>
             </div>
             <div>
                 <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm font-weight-bold">
@@ -22,6 +22,14 @@
                 </a>
             </div>
         </div>
+
+        <!-- Flash Message Error (Jika Tahun Ajaran Kosong) -->
+        <?php if (session()->getFlashdata('error')): ?>
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm mb-3" role="alert">
+                <?= session()->getFlashdata('error') ?>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <?php endif; ?>
 
         <!-- Daftar Kelas -->
         <div class="card shadow-sm border-0">
@@ -35,26 +43,34 @@
                         <tr>
                             <th class="text-center" style="width: 50px;">No</th>
                             <th>Nama Kelas / Rombel</th>
-                            <th class="text-center" style="width: 200px;">Aksi</th>
+                            <th class="text-center" style="width: 300px;">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (empty($daftarRombel)): ?>
                             <tr>
-                                <td colspan="3" class="text-center text-muted py-4">Data kelas belum tersedia.</td>
+                                <td colspan="3" class="text-center text-muted py-4">Data kelas belum tersedia di Tahun Ajaran ini.</td>
                             </tr>
                         <?php else: ?>
-                            <?php $no = 1; foreach ($daftarRombel as $rombel): ?>
+                            <?php $no = 1; ?>
+                            <?php foreach ($daftarRombel as $rombel): ?>
                             <tr>
                                 <td class="text-center font-weight-bold"><?= $no++ ?></td>
                                 <td>
                                     <strong><?= esc($rombel['rombel_name'] ?? 'Nama Kelas') ?></strong>
                                 </td>
                                 <td class="text-center">
-                                    <!-- Tombol Menuju Form Input Absen -->
-                                    <a href="<?= base_url('admin/absensi/input/' . $rombel['id']) ?>" class="btn btn-sm btn-warning text-white font-weight-bold">
-                                        📝 Input Absen
-                                    </a>
+                                    <div class="d-flex justify-content-center align-items-center">
+                                        <!-- Tombol Menuju Form Input Absen -->
+                                        <a href="<?= base_url('admin/absensi/input/' . esc($rombel['id'])) ?>" class="btn btn-sm btn-warning text-white font-weight-bold" style="margin-right: 5px;">
+                                            📝 Input
+                                        </a>
+                                        
+                                        <!-- Tombol Menuju Rekap Absensi (Otomatis membawa ID Kelas) -->
+                                        <a href="<?= base_url('admin/absensi/rekap?rombel_id=' . esc($rombel['id'])) ?>" class="btn btn-sm btn-info text-white font-weight-bold">
+                                            📊 Rekap
+                                        </a>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>
