@@ -22,16 +22,27 @@
     </div>
     
 </div>
-<div class="row">
-    <div class="col-md-4 offset-md-8">
-        <form action="<?= base_url('/siswa/import') ?>" method="post" enctype="multipart/form-data">
-    <?= csrf_field() ?>
-            <div class="input-group">
-                <input type="file" name="file_excel" class="form-control form-control-sm" accept=".xlsx, .xls">
-                <button type="submit" class="btn btn-primary btn-sm">Upload & Update Massal</button>
-            </div>
-            <small class="text-muted">Pastikan format kolom: NIS, NISN, Tanggal Lahir</small>
-        </form>
+<div class="card p-3 mb-4 shadow-sm border-0">
+    <div class="row align-items-center">
+        
+        <div class="col-7">
+            <form action="<?= base_url('admin/users/importSmart') ?>" method="post" enctype="multipart/form-data">
+                <?= csrf_field() ?>
+                <label class="font-weight-bold mb-2">📥 Import / Update Massal dari Excel</label>
+                <div class="input-group">
+                    <input type="file" name="file_excel" class="form-control form-control-sm" accept=".xlsx, .xls" required>
+                    <button type="submit" class="btn btn-primary btn-sm font-weight-bold">Upload Sistem Pintar</button>
+                </div>
+                <small class="text-muted mt-1 d-block">Menambah siswa baru jika Nama belum ada, update biodata jika sudah ada.</small>
+            </form>
+        </div>
+        
+        <div class="col-5 d-flex justify-content-end align-items-center text-right text-end">
+            <a href="<?= base_url('admin/users/downloadExcelAktif') ?>" class="btn btn-success btn-sm font-weight-bold shadow-sm">
+                <i class="fas fa-file-excel mr-1"></i> Download Data Excel
+            </a>
+        </div>
+        
     </div>
 </div>
         <?php if (session()->getFlashdata('sukses')): ?>

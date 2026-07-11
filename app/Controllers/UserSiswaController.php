@@ -4,6 +4,9 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 
 class UserSiswaController extends BaseController
 {
@@ -356,7 +359,10 @@ class UserSiswaController extends BaseController
         return redirect()->to(base_url('admin/users/siswa-tes'))->with('sukses', '✔️ Akun siswa berhasil dipulihkan! Akun tersebut kini aktif kembali di daftar utama.');
     }
 
-    public function importInsert()
+    // ==========================================================
+    // 1. FUNGSI IMPORT PINTAR (UPDATE BIKA ADA, INSERT JIKA BARU)
+    // ==========================================================
+    public function importSmart()
     {
         $file = $this->request->getFile('file_excel');
         
@@ -364,97 +370,205 @@ class UserSiswaController extends BaseController
             return redirect()->back()->with('error', 'Gagal upload file Excel.');
         }
 
-        $spreadsheet = IOFactory::load($file->getTempName());
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($file->getTempName());
         $sheetData   = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
         
         $db = \Config\Database::connect();
         
-        $jumlahSukses = 0;
-        $jumlahGagal  = 0;
+        $jumlahInsert = 0;
+        $jumlahUpdate = 0;
+        $dataGagal    = []; 
 
         foreach ($sheetData as $rowIndex => $row) {
-            
-            // Lewati baris 1 (Header Excel)
-            if ($rowIndex == 1) {
-                continue; 
-            }
+            if ($rowIndex == 1) continue; 
 
-            $nis = trim($row['A'] ?? '');
-            
-            // Lewati jika NIS kosong
-            if (empty($nis)) {
-                continue; 
-            }
+            $nama = trim($row['C'] ?? '');
+            if (empty($nama)) continue; 
 
-            // =========================================================
-            // BLOK PENGECEKAN DUPLIKAT DIHAPUS/DIMATIKAN DI SINI
-            // =========================================================
-
+            $nis         = trim($row['A'] ?? '');
             $nisn        = trim($row['B'] ?? '');
-            $nama        = trim($row['C'] ?? '');
             $email       = trim($row['D'] ?? '');
             $tempatLahir = trim($row['E'] ?? '');
             $tglLahir    = trim($row['F'] ?? '');
             $gender      = trim($row['G'] ?? '');
             $noHp        = trim($row['H'] ?? '');
             $password    = trim($row['I'] ?? '');
-            
-            // Auto-password menggunakan NIS jika kolom I kosong
-            if (empty($password)) {
-                $password = $nis;
+
+            // Ubah 0000-00-00 menjadi NULL agar aman
+            if (empty($tglLahir) || $tglLahir == '0000-00-00' || $tglLahir == '-') {
+                $tglLahir = null;
             }
 
+            $userExist = $db->table('users')->where('username', $nama)->get()->getRow();
+            $pesanErrorAsli = ''; // Variabel untuk menangkap error
+            $isUpdate = false;
+
+            // Mulai Transaksi
             $db->transStart();
-            
-            // --- A. Insert ke tabel users ---
-            $db->table('users')->insert([
-                'username'   => $nama,
-                'active'     => 1,
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s')
-            ]);
-            
-            $userId = $db->insertID();
 
-            // --- B. Insert ke tabel auth_identities ---
-            $db->table('auth_identities')->insert([
-                'user_id'    => $userId,
-                'type'       => 'email_password',
-                'secret'     => $email,
-                'secret2'    => password_hash($password, PASSWORD_BCRYPT),
-                'created_at' => date('Y-m-d H:i:s'),
-                'updated_at' => date('Y-m-d H:i:s')
-            ]);
+            if ($userExist) {
+                // ==========================
+                // SKENARIO A: UPDATE DATA
+                // ==========================
+                $isUpdate = true;
+                $userId   = $userExist->id;
 
-            // --- C. Insert ke tabel student_profiles ---
-            $db->table('student_profiles')->insert([
-                'user_id'     => $userId,
-                'nis'         => $nis,
-                'nisn'        => $nisn,
-                'birth_place' => $tempatLahir,
-                'birth_date'  => $tglLahir,
-                'gender'      => $gender,
-                'phone_ortu'  => $noHp,
-            ]);
+                if (!$db->table('users')->where('id', $userId)->update(['updated_at' => date('Y-m-d H:i:s')])) {
+                    $pesanErrorAsli = $db->error()['message'];
+                }
 
-            // --- D. Insert ke auth_groups_users (Grup 'siswa') ---
-            $db->table('auth_groups_users')->insert([
-                'user_id'    => $userId,
-                'group'      => 'siswa',
-                'created_at' => date('Y-m-d H:i:s')
-            ]);
+                $dataProfile = [];
+                if (!empty($nis)) $dataProfile['nis'] = $nis;
+                if (!empty($nisn)) $dataProfile['nisn'] = $nisn;
+                if (!empty($tempatLahir)) $dataProfile['birth_place'] = $tempatLahir;
+                if ($tglLahir !== null) $dataProfile['birth_date'] = $tglLahir;
+                if (!empty($gender)) $dataProfile['gender'] = $gender;
+                if (!empty($noHp)) $dataProfile['phone_ortu'] = $noHp;
 
-            $db->transComplete();
-            
-            if ($db->transStatus() !== FALSE) {
-                $jumlahSukses++;
+                if (!empty($dataProfile)) {
+                    if (!$db->table('student_profiles')->where('user_id', $userId)->update($dataProfile)) {
+                        $pesanErrorAsli = $db->error()['message'];
+                    }
+                }
+
+                $dataIdentity = ['updated_at' => date('Y-m-d H:i:s')];
+                if (!empty($email)) $dataIdentity['secret'] = $email;
+                if (!empty($password)) $dataIdentity['secret2'] = password_hash($password, PASSWORD_BCRYPT);
+                
+                if (count($dataIdentity) > 1) {
+                    if (!$db->table('auth_identities')->where('user_id', $userId)->where('type', 'email_password')->update($dataIdentity)) {
+                        $pesanErrorAsli = $db->error()['message'];
+                    }
+                }
+
             } else {
-                // Gagal biasanya karena ada error SQL saat insert (misal duplikat unique key)
-                $jumlahGagal++;
+                // ==========================
+                // SKENARIO B: TAMBAH DATA BARU
+                // ==========================
+                if (empty($password)) $password = !empty($nis) ? $nis : '123456'; 
+                if (empty($email)) $email = strtolower(str_replace(' ', '', $nama)) . rand(10,99) . '@sekolah.id';
+
+                if (!$db->table('users')->insert([
+                    'username'   => $nama,
+                    'active'     => 1,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s')
+                ])) {
+                    $pesanErrorAsli = "Tabel Users: " . $db->error()['message'];
+                }
+                
+                $userId = $db->insertID();
+
+                if (empty($pesanErrorAsli) && !$db->table('auth_identities')->insert([
+                    'user_id'    => $userId,
+                    'type'       => 'email_password',
+                    'secret'     => $email,
+                    'secret2'    => password_hash($password, PASSWORD_BCRYPT),
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s')
+                ])) {
+                    $pesanErrorAsli = "Tabel Auth: " . $db->error()['message'];
+                }
+
+                if (empty($pesanErrorAsli) && !$db->table('student_profiles')->insert([
+                    'user_id'     => $userId,
+                    'nis'         => $nis,
+                    'nisn'        => $nisn,
+                    'birth_place' => $tempatLahir,
+                    'birth_date'  => $tglLahir,
+                    'gender'      => $gender,
+                    'phone_ortu'  => $noHp,
+                ])) {
+                    $pesanErrorAsli = "Tabel Profil: " . $db->error()['message'];
+                }
+
+                if (empty($pesanErrorAsli) && !$db->table('auth_groups_users')->insert([
+                    'user_id'    => $userId,
+                    'group'      => 'siswa',
+                    'created_at' => date('Y-m-d H:i:s')
+                ])) {
+                    $pesanErrorAsli = "Tabel Group: " . $db->error()['message'];
+                }
+            }
+
+            // Selesaikan transaksi
+            $db->transComplete();
+
+            // CEK HASIL AKHIR
+            if ($db->transStatus() === FALSE || !empty($pesanErrorAsli)) {
+                $alasan = !empty($pesanErrorAsli) ? $pesanErrorAsli : "Ditolak oleh sistem database";
+                $dataGagal[] = $nama . " (Penyebab: " . $alasan . ")";
+            } else {
+                if ($isUpdate) {
+                    $jumlahUpdate++;
+                } else {
+                    $jumlahInsert++;
+                }
             }
         }
         
-        return redirect()->back()->with('sukses', "Import selesai! $jumlahSukses data siswa ditambahkan. $jumlahGagal data gagal diproses.");
+        $pesanGagal = "";
+        if (!empty($dataGagal)) {
+            $pesanGagal = "<br><br><b>" . count($dataGagal) . " siswa gagal diproses:</b><br>" . implode("<br>", $dataGagal);
+        }
+        
+        return redirect()->back()->with('sukses', "Sistem Pintar Selesai! $jumlahInsert baru, $jumlahUpdate diperbarui." . $pesanGagal);
+    }
+
+    // ==========================================================
+    // 2. FUNGSI DOWNLOAD EXCEL SISWA AKTIF
+    // ==========================================================
+    public function downloadExcelAktif()
+    {
+        $db = \Config\Database::connect();
+        
+        $siswaAktif = $db->table('users u')
+            ->select('sp.nis, sp.nisn, u.username as nama, ai.secret as email, sp.birth_place, sp.birth_date, sp.gender, sp.phone_ortu')
+            ->join('auth_groups_users agu', 'agu.user_id = u.id', 'inner')
+            ->join('student_profiles sp', 'sp.user_id = u.id', 'left')
+            ->join('auth_identities ai', 'ai.user_id = u.id AND ai.type = "email_password"', 'left')
+            ->where('agu.group', 'siswa')
+            ->where('u.active', 1)
+            ->where('u.deleted_at', null)
+            ->orderBy('u.username', 'ASC')
+            ->get()->getResultArray();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+
+        $headers = ['A1'=>'NIS', 'B1'=>'NISN', 'C1'=>'Nama Siswa', 'D1'=>'Email', 'E1'=>'Tempat Lahir', 'F1'=>'Tanggal Lahir', 'G1'=>'Gender', 'H1'=>'No HP Ortu', 'I1'=>'Password Baru'];
+        foreach ($headers as $cell => $val) {
+            $sheet->setCellValue($cell, $val);
+            $sheet->getStyle($cell)->getFont()->setBold(true);
+        }
+
+        $row = 2;
+        foreach ($siswaAktif as $s) {
+            // PAKSA MENJADI STRING AGAR TIDAK DIBULATKAN OLEH EXCEL
+            $sheet->setCellValueExplicit('A' . $row, $s['nis'], DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit('B' . $row, $s['nisn'], DataType::TYPE_STRING);
+            
+            $sheet->setCellValue('C' . $row, $s['nama']);
+            $sheet->setCellValue('D' . $row, $s['email']);
+            $sheet->setCellValue('E' . $row, $s['birth_place']);
+            $sheet->setCellValue('F' . $row, $s['birth_date']);
+            $sheet->setCellValue('G' . $row, $s['gender']);
+            
+            // No HP juga dipaksa jadi string agar angka 0 di depan tidak hilang
+            $sheet->setCellValueExplicit('H' . $row, $s['phone_ortu'], DataType::TYPE_STRING);
+            
+            $row++;
+        }
+
+        $writer = new Xlsx($spreadsheet);
+        $fileName = 'Data_Siswa_Aktif_' . date('Y-m-d') . '.xlsx';
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment; filename="'. urlencode($fileName).'"');
+        header('Cache-Control: max-age=0');
+        
+        $writer->save('php://output');
+        exit;
     }
 
 }

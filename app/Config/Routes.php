@@ -217,4 +217,5 @@ $routes->get('jurnal-mengajar/print', 'JurnalGuruController::printJurnal');
 
 //Version 2.0
 // Jika Anda menggunakan method POST untuk form upload
-$routes->post('/siswa/import', 'UserSiswaController::importInsert');
+$routes->post('/admin/users/importSmart', 'UserSiswaController::importSmart');
+$routes->get('/admin/users/downloadExcelAktif', 'UserSiswaController::downloadExcelAktif');
