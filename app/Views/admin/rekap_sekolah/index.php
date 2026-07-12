@@ -340,6 +340,77 @@
                 </table>
             </div>
         </div>
+        <!-- ============================================== -->
+        <!-- BAGIAN 3: REKAPITULASI YAUMIYAH -->
+        <!-- ============================================== -->
+        <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-pray mr-2"></i> Laporan Jurnal Yaumiyah (Persentase Capaian)</h5>
+        
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body p-0 table-responsive">
+                <?php if ($hariEfektif == 0): ?>
+                    <div class="p-4 text-center">
+                        <p class="text-muted mb-0">Isi data Hari Efektif terlebih dahulu untuk melihat persentase.</p>
+                    </div>
+                <?php else: ?>
+                    <table class="table-custom table-yaumiyah table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 140px;">Nama Kelas</th>
+                                <th>Dzuhur</th>
+                                <th>Ashar</th>
+                                <th>Ba'diah Dz</th>
+                                <th>Dhuha</th>
+                                <th>Tahajud</th>
+                                <th>Tilawah</th>
+                                <th>Infaq</th>
+                                <th>Shaum</th>
+                                <th>Literasi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php 
+                                if (!empty($rekapYaumiyah)):
+                                foreach ($rekapYaumiyah as $ry): 
+                            ?>
+                                <tr>
+                                    <td class="col-kelas-yaumiyah"><?= esc($ry['rombel_name']) ?></td>
+                                    <td><?= number_format($ry['p_dzuhur'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_ashar'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_bakdiah'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_duha'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_tahajud'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_tilawah'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_infaq'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_shaum'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_literasi'], 1, ',', '.') ?>%</td>
+                                </tr>
+                            <?php 
+                                endforeach; 
+                                else:
+                            ?>
+                                <tr><td colspan="10" class="text-center py-4">Data yaumiyah belum tersedia</td></tr>
+                            <?php endif; ?>
+
+                            <!-- Rata-rata Total Yaumiyah -->
+                            <?php if (!empty($rekapYaumiyah)): ?>
+                            <tr>
+                                <td class="col-rata-yaumiyah py-3">Rata-rata Sekolah</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['dzuhur'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['ashar'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['bakdiah'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['duha'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['tahajud'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['tilawah'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['infaq'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['shaum'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['literasi'], 1, ',', '.') ?>%</td>
+                            </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+            </div>
+        </div>
 
     </div>
 
