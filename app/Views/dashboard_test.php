@@ -196,6 +196,7 @@
                     </div>
 
                     <!-- Indikator 3 Kotak Statistik Kurikulum -->
+                     <!-- 
                     <div class="row g-4">
                         <div class="col-md-4">
                             <div class="card card-stat p-4 shadow-sm text-center">
@@ -216,6 +217,7 @@
                             </div>
                         </div>
                     </div>
+                    -->
 
                 </div>
             </div>
