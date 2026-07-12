@@ -248,3 +248,8 @@ $routes->group('admin/rekap-sekolah', static function($routes) {
     $routes->post('set-hari', 'RekapSekolahController::setHari');
     $routes->get('get-hari', 'RekapSekolahController::getHari');
 });
+
+$routes->group('siswa/yaumiyah', static function($routes) {
+    $routes->get('/', 'YaumiyahController::index');
+    $routes->post('save', 'YaumiyahController::save');
+});
