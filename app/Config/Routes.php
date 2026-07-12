@@ -229,7 +229,22 @@ $routes->group('admin/absensi', static function($routes) {
     // Proses Simpan Data
     $routes->post('store', 'AbsensiController::store');
     $routes->get('rekap', 'AbsensiController::rekap');
-    $routes->get('rekap-sekolah', 'AbsensiController::rekapSekolah');
-    $routes->post('rekap-sekolah/set-hari', 'AbsensiController::setHariEfektif');
-    $routes->get('rekap-sekolah/get-hari', 'AbsensiController::getHariEfektif');
+});
+
+$routes->group('admin/kepatuhan', static function($routes) {
+    $routes->get('/', 'KepatuhanController::index');
+    // Rute di bawah ini akan kita buat di tahap selanjutnya
+    $routes->get('input/(:num)', 'KepatuhanController::input/$1');
+    $routes->post('save', 'KepatuhanController::save');
+    $routes->get('rekap-kelas/(:num)', 'KepatuhanController::rekapKelas/$1');
+    $routes->get('rekap-sekolah', 'KepatuhanController::rekapSekolah');
+});
+
+$routes->group('admin/rekap-sekolah', static function($routes) {
+    // Arahkan ke Controller BARU yang sudah kita buat
+    $routes->get('/', 'RekapSekolahController::index'); 
+    
+    // Arahkan rute hari efektif ke method di Controller BARU
+    $routes->post('set-hari', 'RekapSekolahController::setHari');
+    $routes->get('get-hari', 'RekapSekolahController::getHari');
 });
