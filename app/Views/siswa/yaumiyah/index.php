@@ -128,19 +128,23 @@
                                         <?php endif; ?>
                                     </td>
                                     
-                                    <!-- Kolom Checkbox -->
-                                    <?php foreach ($indikator as $ind): 
-                                        // Cek apakah data tersimpan di array untuk dicentang
-                                        $isChecked = isset($yaumiyahData[$tgl][$ind]) && $yaumiyahData[$tgl][$ind] == 1;
-                                    ?>
-                                        <td class="bg-white">
-                                            <input type="checkbox" 
-                                                   class="chk-box"
-                                                   name="yaumiyah[<?= $tgl ?>][<?= $ind ?>]" 
-                                                   value="1" 
-                                                   <?= $isChecked ? 'checked' : '' ?>>
-                                        </td>
-                                    <?php endforeach; ?>
+                                   <!-- Kolom Checkbox -->
+<?php foreach ($indikator as $ind): 
+    $isChecked = isset($yaumiyahData[$tgl][$ind]) && $yaumiyahData[$tgl][$ind] == 1;
+?>
+    <td class="bg-white">
+        <?php if ($isWeekend): ?>
+            <!-- Jika Sabtu/Minggu, tampilkan strip atau checkbox terkunci -->
+            <span class="text-muted" style="font-size: 10px;">-</span>
+        <?php else: ?>
+            <input type="checkbox" 
+                   class="chk-box"
+                   name="yaumiyah[<?= $tgl ?>][<?= $ind ?>]" 
+                   value="1" 
+                   <?= $isChecked ? 'checked' : '' ?>>
+        <?php endif; ?>
+    </td>
+<?php endforeach; ?>
                                 </tr>
                             <?php endfor; ?>
                         </tbody>

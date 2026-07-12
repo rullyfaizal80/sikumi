@@ -253,3 +253,9 @@ $routes->group('siswa/yaumiyah', static function($routes) {
     $routes->get('/', 'YaumiyahController::index');
     $routes->post('save', 'YaumiyahController::save');
 });
+
+$routes->group('guru/yaumiyah', static function($routes) {
+    $routes->get('/', 'RekapYaumiyahController::index');          // Daftar Kelas
+    $routes->get('rekap/(:num)', 'RekapYaumiyahController::rekapKelas/$1'); // Laporan Kelas
+    $routes->get('monitoring/(:num)', 'RekapYaumiyahController::monitoringBulanan/$1');
+});
