@@ -26,7 +26,7 @@ class AntiBotFilter implements FilterInterface
                           ->countAllResults();
 
         // Jika mencapai 5 kali kegagalan, lakukan pemblokiran!
-        if ($jumlahGagal >= 5) {
+        if ($jumlahGagal >= 100) {
             // Mengembalikan status 429 (Too Many Requests) dan tampilan layar peringatan
             return \Config\Services::response()
                 ->setStatusCode(429, 'Too Many Requests')
