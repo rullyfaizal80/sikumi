@@ -259,3 +259,15 @@ $routes->group('guru/yaumiyah', static function($routes) {
     $routes->get('rekap/(:num)', 'RekapYaumiyahController::rekapKelas/$1'); // Laporan Kelas
     $routes->get('monitoring/(:num)', 'RekapYaumiyahController::monitoringBulanan/$1');
 });
+
+$routes->group('guru/quran', static function($routes) {
+    $routes->get('/', 'PenilaianQuranController::index');
+    // Rute di bawah ini disiapkan untuk tahap selanjutnya
+    $routes->get('tahsin/(:num)', 'PenilaianQuranController::tahsin/$1');
+    $routes->post('tahsin/save', 'PenilaianQuranController::saveTahsin');
+    $routes->get('tahfidz/(:num)', 'PenilaianQuranController::tahfidz/$1');
+    $routes->post('tahfidz/save', 'PenilaianQuranController::saveTahfidz');
+    $routes->get('kitabah/(:num)', 'PenilaianQuranController::kitabah/$1');
+    $routes->post('kitabah/save', 'PenilaianQuranController::saveKitabah');
+    $routes->get('rekap/(:num)', 'PenilaianQuranController::rekap/$1');
+});
