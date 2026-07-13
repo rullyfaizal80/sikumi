@@ -412,6 +412,66 @@
             </div>
         </div>
 
+        <!-- ============================================== -->
+        <!-- BAGIAN 4: REKAPITULASI AL-QUR'AN -->
+        <!-- ============================================== -->
+        <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-book-open mr-2"></i> Laporan Al-Qur'an (Rata-rata Nilai Kelas)</h5>
+        
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body p-0 table-responsive">
+                <table class="table-custom table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">Nama Kelas</th>
+                            <th style="background-color: #d1ecf1; color: #333;">Rata-rata Tahsin</th>
+                            <th style="background-color: #cce5ff; color: #333;">Rata-rata Tahfidz</th>
+                            <th style="background-color: #fff3cd; color: #333;">Rata-rata Kitabah</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                            if (!empty($rekapQuran)):
+                            foreach ($rekapQuran as $rq): 
+                        ?>
+                            <tr>
+                                <td class="col-kelas"><?= esc($rq['rombel_name']) ?></td>
+                                <td class="font-weight-bold text-info" style="font-size: 15px;">
+                                    <?= $rq['avg_tahsin'] > 0 ? number_format($rq['avg_tahsin'], 1, ',', '') : '-' ?>
+                                </td>
+                                <td class="font-weight-bold text-primary" style="font-size: 15px;">
+                                    <?= $rq['avg_tahfidz'] > 0 ? number_format($rq['avg_tahfidz'], 1, ',', '') : '-' ?>
+                                </td>
+                                <td class="font-weight-bold text-warning" style="font-size: 15px;">
+                                    <?= $rq['avg_kitabah'] > 0 ? number_format($rq['avg_kitabah'], 1, ',', '') : '-' ?>
+                                </td>
+                            </tr>
+                        <?php 
+                            endforeach; 
+                            else:
+                        ?>
+                            <tr><td colspan="4" class="text-center py-4">Data penilaian Al-Qur'an belum tersedia</td></tr>
+                        <?php endif; ?>
+
+                        <!-- Rata-rata Total Al-Qur'an Sekolah -->
+                        <?php if (!empty($rekapQuran)): ?>
+                        <tr>
+                            <td class="col-rata py-3">Rata-rata Sekolah</td>
+                            <td class="bg-tosca font-weight-bold" style="font-size: 17px;">
+                                <?= number_format($rata_quran_sekolah['tahsin'], 1, ',', '') ?>
+                            </td>
+                            <td class="bg-tosca font-weight-bold" style="font-size: 17px;">
+                                <?= number_format($rata_quran_sekolah['tahfidz'], 1, ',', '') ?>
+                            </td>
+                            <td class="bg-tosca font-weight-bold" style="font-size: 17px;">
+                                <?= number_format($rata_quran_sekolah['kitabah'], 1, ',', '') ?>
+                            </td>
+                        </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
     <!-- Script untuk Toggle Dropdown Filter (Sama dengan sebelumnya) -->

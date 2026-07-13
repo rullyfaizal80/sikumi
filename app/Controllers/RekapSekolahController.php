@@ -265,6 +265,67 @@ class RekapSekolahController extends BaseController
         ];
 
         // =========================================================
+        // 3C. LOGIKA REKAP AL-QUR'AN (Rata-rata Nilai Kelas)
+        // =========================================================
+        $rekapQuran = [];
+        $tot_tahsin_sek = 0; $tot_tahfidz_sek = 0; $tot_kitabah_sek = 0;
+        $count_tahsin_sek = 0; $count_tahfidz_sek = 0; $count_kitabah_sek = 0;
+
+        foreach ($daftarRombel as $rombel) {
+            $rombel_id = $rombel['id'];
+            
+            // Ambil data penilaian Quran untuk kelas ini
+            $qData = $db->table('quran_penilaian qp')
+                        ->join('class_rombel_students crs', 'crs.student_id = qp.student_id')
+                        ->select('qp.tahsin_nilai, qp.tahfidz_nilai, qp.kitabah_nilai')
+                        ->where('crs.rombel_id', $rombel_id)
+                        ->whereIn('qp.bulan', $bulan_array)
+                        ->where('qp.tahun', $tahun)
+                        ->get()->getResultArray();
+
+            $tahsin_sum = 0; $tahfidz_sum = 0; $kitabah_sum = 0;
+            $tahsin_count = 0; $tahfidz_count = 0; $kitabah_count = 0;
+
+            // Kalkulasi rata-rata per siswa dengan mengkonversi koma ke titik
+            foreach ($qData as $qd) {
+                if (!empty(trim($qd['tahsin_nilai']))) {
+                    $tahsin_sum += (float)str_replace(',', '.', $qd['tahsin_nilai']);
+                    $tahsin_count++;
+                }
+                if (!empty(trim($qd['tahfidz_nilai']))) {
+                    $tahfidz_sum += (float)str_replace(',', '.', $qd['tahfidz_nilai']);
+                    $tahfidz_count++;
+                }
+                if (!empty(trim($qd['kitabah_nilai']))) {
+                    $kitabah_sum += (float)str_replace(',', '.', $qd['kitabah_nilai']);
+                    $kitabah_count++;
+                }
+            }
+
+            $avg_tahsin_kls  = $tahsin_count > 0 ? ($tahsin_sum / $tahsin_count) : 0;
+            $avg_tahfidz_kls = $tahfidz_count > 0 ? ($tahfidz_sum / $tahfidz_count) : 0;
+            $avg_kitabah_kls = $kitabah_count > 0 ? ($kitabah_sum / $kitabah_count) : 0;
+
+            // Akumulasi rata-rata total seluruh sekolah
+            $tot_tahsin_sek += $tahsin_sum; $count_tahsin_sek += $tahsin_count;
+            $tot_tahfidz_sek += $tahfidz_sum; $count_tahfidz_sek += $tahfidz_count;
+            $tot_kitabah_sek += $kitabah_sum; $count_kitabah_sek += $kitabah_count;
+
+            $rekapQuran[] = [
+                'rombel_name' => $rombel['rombel_name'],
+                'avg_tahsin'  => $avg_tahsin_kls,
+                'avg_tahfidz' => $avg_tahfidz_kls,
+                'avg_kitabah' => $avg_kitabah_kls,
+            ];
+        }
+
+        $rata_quran_sekolah = [
+            'tahsin'  => $count_tahsin_sek > 0 ? ($tot_tahsin_sek / $count_tahsin_sek) : 0,
+            'tahfidz' => $count_tahfidz_sek > 0 ? ($tot_tahfidz_sek / $count_tahfidz_sek) : 0,
+            'kitabah' => $count_kitabah_sek > 0 ? ($tot_kitabah_sek / $count_kitabah_sek) : 0,
+        ];
+
+        // =========================================================
         // 4. KIRIM SEMUA DATA KE VIEW
         // =========================================================
         $data = [
@@ -298,6 +359,10 @@ class RekapSekolahController extends BaseController
             // Variabel Yaumiyah
             'rekapYaumiyah' => $rekapYaumiyah,
             'rata_yaumiyah' => $rata_yaumiyah,
+
+            // Variabel Quran
+            'rekapQuran'         => $rekapQuran,
+            'rata_quran_sekolah' => $rata_quran_sekolah,
         ];
 
         return view('admin/rekap_sekolah/index', $data);
