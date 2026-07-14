@@ -583,6 +583,117 @@
             </div>
         </div>
 
+        <!-- ============================================== -->
+        <!-- BAGIAN 6: REKAPITULASI SOSIAL                  -->
+        <!-- ============================================== -->
+        <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-users mr-2"></i> Laporan Aspek Sosial (Akumulasi Catatan/Insiden)</h5>
+        
+        <div class="alert alert-secondary shadow-sm mb-3 py-2" role="alert">
+            <h6 class="font-weight-bold small mb-2"><i class="fas fa-info-circle mr-1"></i> Keterangan Indikator (Angka 1-7):</h6>
+            <div class="row small">
+                <div class="col-md-3">
+                    <ul class="mb-0 pl-3">
+                        <li><strong>1</strong> = Disiplin</li>
+                        <li><strong>2</strong> = Jujur</li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <ul class="mb-0 pl-3">
+                        <li><strong>3</strong> = Percaya Diri</li>
+                        <li><strong>4</strong> = Santun</li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <ul class="mb-0 pl-3">
+                        <li><strong>5</strong> = Kerjasama</li>
+                        <li><strong>6</strong> = Tanggung Jawab</li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <ul class="mb-0 pl-3">
+                        <li><strong>7</strong> = Adil</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body p-0 table-responsive">
+                <table class="table-custom table-kepatuhan table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">Nama Kelas</th>
+                            <th title="Disiplin">1</th>
+                            <th title="Jujur">2</th>
+                            <th title="Percaya Diri">3</th>
+                            <th title="Santun">4</th>
+                            <th title="Kerjasama">5</th>
+                            <th title="Tanggung Jawab">6</th>
+                            <th title="Adil">7</th>
+                            <th style="background-color: #d4abc9; width: 100px;">Total Kasus</th>
+                            <th style="min-width: 280px;">Rincian Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                            if (!empty($rekapSosial)):
+                            foreach ($rekapSosial as $rso): 
+                                $totalKasusSos = $rso['disiplin'] + $rso['jujur'] + $rso['percaya_diri'] + $rso['santun'] + $rso['kerjasama'] + $rso['tanggung_jawab'] + $rso['adil'];
+                                
+                                // LOGIKA PENGGABUNGAN KETERANGAN
+                                $keteranganRawSos = isset($rso['keterangan']) ? $rso['keterangan'] : '';
+                                $arrKetSos = array_filter(array_map('trim', explode(',', $keteranganRawSos)));
+                                $countKetSos = array_count_values($arrKetSos);
+                                
+                                $hasilKetSos = [];
+                                foreach($countKetSos as $teksSos => $jmlSos) {
+                                    if ($jmlSos > 1) {
+                                        $hasilKetSos[] = $teksSos . " (<strong>" . $jmlSos . "</strong>)";
+                                    } else {
+                                        $hasilKetSos[] = $teksSos;
+                                    }
+                                }
+                                $teksKeteranganSos = !empty($hasilKetSos) ? implode(', ', $hasilKetSos) : '-';
+                        ?>
+                            <tr>
+                                <td class="col-kelas-kepatuhan"><?= esc($rso['rombel_name']) ?></td>
+                                <td><?= $rso['disiplin'] ?></td>
+                                <td><?= $rso['jujur'] ?></td>
+                                <td><?= $rso['percaya_diri'] ?></td>
+                                <td><?= $rso['santun'] ?></td>
+                                <td><?= $rso['kerjasama'] ?></td>
+                                <td><?= $rso['tanggung_jawab'] ?></td>
+                                <td><?= $rso['adil'] ?></td>
+                                <td style="font-weight: bold; background-color: #fdf5f9;"><?= $totalKasusSos ?></td>
+                                <td class="text-left" style="font-size: 13px; line-height: 1.4;"><?= $teksKeteranganSos ?></td>
+                            </tr>
+                        <?php 
+                            endforeach; 
+                            else:
+                        ?>
+                            <tr><td colspan="10" class="text-center py-4">Data sosial belum tersedia</td></tr>
+                        <?php endif; ?>
+
+                        <!-- Total Seluruh Sekolah untuk Sosial -->
+                        <?php if (!empty($rekapSosial)): ?>
+                        <tr>
+                            <td class="col-rata-kepatuhan py-3">Total Kasus</td>
+                            <td class="bg-pink font-weight-bold"><?= $total_sekolah_disiplin ?? 0 ?></td>
+                            <td class="bg-pink font-weight-bold"><?= $total_sekolah_jujur ?? 0 ?></td>
+                            <td class="bg-pink font-weight-bold"><?= $total_sekolah_percaya_diri ?? 0 ?></td>
+                            <td class="bg-pink font-weight-bold"><?= $total_sekolah_santun ?? 0 ?></td>
+                            <td class="bg-pink font-weight-bold"><?= $total_sekolah_kerjasama ?? 0 ?></td>
+                            <td class="bg-pink font-weight-bold"><?= $total_sekolah_tanggung_jawab ?? 0 ?></td>
+                            <td class="bg-pink font-weight-bold"><?= $total_sekolah_adil ?? 0 ?></td>
+                            <td class="bg-pink font-weight-bold" style="font-size: 16px;"><?= $grand_total_sosial ?? 0 ?></td>
+                            <td class="bg-pink"></td>
+                        </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
     <!-- Script untuk Toggle Dropdown Filter (Sama dengan sebelumnya) -->

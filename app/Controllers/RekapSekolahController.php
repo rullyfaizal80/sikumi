@@ -389,6 +389,69 @@ class RekapSekolahController extends BaseController
         $grand_total_spiritual = $total_sekolah_berdoa + $total_sekolah_kalimat + $total_sekolah_shalat + $total_sekolah_salam + $total_sekolah_syukur + $total_sekolah_lingkungan + $total_sekolah_toleransi;
 
         // =========================================================
+        // 3E. LOGIKA REKAP SOSIAL (Akumulasi Insiden / Catatan)
+        // =========================================================
+        $total_sekolah_disiplin       = 0; $total_sekolah_jujur   = 0;
+        $total_sekolah_percaya_diri   = 0; $total_sekolah_santun  = 0;
+        $total_sekolah_kerjasama      = 0; $total_sekolah_tj      = 0;
+        $total_sekolah_adil           = 0;
+
+        $rekapSosial = [];
+
+        foreach ($daftarRombel as $rombel) {
+            $rombel_id = $rombel['id'];
+
+            // Ambil total catatan sosial disesuaikan dengan field di database
+            $sosial = $db->table('aspek_sosial')
+                            ->select('
+                                SUM(disiplin) as disiplin,
+                                SUM(jujur) as jujur,
+                                SUM(percaya_diri) as percaya_diri,
+                                SUM(santun) as santun,
+                                SUM(kerjasama) as kerjasama,
+                                SUM(tanggung_jawab) as tanggung_jawab,
+                                SUM(adil) as adil,
+                                GROUP_CONCAT(NULLIF(keterangan, "") SEPARATOR ", ") as keterangan
+                            ')
+                            ->where('rombel_id', $rombel_id)
+                            ->whereIn('MONTH(tanggal)', $bulan_array)
+                            ->where('YEAR(tanggal)', $tahun)
+                            ->get()->getRowArray();
+
+            $ds  = (int)($sosial['disiplin'] ?? 0);
+            $jj  = (int)($sosial['jujur'] ?? 0);
+            $pd  = (int)($sosial['percaya_diri'] ?? 0);
+            $st  = (int)($sosial['santun'] ?? 0);
+            $kj  = (int)($sosial['kerjasama'] ?? 0);
+            $tj  = (int)($sosial['tanggung_jawab'] ?? 0);
+            $ad  = (int)($sosial['adil'] ?? 0);
+            $ket = $sosial['keterangan'] ?? '';
+
+            // Akumulasi total sekolah
+            $total_sekolah_disiplin       += $ds;
+            $total_sekolah_jujur          += $jj;
+            $total_sekolah_percaya_diri   += $pd;
+            $total_sekolah_santun         += $st;
+            $total_sekolah_kerjasama      += $kj;
+            $total_sekolah_tj             += $tj;
+            $total_sekolah_adil           += $ad;
+
+            $rekapSosial[] = [
+                'rombel_name'      => $rombel['rombel_name'],
+                'disiplin'         => $ds,
+                'jujur'            => $jj,
+                'percaya_diri'     => $pd,
+                'santun'           => $st,
+                'kerjasama'        => $kj,
+                'tanggung_jawab'   => $tj,
+                'adil'             => $ad,
+                'keterangan'       => $ket
+            ];
+        }
+
+        $grand_total_sosial = $total_sekolah_disiplin + $total_sekolah_jujur + $total_sekolah_percaya_diri + $total_sekolah_santun + $total_sekolah_kerjasama + $total_sekolah_tj + $total_sekolah_adil;
+        
+        // =========================================================
         // 4. KIRIM SEMUA DATA KE VIEW
         // =========================================================
         $data = [
@@ -437,6 +500,17 @@ class RekapSekolahController extends BaseController
             'total_sekolah_lingkungan'  => $total_sekolah_lingkungan,
             'total_sekolah_toleransi'   => $total_sekolah_toleransi,
             'grand_total_spiritual'     => $grand_total_spiritual,
+
+            // Variabel Sosial (Revisi)
+            'rekapSosial'                  => $rekapSosial,
+            'total_sekolah_disiplin'       => $total_sekolah_disiplin,
+            'total_sekolah_jujur'          => $total_sekolah_jujur,
+            'total_sekolah_percaya_diri'   => $total_sekolah_percaya_diri,
+            'total_sekolah_santun'         => $total_sekolah_santun,
+            'total_sekolah_kerjasama'      => $total_sekolah_kerjasama,
+            'total_sekolah_tanggung_jawab' => $total_sekolah_tj,
+            'total_sekolah_adil'           => $total_sekolah_adil,
+            'grand_total_sosial'           => $grand_total_sosial,
         ];
 
         return view('admin/rekap_sekolah/index', $data);

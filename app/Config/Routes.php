@@ -278,3 +278,10 @@ $routes->group('admin/spiritual', static function($routes) {
     $routes->post('save', 'SpiritualController::save');
     $routes->get('rekap-kelas/(:num)', 'SpiritualController::rekapKelas/$1');
 });
+
+$routes->group('admin/aspek-sosial', static function($routes) {
+    $routes->get('/', 'AspekSosialController::index');
+    $routes->get('input/(:num)', 'AspekSosialController::input/$1');
+    $routes->post('save', 'AspekSosialController::save');
+    $routes->get('rekap-kelas/(:num)', 'AspekSosialController::rekap_kelas/$1');
+});
