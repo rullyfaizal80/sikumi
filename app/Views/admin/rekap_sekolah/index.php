@@ -340,137 +340,6 @@
                 </table>
             </div>
         </div>
-        <!-- ============================================== -->
-        <!-- BAGIAN 3: REKAPITULASI YAUMIYAH -->
-        <!-- ============================================== -->
-        <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-pray mr-2"></i> Laporan Jurnal Yaumiyah (Persentase Capaian)</h5>
-        
-        <div class="card shadow-sm border-0 mb-5">
-            <div class="card-body p-0 table-responsive">
-                <?php if ($hariEfektif == 0): ?>
-                    <div class="p-4 text-center">
-                        <p class="text-muted mb-0">Isi data Hari Efektif terlebih dahulu untuk melihat persentase.</p>
-                    </div>
-                <?php else: ?>
-                    <table class="table-custom table-yaumiyah table-hover">
-                        <thead>
-                            <tr>
-                                <th style="width: 140px;">Nama Kelas</th>
-                                <th>Dzuhur</th>
-                                <th>Ashar</th>
-                                <th>Ba'diah Dz</th>
-                                <th>Dhuha</th>
-                                <th>Tahajud</th>
-                                <th>Tilawah</th>
-                                <th>Infaq</th>
-                                <th>Shaum</th>
-                                <th>Literasi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php 
-                                if (!empty($rekapYaumiyah)):
-                                foreach ($rekapYaumiyah as $ry): 
-                            ?>
-                                <tr>
-                                    <td class="col-kelas-yaumiyah"><?= esc($ry['rombel_name']) ?></td>
-                                    <td><?= number_format($ry['p_dzuhur'], 1, ',', '.') ?>%</td>
-                                    <td><?= number_format($ry['p_ashar'], 1, ',', '.') ?>%</td>
-                                    <td><?= number_format($ry['p_bakdiah'], 1, ',', '.') ?>%</td>
-                                    <td><?= number_format($ry['p_duha'], 1, ',', '.') ?>%</td>
-                                    <td><?= number_format($ry['p_tahajud'], 1, ',', '.') ?>%</td>
-                                    <td><?= number_format($ry['p_tilawah'], 1, ',', '.') ?>%</td>
-                                    <td><?= number_format($ry['p_infaq'], 1, ',', '.') ?>%</td>
-                                    <td><?= number_format($ry['p_shaum'], 1, ',', '.') ?>%</td>
-                                    <td><?= number_format($ry['p_literasi'], 1, ',', '.') ?>%</td>
-                                </tr>
-                            <?php 
-                                endforeach; 
-                                else:
-                            ?>
-                                <tr><td colspan="10" class="text-center py-4">Data yaumiyah belum tersedia</td></tr>
-                            <?php endif; ?>
-
-                            <!-- Rata-rata Total Yaumiyah -->
-                            <?php if (!empty($rekapYaumiyah)): ?>
-                            <tr>
-                                <td class="col-rata-yaumiyah py-3">Rata-rata Sekolah</td>
-                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['dzuhur'], 1, ',', '.') ?>%</td>
-                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['ashar'], 1, ',', '.') ?>%</td>
-                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['bakdiah'], 1, ',', '.') ?>%</td>
-                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['duha'], 1, ',', '.') ?>%</td>
-                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['tahajud'], 1, ',', '.') ?>%</td>
-                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['tilawah'], 1, ',', '.') ?>%</td>
-                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['infaq'], 1, ',', '.') ?>%</td>
-                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['shaum'], 1, ',', '.') ?>%</td>
-                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['literasi'], 1, ',', '.') ?>%</td>
-                            </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                <?php endif; ?>
-            </div>
-        </div>
-
-        <!-- ============================================== -->
-        <!-- BAGIAN 4: REKAPITULASI AL-QUR'AN -->
-        <!-- ============================================== -->
-        <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-book-open mr-2"></i> Laporan Al-Qur'an (Rata-rata Nilai Kelas)</h5>
-        
-        <div class="card shadow-sm border-0 mb-5">
-            <div class="card-body p-0 table-responsive">
-                <table class="table-custom table-hover">
-                    <thead>
-                        <tr>
-                            <th style="width: 140px;">Nama Kelas</th>
-                            <th style="background-color: #d1ecf1; color: #333;">Rata-rata Tahsin</th>
-                            <th style="background-color: #cce5ff; color: #333;">Rata-rata Tahfidz</th>
-                            <th style="background-color: #fff3cd; color: #333;">Rata-rata Kitabah</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php 
-                            if (!empty($rekapQuran)):
-                            foreach ($rekapQuran as $rq): 
-                        ?>
-                            <tr>
-                                <td class="col-kelas"><?= esc($rq['rombel_name']) ?></td>
-                                <td class="font-weight-bold text-info" style="font-size: 15px;">
-                                    <?= $rq['avg_tahsin'] > 0 ? number_format($rq['avg_tahsin'], 1, ',', '') : '-' ?>
-                                </td>
-                                <td class="font-weight-bold text-primary" style="font-size: 15px;">
-                                    <?= $rq['avg_tahfidz'] > 0 ? number_format($rq['avg_tahfidz'], 1, ',', '') : '-' ?>
-                                </td>
-                                <td class="font-weight-bold text-warning" style="font-size: 15px;">
-                                    <?= $rq['avg_kitabah'] > 0 ? number_format($rq['avg_kitabah'], 1, ',', '') : '-' ?>
-                                </td>
-                            </tr>
-                        <?php 
-                            endforeach; 
-                            else:
-                        ?>
-                            <tr><td colspan="4" class="text-center py-4">Data penilaian Al-Qur'an belum tersedia</td></tr>
-                        <?php endif; ?>
-
-                        <!-- Rata-rata Total Al-Qur'an Sekolah -->
-                        <?php if (!empty($rekapQuran)): ?>
-                        <tr>
-                            <td class="col-rata py-3">Rata-rata Sekolah</td>
-                            <td class="bg-tosca font-weight-bold" style="font-size: 17px;">
-                                <?= number_format($rata_quran_sekolah['tahsin'], 1, ',', '') ?>
-                            </td>
-                            <td class="bg-tosca font-weight-bold" style="font-size: 17px;">
-                                <?= number_format($rata_quran_sekolah['tahfidz'], 1, ',', '') ?>
-                            </td>
-                            <td class="bg-tosca font-weight-bold" style="font-size: 17px;">
-                                <?= number_format($rata_quran_sekolah['kitabah'], 1, ',', '') ?>
-                            </td>
-                        </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
 
         <!-- ============================================== -->
         <!-- BAGIAN 5: REKAPITULASI SPIRITUAL               -->
@@ -687,6 +556,138 @@
                             <td class="bg-pink font-weight-bold"><?= $total_sekolah_adil ?? 0 ?></td>
                             <td class="bg-pink font-weight-bold" style="font-size: 16px;"><?= $grand_total_sosial ?? 0 ?></td>
                             <td class="bg-pink"></td>
+                        </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+         <!-- ============================================== -->
+        <!-- BAGIAN 3: REKAPITULASI YAUMIYAH -->
+        <!-- ============================================== -->
+        <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-pray mr-2"></i> Laporan Jurnal Yaumiyah (Persentase Capaian)</h5>
+        
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body p-0 table-responsive">
+                <?php if ($hariEfektif == 0): ?>
+                    <div class="p-4 text-center">
+                        <p class="text-muted mb-0">Isi data Hari Efektif terlebih dahulu untuk melihat persentase.</p>
+                    </div>
+                <?php else: ?>
+                    <table class="table-custom table-yaumiyah table-hover">
+                        <thead>
+                            <tr>
+                                <th style="width: 140px;">Nama Kelas</th>
+                                <th>Dzuhur</th>
+                                <th>Ashar</th>
+                                <th>Ba'diah Dz</th>
+                                <th>Dhuha</th>
+                                <th>Tahajud</th>
+                                <th>Tilawah</th>
+                                <th>Infaq</th>
+                                <th>Shaum</th>
+                                <th>Literasi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php 
+                                if (!empty($rekapYaumiyah)):
+                                foreach ($rekapYaumiyah as $ry): 
+                            ?>
+                                <tr>
+                                    <td class="col-kelas-yaumiyah"><?= esc($ry['rombel_name']) ?></td>
+                                    <td><?= number_format($ry['p_dzuhur'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_ashar'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_bakdiah'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_duha'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_tahajud'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_tilawah'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_infaq'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_shaum'], 1, ',', '.') ?>%</td>
+                                    <td><?= number_format($ry['p_literasi'], 1, ',', '.') ?>%</td>
+                                </tr>
+                            <?php 
+                                endforeach; 
+                                else:
+                            ?>
+                                <tr><td colspan="10" class="text-center py-4">Data yaumiyah belum tersedia</td></tr>
+                            <?php endif; ?>
+
+                            <!-- Rata-rata Total Yaumiyah -->
+                            <?php if (!empty($rekapYaumiyah)): ?>
+                            <tr>
+                                <td class="col-rata-yaumiyah py-3">Rata-rata Sekolah</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['dzuhur'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['ashar'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['bakdiah'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['duha'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['tahajud'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['tilawah'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['infaq'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['shaum'], 1, ',', '.') ?>%</td>
+                                <td class="col-rata-yaumiyah"><?= number_format($rata_yaumiyah['literasi'], 1, ',', '.') ?>%</td>
+                            </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- BAGIAN 4: REKAPITULASI AL-QUR'AN -->
+        <!-- ============================================== -->
+        <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-book-open mr-2"></i> Laporan Al-Qur'an (Rata-rata Nilai Kelas)</h5>
+        
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body p-0 table-responsive">
+                <table class="table-custom table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">Nama Kelas</th>
+                            <th style="background-color: #d1ecf1; color: #333;">Rata-rata Tahsin</th>
+                            <th style="background-color: #cce5ff; color: #333;">Rata-rata Tahfidz</th>
+                            <th style="background-color: #fff3cd; color: #333;">Rata-rata Kitabah</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                            if (!empty($rekapQuran)):
+                            foreach ($rekapQuran as $rq): 
+                        ?>
+                            <tr>
+                                <td class="col-kelas"><?= esc($rq['rombel_name']) ?></td>
+                                <td class="font-weight-bold text-info" style="font-size: 15px;">
+                                    <?= $rq['avg_tahsin'] > 0 ? number_format($rq['avg_tahsin'], 1, ',', '') : '-' ?>
+                                </td>
+                                <td class="font-weight-bold text-primary" style="font-size: 15px;">
+                                    <?= $rq['avg_tahfidz'] > 0 ? number_format($rq['avg_tahfidz'], 1, ',', '') : '-' ?>
+                                </td>
+                                <td class="font-weight-bold text-warning" style="font-size: 15px;">
+                                    <?= $rq['avg_kitabah'] > 0 ? number_format($rq['avg_kitabah'], 1, ',', '') : '-' ?>
+                                </td>
+                            </tr>
+                        <?php 
+                            endforeach; 
+                            else:
+                        ?>
+                            <tr><td colspan="4" class="text-center py-4">Data penilaian Al-Qur'an belum tersedia</td></tr>
+                        <?php endif; ?>
+
+                        <!-- Rata-rata Total Al-Qur'an Sekolah -->
+                        <?php if (!empty($rekapQuran)): ?>
+                        <tr>
+                            <td class="col-rata py-3">Rata-rata Sekolah</td>
+                            <td class="bg-tosca font-weight-bold" style="font-size: 17px;">
+                                <?= number_format($rata_quran_sekolah['tahsin'], 1, ',', '') ?>
+                            </td>
+                            <td class="bg-tosca font-weight-bold" style="font-size: 17px;">
+                                <?= number_format($rata_quran_sekolah['tahfidz'], 1, ',', '') ?>
+                            </td>
+                            <td class="bg-tosca font-weight-bold" style="font-size: 17px;">
+                                <?= number_format($rata_quran_sekolah['kitabah'], 1, ',', '') ?>
+                            </td>
                         </tr>
                         <?php endif; ?>
                     </tbody>
