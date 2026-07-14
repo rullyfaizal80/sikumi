@@ -472,6 +472,117 @@
             </div>
         </div>
 
+        <!-- ============================================== -->
+        <!-- BAGIAN 5: REKAPITULASI SPIRITUAL               -->
+        <!-- ============================================== -->
+        <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-praying-hands mr-2"></i> Laporan Aspek Spiritual (Akumulasi Catatan/Insiden)</h5>
+        
+        <div class="alert alert-secondary shadow-sm mb-3 py-2" role="alert">
+            <h6 class="font-weight-bold small mb-2"><i class="fas fa-info-circle mr-1"></i> Keterangan Indikator (Angka 1-7):</h6>
+            <div class="row small">
+                <div class="col-md-3">
+                    <ul class="mb-0 pl-3">
+                        <li><strong>1</strong> = Membiasakan Berdoa</li>
+                        <li><strong>2</strong> = Membiasakan Kalimat Thoyibah</li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <ul class="mb-0 pl-3">
+                        <li><strong>3</strong> = Menjalankan Ibadah shalat</li>
+                        <li><strong>4</strong> = Membudayakan Salam</li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <ul class="mb-0 pl-3">
+                        <li><strong>5</strong> = Membiasakan Rasa Syukur</li>
+                        <li><strong>6</strong> = Menjaga Lingkungan Sekolah</li>
+                    </ul>
+                </div>
+                <div class="col-md-3">
+                    <ul class="mb-0 pl-3">
+                        <li><strong>7</strong> = Toleransi</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body p-0 table-responsive">
+                <table class="table-custom table-kepatuhan table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">Nama Kelas</th>
+                            <th title="Berdoa">1</th>
+                            <th title="Kalimat Thoyibah">2</th>
+                            <th title="Shalat">3</th>
+                            <th title="Salam">4</th>
+                            <th title="Rasa Syukur">5</th>
+                            <th title="Lingkungan">6</th>
+                            <th title="Toleransi">7</th>
+                            <th style="background-color: #d4abc9; width: 100px;">Total Kasus</th>
+                            <th style="min-width: 280px;">Rincian Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                            if (!empty($rekapSpiritual)):
+                            foreach ($rekapSpiritual as $rs): 
+                                $totalKasus = $rs['berdoa'] + $rs['kalimat_thoyibah'] + $rs['shalat'] + $rs['salam'] + $rs['syukur'] + $rs['lingkungan'] + $rs['toleransi'];
+                                
+                                // LOGIKA PENGGABUNGAN & PENGHITUNGAN KETERANGAN
+                                $keteranganRaw = isset($rs['keterangan']) ? $rs['keterangan'] : '';
+                                $arrKet = array_filter(array_map('trim', explode(',', $keteranganRaw)));
+                                $countKet = array_count_values($arrKet);
+                                
+                                $hasilKet = [];
+                                foreach($countKet as $teks => $jml) {
+                                    if ($jml > 1) {
+                                        $hasilKet[] = $teks . " (<strong>" . $jml . "</strong>)";
+                                    } else {
+                                        $hasilKet[] = $teks;
+                                    }
+                                }
+                                $teksKeterangan = !empty($hasilKet) ? implode(', ', $hasilKet) : '-';
+                        ?>
+                            <tr>
+                                <td class="col-kelas-kepatuhan"><?= esc($rs['rombel_name']) ?></td>
+                                <td><?= $rs['berdoa'] ?></td>
+                                <td><?= $rs['kalimat_thoyibah'] ?></td>
+                                <td><?= $rs['shalat'] ?></td>
+                                <td><?= $rs['salam'] ?></td>
+                                <td><?= $rs['syukur'] ?></td>
+                                <td><?= $rs['lingkungan'] ?></td>
+                                <td><?= $rs['toleransi'] ?></td>
+                                <td style="font-weight: bold; background-color: #fdf5f9;"><?= $totalKasus ?></td>
+                                <td class="text-left" style="font-size: 13px; line-height: 1.4;"><?= $teksKeterangan ?></td>
+                            </tr>
+                        <?php 
+                            endforeach; 
+                            else:
+                        ?>
+                            <tr><td colspan="10" class="text-center py-4">Data spiritual belum tersedia</td></tr>
+                        <?php endif; ?>
+
+                        <!-- Total Seluruh Sekolah untuk Spiritual -->
+                        <?php if (!empty($rekapSpiritual)): ?>
+                        <tr>
+                            <td class="col-rata-kepatuhan py-3">Total Kasus</td>
+                            <td class="bg-pink font-weight-bold"><?= $total_sekolah_berdoa ?? 0 ?></td>
+                            <td class="bg-pink font-weight-bold"><?= $total_sekolah_kalimat ?? 0 ?></td>
+                            <td class="bg-pink font-weight-bold"><?= $total_sekolah_shalat ?? 0 ?></td>
+                            <td class="bg-pink font-weight-bold"><?= $total_sekolah_salam ?? 0 ?></td>
+                            <td class="bg-pink font-weight-bold"><?= $total_sekolah_syukur ?? 0 ?></td>
+                            <td class="bg-pink font-weight-bold"><?= $total_sekolah_lingkungan ?? 0 ?></td>
+                            <td class="bg-pink font-weight-bold"><?= $total_sekolah_toleransi ?? 0 ?></td>
+                            <td class="bg-pink font-weight-bold" style="font-size: 16px;"><?= $grand_total_spiritual ?? 0 ?></td>
+                            <td class="bg-pink"></td>
+                        </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
     <!-- Script untuk Toggle Dropdown Filter (Sama dengan sebelumnya) -->

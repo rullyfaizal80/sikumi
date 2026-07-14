@@ -271,3 +271,10 @@ $routes->group('guru/quran', static function($routes) {
     $routes->post('kitabah/save', 'PenilaianQuranController::saveKitabah');
     $routes->get('rekap/(:num)', 'PenilaianQuranController::rekap/$1');
 });
+
+$routes->group('admin/spiritual', static function($routes) {
+    $routes->get('/', 'SpiritualController::index');
+    $routes->get('input/(:num)', 'SpiritualController::input/$1');
+    $routes->post('save', 'SpiritualController::save');
+    $routes->get('rekap-kelas/(:num)', 'SpiritualController::rekapKelas/$1');
+});

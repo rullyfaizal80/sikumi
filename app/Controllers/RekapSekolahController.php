@@ -325,6 +325,69 @@ class RekapSekolahController extends BaseController
             'kitabah' => $count_kitabah_sek > 0 ? ($tot_kitabah_sek / $count_kitabah_sek) : 0,
         ];
 
+       // =========================================================
+        // 3D. LOGIKA REKAP SPIRITUAL (Akumulasi Insiden / Catatan)
+        // =========================================================
+        $total_sekolah_berdoa     = 0; $total_sekolah_kalimat = 0;
+        $total_sekolah_shalat     = 0; $total_sekolah_salam   = 0;
+        $total_sekolah_syukur     = 0; $total_sekolah_lingkungan = 0;
+        $total_sekolah_toleransi  = 0;
+
+        $rekapSpiritual = [];
+
+        foreach ($daftarRombel as $rombel) {
+            $rombel_id = $rombel['id'];
+
+            // Ambil total catatan spiritual khusus untuk kelas ini pada bulan/semester terpilih
+            $spiritual = $db->table('aspek_spiritual')
+                            ->select('
+                                SUM(berdoa) as berdoa,
+                                SUM(kalimat_thoyibah) as kalimat_thoyibah,
+                                SUM(shalat) as shalat,
+                                SUM(salam) as salam,
+                                SUM(syukur) as syukur,
+                                SUM(lingkungan) as lingkungan,
+                                SUM(toleransi) as toleransi,
+                                GROUP_CONCAT(keterangan SEPARATOR ", ") as keterangan
+                            ')
+                            ->where('rombel_id', $rombel_id)
+                            ->whereIn('MONTH(tanggal)', $bulan_array)
+                            ->where('YEAR(tanggal)', $tahun)
+                            ->get()->getRowArray();
+
+            $b  = (int)($spiritual['berdoa'] ?? 0);
+            $kt = (int)($spiritual['kalimat_thoyibah'] ?? 0);
+            $sh = (int)($spiritual['shalat'] ?? 0);
+            $sl = (int)($spiritual['salam'] ?? 0);
+            $sy = (int)($spiritual['syukur'] ?? 0);
+            $l  = (int)($spiritual['lingkungan'] ?? 0);
+            $t  = (int)($spiritual['toleransi'] ?? 0);
+            $ket = $spiritual['keterangan'] ?? '';
+
+            // Akumulasi total sekolah
+            $total_sekolah_berdoa     += $b;
+            $total_sekolah_kalimat    += $kt;
+            $total_sekolah_shalat     += $sh;
+            $total_sekolah_salam      += $sl;
+            $total_sekolah_syukur     += $sy;
+            $total_sekolah_lingkungan += $l;
+            $total_sekolah_toleransi  += $t;
+
+            $rekapSpiritual[] = [
+                'rombel_name'      => $rombel['rombel_name'],
+                'berdoa'           => $b,
+                'kalimat_thoyibah' => $kt,
+                'shalat'           => $sh,
+                'salam'            => $sl,
+                'syukur'           => $sy,
+                'lingkungan'       => $l,
+                'toleransi'        => $t,
+                'keterangan'       => $ket
+            ];
+        }
+
+        $grand_total_spiritual = $total_sekolah_berdoa + $total_sekolah_kalimat + $total_sekolah_shalat + $total_sekolah_salam + $total_sekolah_syukur + $total_sekolah_lingkungan + $total_sekolah_toleransi;
+
         // =========================================================
         // 4. KIRIM SEMUA DATA KE VIEW
         // =========================================================
@@ -334,7 +397,7 @@ class RekapSekolahController extends BaseController
             'semester'        => $semester,
             'tahun'           => $tahun,
             
-            // Variabel Absensi[cite: 3]
+            // Variabel Absensi
             'hariEfektif'     => $hariEfektif,
             'hariEfektifList' => $hariEfektifList, 
             'rekapAbsensi'    => $rekapAbsensi,
@@ -363,6 +426,17 @@ class RekapSekolahController extends BaseController
             // Variabel Quran
             'rekapQuran'         => $rekapQuran,
             'rata_quran_sekolah' => $rata_quran_sekolah,
+
+            // Variabel Spiritual (Perbaikan)
+            'rekapSpiritual'            => $rekapSpiritual,
+            'total_sekolah_berdoa'      => $total_sekolah_berdoa,
+            'total_sekolah_kalimat'     => $total_sekolah_kalimat,
+            'total_sekolah_shalat'      => $total_sekolah_shalat,
+            'total_sekolah_salam'       => $total_sekolah_salam,
+            'total_sekolah_syukur'      => $total_sekolah_syukur,
+            'total_sekolah_lingkungan'  => $total_sekolah_lingkungan,
+            'total_sekolah_toleransi'   => $total_sekolah_toleransi,
+            'grand_total_spiritual'     => $grand_total_spiritual,
         ];
 
         return view('admin/rekap_sekolah/index', $data);
