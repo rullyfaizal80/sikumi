@@ -63,7 +63,7 @@
         
         <!-- SISI ATAS: BRANDING LOGO & NAMA LEMBAGA MERDEKA -->
         <div class="text-center mb-0">
-            <img src="<?= base_url('assets/img/logo.png') ?>" alt="Logo MIMHa" class="mb-2" style="height: 150px; width: auto; object-fit: contain;">            
+            <img src="<?= base_url('assets/img/Logo.png') ?>" alt="Logo MIMHa" class="mb-2" style="height: 150px; width: auto; object-fit: contain;">            
         </div>
 
         <!-- Notifikasi Pesan Kesalahan / Peringatan Sistem -->
