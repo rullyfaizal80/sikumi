@@ -7,18 +7,38 @@
     <link rel="stylesheet" href="<?= base_url('assets/css/adminlte.min.css') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <script>
-        // Fungsi untuk reload halaman saat ganti Rombel
+        // Fungsi untuk reload halaman saat ganti Rombel sambil menyimpan inputan
         function gantiRombel() {
             let rombelId = document.getElementById('filter_rombel').value;
+            
+            // Tangkap nilai yang sudah diisi sebelumnya
+            let nama = document.querySelector('input[name="nama_kelompok"]').value;
+            let jenis = document.querySelector('select[name="jenis_kelompok"]').value;
+            let pembimbing = document.querySelector('select[name="pembimbing_id"]').value;
+
             let url = "<?= base_url('guru/quran_kelompok/create') ?>";
+            
             if (rombelId) {
+                // Tempelkan nilainya di URL parameter
                 url += "?rombel_id=" + rombelId;
+                url += "&nama=" + encodeURIComponent(nama);
+                url += "&jenis=" + encodeURIComponent(jenis);
+                url += "&pembimbing=" + encodeURIComponent(pembimbing);
             }
+            
             window.location.href = url;
         }
     </script>
 </head>
 <body class="p-4 bg-light">
+    
+    <?php 
+        // Tangkap parameter URL atau nilai old() jika gagal validasi POST
+        $valNama = old('nama_kelompok') ? old('nama_kelompok') : (isset($_GET['nama']) ? $_GET['nama'] : '');
+        $valJenis = old('jenis_kelompok') ? old('jenis_kelompok') : (isset($_GET['jenis']) ? $_GET['jenis'] : '');
+        $valPembimbing = old('pembimbing_id') ? old('pembimbing_id') : (isset($_GET['pembimbing']) ? $_GET['pembimbing'] : '');
+    ?>
+
     <div class="container-fluid" style="max-width: 900px;">
         
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -49,23 +69,28 @@
                             
                             <div class="form-group">
                                 <label>Nama Kelompok (Contoh: Kelompok A - Ust. Fulan)</label>
-                                <input type="text" name="nama_kelompok" class="form-control" required value="<?= old('nama_kelompok') ?>">
+                                <!-- Terapkan variabel $valNama -->
+                                <input type="text" name="nama_kelompok" class="form-control" required value="<?= esc($valNama) ?>">
                             </div>
                             
                             <div class="form-group">
                                 <label>Jenis Kelompok</label>
+                                <!-- Terapkan variabel $valJenis -->
                                 <select name="jenis_kelompok" class="form-control" required>
-                                    <option value="Reguler" <?= old('jenis_kelompok') == 'Reguler' ? 'selected' : '' ?>>Reguler (Siswa hanya boleh 1 kelompok)</option>
-                                    <option value="Khusus" <?= old('jenis_kelompok') == 'Khusus' ? 'selected' : '' ?>>Khusus (Siswa bebas masuk)</option>
+                                    <option value="Reguler" <?= ($valJenis == 'Reguler') ? 'selected' : '' ?>>Reguler (Siswa hanya boleh 1 kelompok)</option>
+                                    <option value="Khusus" <?= ($valJenis == 'Khusus') ? 'selected' : '' ?>>Khusus (Siswa bebas masuk)</option>
                                 </select>
                             </div>
 
                             <div class="form-group">
                                 <label>Pilih Pembimbing</label>
+                                <!-- Terapkan variabel $valPembimbing -->
                                 <select name="pembimbing_id" class="form-control" required>
                                     <option value="">-- Pilih Guru / Pembimbing --</option>
                                     <?php foreach($pembimbing as $guru): ?>
-                                        <option value="<?= $guru['id'] ?>"><?= esc($guru['username']) ?></option>
+                                        <option value="<?= $guru['id'] ?>" <?= ($valPembimbing == $guru['id']) ? 'selected' : '' ?>>
+                                            <?= esc($guru['username']) ?>
+                                        </option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>

@@ -49,18 +49,23 @@
                         <tr>
                             <td class="align-middle font-weight-bold"><?= $no++ ?></td>
                             <td class="text-left align-middle font-weight-bold text-success"><?= esc($k['nama_kelompok']) ?></td>
-                            <td class="align-middle">
-                                <?php if($k['jenis_kelompok'] == 'Reguler'): ?>
-                                    <span class="badge badge-primary px-3 py-2">Reguler</span>
-                                <?php else: ?>
-                                    <span class="badge badge-warning px-3 py-2">Khusus</span>
-                                <?php endif; ?>
-                            </td>
+                            <td>
+    <?php if($k['jenis_kelompok'] == 'Reguler'): ?>
+        <span class="badge badge-primary" style="color: black !important;">Reguler</span>
+    <?php else: ?>
+        <span class="badge badge-warning" style="color: black !important;">Khusus</span>
+    <?php endif; ?>
+</td>
                             <td class="text-left align-middle"><?= esc($k['pembimbing'] ?: 'Belum diset') ?></td>
                             <td class="align-middle font-weight-bold"><?= $k['jumlah_siswa'] ?> Siswa</td>
-                            <td class="align-middle">
-                                <button class="btn btn-outline-info btn-sm"><i class="fas fa-eye"></i></button>
-                            </td>
+                           <td class="align-middle">
+    <div class="d-flex align-items-center gap-1">
+        <a href="<?= base_url('guru/quran_kelompok/show/'.$k['id']) ?>" class="btn btn-info btn-sm" title="Lihat Detail"><i class="fas fa-eye"></i></a>
+        <a href="<?= base_url('guru/quran_kelompok/edit/'.$k['id']) ?>" class="btn btn-warning btn-sm text-white" title="Edit Kelompok"><i class="fas fa-edit"></i></a>
+        <a href="<?= base_url('guru/quran_kelompok/delete/'.$k['id']) ?>" class="btn btn-danger btn-sm" title="Hapus Kelompok" onclick="return confirm('Yakin ingin menghapus kelompok ini? Data anggota siswa di dalamnya juga akan ikut terhapus dari kelompok ini.')"><i class="fas fa-trash"></i></a>
+    </div>
+</td>
+
                         </tr>
                         <?php endforeach; ?>
                         

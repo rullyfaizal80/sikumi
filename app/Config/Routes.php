@@ -299,4 +299,5 @@ $routes->group('guru/quran_kelompok', static function($routes) {
     // Rencana Fitur Rekap
     $routes->get('rekap-kelompok', 'KelompokQuranController::rekapKelompok'); // Halaman rekap per pembimbing
     $routes->get('rekap-kelas', 'KelompokQuranController::rekapKelas');       // Halaman rekap per kelas reguler
+    $routes->get('show/(:num)', 'KelompokQuranController::show/$1');
 });

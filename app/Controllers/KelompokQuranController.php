@@ -144,4 +144,103 @@ $pembimbing = $db->table('users u')
 
         return redirect()->to(base_url('guru/quran_kelompok'))->with('success', 'Kelompok berhasil dibuat!');
     }
+
+    // =========================================================================
+    // 4. HALAMAN DETAIL KELOMPOK (LIHAT)
+    // =========================================================================
+    public function show($id)
+    {
+        if (!auth()->loggedIn()) return redirect()->to('login');
+        
+        $db = \Config\Database::connect();
+        
+        // Ambil data detail kelompok
+        $kelompok = $db->table('quran_groups qg')
+            ->select('qg.*, u.username as pembimbing')
+            ->join('users u', 'u.id = qg.pembimbing_id', 'left')
+            ->where('qg.id', $id)
+            ->get()->getRowArray();
+
+        if (!$kelompok) return redirect()->to(base_url('quran_kelompok'))->with('error', 'Kelompok tidak ditemukan.');
+
+        // Ambil daftar siswa di kelompok tersebut
+        $anggota = $db->table('quran_group_students qgs')
+            ->select('u.id as student_id, u.username as nama_siswa')
+            ->join('users u', 'u.id = qgs.student_id')
+            ->where('qgs.group_id', $id)
+            ->orderBy('u.username', 'ASC')
+            ->get()->getResultArray();
+
+        $data = [
+            'title'    => 'Detail Kelompok',
+            'kelompok' => $kelompok,
+            'anggota'  => $anggota
+        ];
+
+        return view('guru/quran_kelompok/show', $data);
+    }
+
+    // =========================================================================
+    // 5. HALAMAN EDIT KELOMPOK (Data Grup & Pembimbing)
+    // =========================================================================
+    public function edit($id)
+    {
+        if (!auth()->loggedIn()) return redirect()->to('login');
+
+        $db = \Config\Database::connect();
+        
+        $kelompok = $db->table('quran_groups')->where('id', $id)->get()->getRowArray();
+        if (!$kelompok) return redirect()->to(base_url('quran_kelompok'))->with('error', 'Kelompok tidak ditemukan.');
+
+        // Ambil daftar pembimbing dari relasi teacher_profiles
+        $pembimbing = $db->table('users u')
+            ->select('u.id, u.username')
+            ->join('teacher_profiles tp', 'tp.user_id = u.id')
+            ->orderBy('u.username', 'ASC')
+            ->get()->getResultArray();
+
+        $data = [
+            'title'      => 'Edit Kelompok',
+            'kelompok'   => $kelompok,
+            'pembimbing' => $pembimbing
+        ];
+
+        return view('guru/quran_kelompok/edit', $data);
+    }
+
+    // =========================================================================
+    // 6. PROSES UPDATE KELOMPOK
+    // =========================================================================
+    public function update($id)
+    {
+        if (!auth()->loggedIn()) return redirect()->to('login');
+
+        $db = \Config\Database::connect();
+        $post = $this->request->getPost();
+
+        $db->table('quran_groups')->where('id', $id)->update([
+            'nama_kelompok'  => $post['nama_kelompok'],
+            'jenis_kelompok' => $post['jenis_kelompok'],
+            'pembimbing_id'  => $post['pembimbing_id'],
+            'updated_at'     => date('Y-m-d H:i:s')
+        ]);
+
+        return redirect()->to(base_url('quran_kelompok'))->with('success', 'Data kelompok berhasil diperbarui!');
+    }
+
+    // =========================================================================
+    // 7. HAPUS KELOMPOK
+    // =========================================================================
+    public function delete($id)
+    {
+        if (!auth()->loggedIn()) return redirect()->to('login');
+
+        $db = \Config\Database::connect();
+        
+        // Cukup hapus tabel quran_groups. Tabel quran_group_students 
+        // akan ikut terhapus otomatis karena kita menggunakan ON DELETE CASCADE di database.
+        $db->table('quran_groups')->where('id', $id)->delete();
+
+        return redirect()->to(base_url('quran_kelompok'))->with('success', 'Kelompok dan seluruh anggotanya berhasil dihapus!');
+    }
 }
