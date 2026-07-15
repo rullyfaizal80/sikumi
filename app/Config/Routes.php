@@ -285,3 +285,18 @@ $routes->group('admin/aspek-sosial', static function($routes) {
     $routes->post('save', 'AspekSosialController::save');
     $routes->get('rekap-kelas/(:num)', 'AspekSosialController::rekap_kelas/$1');
 });
+
+// Route Group untuk Kelompok Al-Qur'an
+$routes->group('guru/quran_kelompok', static function($routes) {
+    // CRUD Dasar
+    $routes->get('/', 'KelompokQuranController::index');              // Menampilkan daftar kelompok
+    $routes->get('create', 'KelompokQuranController::create');        // Menampilkan form tambah kelompok
+    $routes->post('store', 'KelompokQuranController::store');         // Memproses simpan data kelompok
+    $routes->get('edit/(:num)', 'KelompokQuranController::edit/$1');  // Menampilkan form edit berdasarkan ID
+    $routes->post('update/(:num)', 'KelompokQuranController::update/$1'); // Memproses update data
+    $routes->get('delete/(:num)', 'KelompokQuranController::delete/$1');  // Menghapus data kelompok
+    
+    // Rencana Fitur Rekap
+    $routes->get('rekap-kelompok', 'KelompokQuranController::rekapKelompok'); // Halaman rekap per pembimbing
+    $routes->get('rekap-kelas', 'KelompokQuranController::rekapKelas');       // Halaman rekap per kelas reguler
+});
