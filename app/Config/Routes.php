@@ -304,3 +304,8 @@ $routes->group('guru/quran_kelompok', static function($routes) {
     $routes->get('rekap-kelas', 'KelompokQuranController::rekapKelas');       // Halaman rekap per kelas reguler
     $routes->get('show/(:num)', 'KelompokQuranController::show/$1');
 });
+
+// Modul Jurnal Keputraan & Keputrian (Disatukan)
+$routes->get('guru/jurnal-karakter', 'JurnalKarakterController::index');
+$routes->post('guru/jurnal-karakter/save', 'JurnalKarakterController::saveJurnal');
+$routes->get('guru/jurnal-karakter/delete/(:segment)/(:num)', 'JurnalKarakterController::deleteJurnal/$1/$2');
