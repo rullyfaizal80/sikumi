@@ -33,53 +33,46 @@ class KelompokQuranController extends BaseController
     }
 
     // =========================================================================
-    // 2. HALAMAN TAMBAH KELOMPOK & PILIH SISWA
+    // 2. HALAMAN TAMBAH KELOMPOK & PILIH SISWA (LINTAS KELAS)
     // =========================================================================
     public function create()
     {
         if (!auth()->loggedIn()) return redirect()->to('login');
 
         $db = \Config\Database::connect();
-        $request = \Config\Services::request();
         
-        $rombel_id = $request->getGet('rombel_id');
-
         // Ambil data referensi
         $rombels = $db->table('class_rombel')->orderBy('rombel_name', 'ASC')->get()->getResultArray();
-        // Ambil data guru dengan men-join tabel users ke teacher_profiles
-$pembimbing = $db->table('users u')
-    ->select('u.id, u.username')
-    ->join('teacher_profiles tp', 'tp.user_id = u.id')
-    ->orderBy('u.username', 'ASC')
-    ->get()->getResultArray();
-        $students = [];
-        $siswaRegulerTerdaftar = [];
+        
+        $pembimbing = $db->table('users u')
+            ->select('u.id, u.username')
+            ->join('teacher_profiles tp', 'tp.user_id = u.id')
+            ->orderBy('u.username', 'ASC')
+            ->get()->getResultArray();
+            
+        // AMBIL SEMUA SISWA BERSERTA KELASNYA SEKALIGUS
+        $students = $db->table('class_rombel_students crs')
+            ->select('u.id as student_id, u.username, cr.rombel_name, cr.id as rombel_id')
+            ->join('users u', 'u.id = crs.student_id')
+            ->join('class_rombel cr', 'cr.id = crs.rombel_id')
+            ->orderBy('cr.rombel_name', 'ASC')
+            ->orderBy('u.username', 'ASC')
+            ->get()->getResultArray();
 
-        // Jika user sudah memilih Rombel, tampilkan daftar siswanya
-        if ($rombel_id) {
-            $students = $db->table('class_rombel_students crs')
-                ->select('u.id as student_id, u.username')
-                ->join('users u', 'u.id = crs.student_id')
-                ->where('crs.rombel_id', $rombel_id)
-                ->orderBy('u.username', 'ASC')
-                ->get()->getResultArray();
+        // Ambil ID siswa yang SUDAH masuk kelompok Reguler Al-Qur'an
+        $terdaftar = $db->table('quran_group_students qgs')
+            ->select('qgs.student_id')
+            ->join('quran_groups qg', 'qg.id = qgs.group_id')
+            ->where('qg.jenis_kelompok', 'Reguler')
+            ->get()->getResultArray();
 
-            // Ambil ID siswa di kelas ini yang SUDAH masuk kelompok Reguler
-            $terdaftar = $db->table('quran_group_students qgs')
-                ->select('qgs.student_id')
-                ->join('quran_groups qg', 'qg.id = qgs.group_id')
-                ->where('qg.jenis_kelompok', 'Reguler')
-                ->get()->getResultArray();
-
-            $siswaRegulerTerdaftar = array_column($terdaftar, 'student_id');
-        }
+        $siswaRegulerTerdaftar = array_column($terdaftar, 'student_id');
 
         $data = [
             'title'                 => 'Tambah Kelompok Baru',
             'rombels'               => $rombels,
             'pembimbing'            => $pembimbing,
             'students'              => $students,
-            'rombel_id'             => $rombel_id,
             'siswaRegulerTerdaftar' => $siswaRegulerTerdaftar
         ];
 
@@ -184,7 +177,7 @@ $pembimbing = $db->table('users u')
     }
 
     // =========================================================================
-    // 5. HALAMAN EDIT KELOMPOK (Data Grup, Pembimbing, & Anggota)
+    // 5. HALAMAN EDIT KELOMPOK (Data Grup, Pembimbing, & Anggota - LINTAS KELAS)
     // =========================================================================
     public function edit($id)
     {
@@ -195,9 +188,6 @@ $pembimbing = $db->table('users u')
         $kelompok = $db->table('quran_groups')->where('id', $id)->get()->getRowArray();
         if (!$kelompok) return redirect()->to(base_url('guru/quran_kelompok'))->with('error', 'Kelompok tidak ditemukan.');
 
-        // Tangkap parameter filter rombel dari URL (jika ada)
-        $rombel_id = $this->request->getGet('rombel_id');
-
         // 1. Ambil daftar pembimbing dari relasi teacher_profiles
         $pembimbing = $db->table('users u')
             ->select('u.id, u.username')
@@ -206,14 +196,9 @@ $pembimbing = $db->table('users u')
             ->get()->getResultArray();
 
         // 2. Ambil daftar semua Rombel untuk filter dropdown
-        $taAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
-        $rombels = [];
-        if ($taAktif) {
-            $rombels = $db->table('class_rombel')
-                          ->where('academic_year_id', $taAktif['id'])
-                          ->orderBy('rombel_name', 'ASC')
-                          ->get()->getResultArray();
-        }
+        $rombels = $db->table('class_rombel')
+                      ->orderBy('rombel_name', 'ASC')
+                      ->get()->getResultArray();
 
         // 3. Ambil daftar siswa yang SAAT INI sudah terdaftar di kelompok ini
         $currentStudentsRaw = $db->table('quran_group_students')
@@ -221,18 +206,16 @@ $pembimbing = $db->table('users u')
             ->get()->getResultArray();
         $currentStudentIds = array_column($currentStudentsRaw, 'student_id');
 
-        // 4. Ambil daftar siswa berdasarkan filter rombel (jika dipilih)
-        $students = [];
-        if ($rombel_id) {
-            $students = $db->table('class_rombel_students crs')
-                           ->select('u.id as student_id, u.username')
-                           ->join('users u', 'u.id = crs.student_id')
-                           ->where('crs.rombel_id', $rombel_id)
-                           ->orderBy('u.username', 'ASC')
-                           ->get()->getResultArray();
-        }
+        // 4. AMBIL SEMUA SISWA BERSERTA KELASNYA SEKALIGUS
+        $students = $db->table('class_rombel_students crs')
+                       ->select('u.id as student_id, u.username, cr.rombel_name, cr.id as rombel_id')
+                       ->join('users u', 'u.id = crs.student_id')
+                       ->join('class_rombel cr', 'cr.id = crs.rombel_id')
+                       ->orderBy('cr.rombel_name', 'ASC')
+                       ->orderBy('u.username', 'ASC')
+                       ->get()->getResultArray();
 
-        // 5. Cari siswa yang sudah terdaftar di kelompok Reguler LAIN (untuk proteksi ganda)
+        // 5. Cari siswa yang sudah terdaftar di kelompok Reguler LAIN (kecuali kelompok ini)
         $siswaRegulerLain = $db->table('quran_group_students qgs')
             ->join('quran_groups qg', 'qg.id = qgs.group_id')
             ->where('qg.jenis_kelompok', 'Reguler')
@@ -245,7 +228,6 @@ $pembimbing = $db->table('users u')
             'kelompok'              => $kelompok,
             'pembimbing'            => $pembimbing,
             'rombels'               => $rombels,
-            'rombel_id'             => $rombel_id,
             'students'              => $students,
             'currentStudentIds'     => $currentStudentIds,
             'siswaRegulerTerdaftar' => $siswaRegulerTerdaftar
@@ -255,7 +237,7 @@ $pembimbing = $db->table('users u')
     }
 
     // =========================================================================
-    // 6. PROSES UPDATE DATA KELOMPOK DAN ANGGOTA
+    // 6. PROSES UPDATE DATA KELOMPOK DAN ANGGOTA (SINKRONISASI TOTAL)
     // =========================================================================
     public function update($id)
     {
@@ -268,10 +250,10 @@ $pembimbing = $db->table('users u')
         $jenis_kelompok = $post['jenis_kelompok'];
         $pembimbing_id  = $post['pembimbing_id'];
         
-        // Ambil ID siswa dari checkbox yang dicentang saat ini
+        // Ambil ID siswa dari seluruh checkbox yang dicentang lintas kelas
         $student_ids    = $post['students'] ?? [];
 
-        // VALIDASI: Jika jenisnya diubah/tetap Reguler, pastikan siswa baru tidak terdaftar di Reguler lain
+        // VALIDASI: Jika jenisnya Reguler, pastikan siswa baru tidak terdaftar di Reguler lain
         if ($jenis_kelompok === 'Reguler' && !empty($student_ids)) {
             $cekGanda = $db->table('quran_group_students qgs')
                 ->join('quran_groups qg', 'qg.id = qgs.group_id')
@@ -295,37 +277,19 @@ $pembimbing = $db->table('users u')
             'updated_at'     => date('Y-m-d H:i:s')
         ]);
 
-        // 2. Hapus anggota lama dari kelompok ini (untuk rombel yang sedang difilter/diproses)
-        // Kita gunakan pendekatan hapus lalu insert ulang agar sinkronisasi data bersih.
-        if (!empty($post['current_filtered_student_ids'])) {
-            $filteredIds = explode(',', $post['current_filtered_student_ids']);
-            if (!empty($filteredIds)) {
-                $db->table('quran_group_students')
-                   ->where('group_id', $id)
-                   ->whereIn('student_id', $filteredIds)
-                   ->delete();
-            }
-        }
+        // 2. HAPUS SEMUA ANGGOTA LAMA DI KELOMPOK INI
+        $db->table('quran_group_students')->where('group_id', $id)->delete();
 
-        // 3. Masukkan Anggota Baru yang Dicentang
+        // 3. MASUKKAN ULANG SEMUA ANGGOTA YANG DICENTANG (BATCH)
         if (!empty($student_ids)) {
             $dataAnggota = [];
             foreach ($student_ids as $sId) {
-                // Gunakan ignore/cek terlebih dahulu untuk menghindari duplikasi jika ada rombel silang
-                $exist = $db->table('quran_group_students')
-                            ->where(['group_id' => $id, 'student_id' => $sId])
-                            ->countAllResults();
-                
-                if ($exist == 0) {
-                    $dataAnggota[] = [
-                        'group_id'   => $id,
-                        'student_id' => $sId
-                    ];
-                }
+                $dataAnggota[] = [
+                    'group_id'   => $id,
+                    'student_id' => $sId
+                ];
             }
-            if (!empty($dataAnggota)) {
-                $db->table('quran_group_students')->insertBatch($dataAnggota);
-            }
+            $db->table('quran_group_students')->insertBatch($dataAnggota);
         }
 
         $db->transComplete();

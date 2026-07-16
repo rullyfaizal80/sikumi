@@ -309,3 +309,15 @@ $routes->group('guru/quran_kelompok', static function($routes) {
 $routes->get('guru/jurnal-karakter', 'JurnalKarakterController::index');
 $routes->post('guru/jurnal-karakter/save', 'JurnalKarakterController::saveJurnal');
 $routes->get('guru/jurnal-karakter/delete/(:segment)/(:num)', 'JurnalKarakterController::deleteJurnal/$1/$2');
+
+// ==========================================
+// MODUL EKSTRAKURIKULER
+// ==========================================
+// Halaman Index (Dashboard Filter)
+$routes->get('guru/ekstrakurikuler', 'EkstrakurikulerController::index');
+// Halaman Input Nilai (Target form dari Index)
+$routes->get('guru/ekstrakurikuler/pramuka', 'EkstrakurikulerController::pramuka');
+$routes->get('guru/ekstrakurikuler/peminatan', 'EkstrakurikulerController::peminatan');
+$routes->get('guru/ekstrakurikuler/quran', 'EkstrakurikulerController::quran');
+$routes->get('guru/ekstrakurikuler/kelompok/create', 'EkstrakurikulerController::kelompokCreate');
+$routes->post('guru/ekstrakurikuler/kelompok/store', 'EkstrakurikulerController::kelompokStore');

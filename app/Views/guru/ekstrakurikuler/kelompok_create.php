@@ -7,27 +7,26 @@
     <link rel="stylesheet" href="<?= base_url('assets/css/adminlte.min.css') ?>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
-        /* Agar header tabel tidak ikut ter-scroll */
+        /* Agar tabel rapi */
         .sticky-header th { position: sticky; top: 0; background: #e2e3e5; z-index: 10; }
     </style>
 </head>
 <body class="p-4 bg-light">
-    <div class="container-fluid" style="max-width: 1000px;">
+    <div class="container-fluid" style="max-width: 900px;">
         
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h3 class="mb-0 text-success font-weight-bold"><i class="fas fa-book-reader mr-2"></i> <?= esc($title) ?></h3>
-                <p class="text-muted small mb-0">Buat kelompok Al-Qur'an baru, lintas kelas dengan mudah tanpa kehilangan data centangan.</p>
+                <h3 class="mb-0 text-success font-weight-bold"><i class="fas fa-users-cog mr-2"></i> <?= esc($title) ?></h3>
+                <p class="text-muted small mb-0">Buat kelompok eskul baru, lintas kelas dengan mudah tanpa kehilangan centangan.</p>
             </div>
             <div>
-                <a href="<?= base_url('guru/quran_kelompok') ?>" class="btn btn-outline-secondary btn-sm font-weight-bold">
+                <a href="<?= base_url('guru/ekstrakurikuler') ?>" class="btn btn-outline-secondary btn-sm font-weight-bold">
                     <i class="fas fa-arrow-left mr-1"></i> Kembali
                 </a>
             </div>
         </div>
 
-        <!-- Pesan Error -->
         <?php if(session()->getFlashdata('error')): ?>
             <div class="alert alert-danger shadow-sm alert-dismissible fade show mb-4 text-dark font-weight-bold" style="background-color: #f8d7da; border-color: #f5c6cb;">
                 <i class="fas fa-exclamation-triangle mr-1 text-danger"></i> <?= session()->getFlashdata('error') ?>
@@ -42,20 +41,20 @@
             <div class="card-body bg-white p-4">
                 <div class="form-group mb-0">
                     <label class="font-weight-bold text-secondary mb-2"><i class="fas fa-filter mr-1 text-primary"></i> Langkah 1: Filter Kelas (Opsional)</label>
-                    <select class="form-control form-control-lg text-dark font-weight-bold border-primary" id="filter_rombel">
+                    <select class="form-control form-control-lg text-dark font-weight-bold" id="filter_rombel">
                         <option value="all">-- Tampilkan Semua Kelas --</option>
                         <?php foreach($rombels as $r): ?>
                             <option value="<?= $r['id'] ?>"><?= esc($r['rombel_name']) ?></option>
                         <?php endforeach; ?>
                     </select>
-                    <small class="text-muted mt-2 d-block">Mencari siswa menggunakan filter kelas di atas tidak akan me-reset/menghapus centangan Anda sebelumnya.</small>
+                    <small class="text-muted mt-2 d-block">Mencari siswa dengan filter kelas tidak akan me-reset/menghapus centangan Anda.</small>
                 </div>
             </div>
         </div>
 
         <!-- STEP 2 & 3: FORM UTAMA -->
         <div class="card shadow-sm border-0">
-            <form action="<?= base_url('guru/quran_kelompok/store') ?>" method="POST">
+            <form action="<?= base_url('guru/ekstrakurikuler/kelompok/store') ?>" method="POST">
                 <?= csrf_field() ?>
                 <div class="card-body p-4 bg-white">
                     
@@ -63,12 +62,12 @@
 
                     <div class="row mb-4">
                         <div class="col-md-6 mb-3 mb-md-0">
-                            <label class="font-weight-bold text-secondary mb-2">Nama Kelompok (Contoh: Tahfiz A)</label>
-                            <input type="text" name="nama_kelompok" class="form-control text-dark" placeholder="Contoh: Kelompok A - Ust. Fulan" value="<?= old('nama_kelompok') ?>" required>
+                            <label class="font-weight-bold text-secondary mb-2">Nama Kelompok Eskul</label>
+                            <input type="text" name="nama_kelompok" class="form-control text-dark" placeholder="Misal: Tim Futsal A / Klub Sains" value="<?= old('nama_kelompok') ?>" required>
                         </div>
                         
                         <div class="col-md-6">
-                            <label class="font-weight-bold text-secondary mb-2">Guru Pembimbing / Pengampu</label>
+                            <label class="font-weight-bold text-secondary mb-2">Guru Pembimbing / Pembina</label>
                             <select name="pembimbing_id" class="form-control text-dark" required>
                                 <option value="">-- Pilih Pembimbing --</option>
                                 <?php foreach($pembimbing as $p): ?>
@@ -80,14 +79,14 @@
 
                     <div class="row mb-4">
                         <div class="col-12">
-                            <label class="font-weight-bold text-secondary mb-2 d-block">Jenis Kelompok Al-Qur'an</label>
+                            <label class="font-weight-bold text-secondary mb-2 d-block">Jenis Kelompok</label>
                             <div class="custom-control custom-radio custom-control-inline mr-4">
                                 <input type="radio" id="radio_reguler" name="jenis_kelompok" value="Reguler" class="custom-control-input" <?= old('jenis_kelompok', 'Reguler') == 'Reguler' ? 'checked' : '' ?>>
-                                <label class="custom-control-label font-weight-bold text-primary" for="radio_reguler" style="cursor:pointer;">Reguler (Siswa maksimal 1 kelompok)</label>
+                                <label class="custom-control-label font-weight-bold text-primary" for="radio_reguler" style="cursor:pointer;">Reguler (Maks 1 Eskul / Siswa)</label>
                             </div>
                             <div class="custom-control custom-radio custom-control-inline">
                                 <input type="radio" id="radio_khusus" name="jenis_kelompok" value="Khusus" class="custom-control-input" <?= old('jenis_kelompok') == 'Khusus' ? 'checked' : '' ?>>
-                                <label class="custom-control-label font-weight-bold text-warning" for="radio_khusus" style="cursor:pointer;">Khusus (Siswa bebas masuk kelompok tambahan)</label>
+                                <label class="custom-control-label font-weight-bold text-warning" for="radio_khusus" style="cursor:pointer;">Khusus (Boleh Dobel / Remedial)</label>
                             </div>
                         </div>
                     </div>
@@ -97,7 +96,7 @@
                         <div class="col-12">
                             <div class="d-flex justify-content-between align-items-end mb-3">
                                 <label class="font-weight-bold text-secondary mb-0 d-block">Pilih Anggota Siswa (Bisa Lintas Kelas)</label>
-                                <span class="badge badge-success py-2 px-3 shadow-sm" style="font-size: 14px;">Total Terpilih: <span id="selected_count">0</span> Siswa</span>
+                                <span class="badge badge-primary py-2 px-3" style="font-size: 14px;">Total Terpilih: <span id="selected_count">0</span> Siswa</span>
                             </div>
                             
                             <?php if(empty($students)): ?>
@@ -134,10 +133,10 @@
                                                     </td>
                                                     <td class="align-middle">
                                                         <span class="badge badge-warning text-dark status-locked py-1 px-2" style="display: none; font-size: 85%;">
-                                                            <i class="fas fa-ban mr-1"></i> Terdaftar di Reguler Lain
+                                                            <i class="fas fa-ban mr-1"></i> Di Reguler Lain
                                                         </span>
                                                         <span class="badge badge-success text-white status-ready py-1 px-2" style="display: none; font-size: 85%;">
-                                                            <i class="fas fa-check-circle mr-1"></i> Siap Gabung
+                                                            <i class="fas fa-check mr-1"></i> Siap Gabung
                                                         </span>
                                                     </td>
                                                 </tr>
@@ -152,9 +151,9 @@
                 </div>
                 
                 <div class="card-footer bg-light py-3 d-flex justify-content-end">
-                    <a href="<?= base_url('guru/quran_kelompok') ?>" class="btn btn-secondary font-weight-bold px-3 mr-2">Batal</a>
+                    <a href="<?= base_url('guru/ekstrakurikuler') ?>" class="btn btn-secondary font-weight-bold px-3 mr-2">Batal</a>
                     <button type="submit" class="btn btn-success font-weight-bold px-4 shadow-sm" id="btn_simpan">
-                        <i class="fas fa-save mr-1"></i> Simpan Kelompok Al-Qur'an
+                        <i class="fas fa-save mr-1"></i> Simpan Kelompok Eskul
                     </button>
                 </div>
             </form>
@@ -172,7 +171,7 @@
             const rows         = document.querySelectorAll('.student-row');
             const counterText  = document.getElementById('selected_count');
 
-            // 1. Fungsi Update Status Reguler / Khusus (Mencegah Dobel)
+            // 1. Fungsi Update Status Reguler / Khusus
             function updateCheckboxes() {
                 if (!radioReguler || !radioKhusus) return;
                 const isReguler = radioReguler.checked;
@@ -186,7 +185,7 @@
 
                     if (isReguler && isAlreadyReguler) {
                         cb.disabled = true;
-                        cb.checked = false; // Batalkan centang jika terpaksa dikunci
+                        cb.checked = false;
                         nameCell.classList.add('text-muted');
                         nameCell.style.textDecoration = 'line-through';
                         badgeLocked.style.display = 'inline-block';
@@ -199,16 +198,16 @@
                         badgeReady.style.display = 'inline-block';
                     }
                 });
-                countSelected(); // Update total centangan
+                countSelected(); // Hitung ulang setelah update
             }
 
-            // 2. Fungsi Hitung Jumlah Siswa Terpilih
+            // 2. Fungsi Hitung Jumlah Centangan Realtime
             function countSelected() {
                 const checkedBoxes = document.querySelectorAll('.student-cb:checked');
                 counterText.innerText = checkedBoxes.length;
             }
 
-            // 3. Fungsi Filter Kelas (Menyembunyikan baris tapi tidak menghilangkan centangan)
+            // 3. Fungsi Filter Kelas Lintas (Menyembunyikan baris tanpa menghapus centangan)
             function applyFilter() {
                 const selectedRombel = filterDropdown.value;
                 rows.forEach(function(row) {
@@ -221,7 +220,7 @@
                 });
             }
 
-            // Pasang event listener ke elemen-elemen
+            // Pemasangan Event Listener
             if (radioReguler) radioReguler.addEventListener('change', updateCheckboxes);
             if (radioKhusus) radioKhusus.addEventListener('change', updateCheckboxes);
             
@@ -231,7 +230,7 @@
 
             if (filterDropdown) filterDropdown.addEventListener('change', applyFilter);
 
-            // Eksekusi fungsi pertama kali saat halaman berhasil dimuat
+            // Eksekusi tampilan awal saat halaman dimuat
             updateCheckboxes();
         });
     </script>
