@@ -74,27 +74,21 @@
                                     <strong><?= esc($k['rombel_name'] ?? 'Nama Kelas') ?></strong>
                                 </td>
                                 <td>
-                                    <!-- Aksi Pramuka -->
-                                    <div class="d-flex justify-content-center">
-                                        <a href="<?= base_url('guru/ekstrakurikuler/pramuka/input/' . esc($k['id'])) ?>" class="btn btn-sm btn-warning text-dark font-weight-bold mr-1" title="Input Nilai Pramuka">
-                                            📝 Input
-                                        </a>
-                                        <a href="<?= base_url('guru/ekstrakurikuler/pramuka/rekap/' . esc($k['id'])) ?>" class="btn btn-sm btn-outline-warning font-weight-bold" title="Rekap Pramuka">
-                                            📊 Rekap
-                                        </a>
-                                    </div>
-                                </td>
-                                <td>
-                                    <!-- Aksi Peminatan -->
-                                    <div class="d-flex justify-content-center">
-                                        <a href="<?= base_url('guru/ekstrakurikuler/peminatan/input/' . esc($k['id'])) ?>" class="btn btn-sm btn-info text-white font-weight-bold mr-1" title="Input Nilai Peminatan">
-                                            📝 Input
-                                        </a>
-                                        <a href="<?= base_url('guru/ekstrakurikuler/peminatan/rekap/' . esc($k['id'])) ?>" class="btn btn-sm btn-outline-info font-weight-bold" title="Rekap Peminatan">
-                                            📊 Rekap
-                                        </a>
-                                    </div>
-                                </td>
+    <!-- Aksi Pramuka -->
+    <div class="d-flex justify-content-center">
+        <a href="<?= base_url('guru/pramuka/input/' . esc($k['id'])) ?>" class="btn btn-sm btn-warning text-dark font-weight-bold" title="Input Nilai Pramuka">
+            📝 Input Nilai
+        </a>
+    </div>
+</td>
+<td>
+    <!-- Aksi Peminatan -->
+    <div class="d-flex justify-content-center">
+        <a href="<?= base_url('guru/peminatan/input/' . esc($k['id'])) ?>" class="btn btn-sm btn-info text-white font-weight-bold" title="Input Nilai Peminatan">
+            📝 Input Nilai
+        </a>
+    </div>
+</td>
                             </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>
@@ -147,7 +141,7 @@
                                 <td class="align-middle">
                                     <div class="d-flex align-items-center justify-content-center">
                                         <!-- Tombol Nilai -->
-                                        <a href="<?= base_url('guru/ekstrakurikuler/kelompok/input/'.$klp['id']) ?>" class="btn btn-success btn-sm mr-1 font-weight-bold" title="Input Nilai"><i class="fas fa-edit mr-1"></i> Input</a>
+                                        <a href="<?= base_url('guru/ekstrakurikuler/kelompok/input/'.$klp['id']) ?>" class="btn btn-success btn-sm mr-1 font-weight-bold" title="Input Nilai"><i class="fas fa-edit mr-1"></i> Input Nilai</a>
                                         
                                         <!-- Tombol Manajemen -->
                                         <div class="border-left pl-2 ml-1 d-flex">

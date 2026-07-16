@@ -324,3 +324,16 @@ $routes->group('guru/ekstrakurikuler', static function($routes) {
 $routes->get('kelompok/input/(:num)', 'EkstrakurikulerController::kelompokInput/$1');
 $routes->post('kelompok/save_nilai/(:num)', 'EkstrakurikulerController::kelompokSaveNilai/$1');
 });
+
+// Routes Pramuka
+$routes->group('guru/pramuka', static function($routes) {
+    // Asumsi halaman index menampilkan daftar kelas/rombel
+    $routes->get('input/(:num)', 'PramukaController::input/$1');
+    $routes->post('save_nilai/(:num)', 'PramukaController::saveNilai/$1');
+});
+
+// Routes Peminatan
+$routes->group('guru/peminatan', static function($routes) {
+    $routes->get('input/(:num)', 'PeminatanController::input/$1');
+    $routes->post('save_nilai/(:num)', 'PeminatanController::saveNilai/$1');
+});
