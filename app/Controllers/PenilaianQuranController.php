@@ -6,7 +6,7 @@ use App\Controllers\BaseController;
 
 class PenilaianQuranController extends BaseController
 {
-    // Halaman Utama: Pilih Rombel/Kelas untuk Penilaian Qur'an
+    // Halaman Utama: Pilih Kelompok untuk Penilaian Qur'an
     public function index()
     {
         if (!auth()->loggedIn()) {
@@ -15,22 +15,16 @@ class PenilaianQuranController extends BaseController
 
         $db = \Config\Database::connect();
 
-        // 1. Cari Tahun Ajaran yang sedang aktif
-        $taAktif = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
-        
-        if (!$taAktif) {
-            return redirect()->to(base_url('home'))->with('error', 'Tidak ada tahun ajaran aktif. Silakan seting terlebih dahulu.');
-        }
-
-        // 2. Ambil daftar rombel pada tahun ajaran yang aktif
-        $daftarRombel = $db->table('class_rombel')
-                           ->where('academic_year_id', $taAktif['id'])
-                           ->orderBy('rombel_name', 'ASC')
-                           ->get()->getResultArray();
+        // Ambil daftar kelompok beserta nama pembimbingnya
+        $daftarKelompok = $db->table('quran_groups qg')
+            ->select('qg.id, qg.nama_kelompok, qg.jenis_kelompok, u.username as pembimbing')
+            ->join('users u', 'u.id = qg.pembimbing_id', 'left')
+            ->orderBy('qg.nama_kelompok', 'ASC')
+            ->get()->getResultArray();
 
         $data = [
-            'title'        => 'Penilaian Al-Qur\'an',
-            'daftarRombel' => $daftarRombel
+            'title'          => 'Penilaian Al-Qur\'an',
+            'daftarKelompok' => $daftarKelompok
         ];
 
         return view('guru/quran/index', $data);
@@ -39,24 +33,26 @@ class PenilaianQuranController extends BaseController
     // =======================================================
     // HALAMAN INPUT TAHSIN
     // =======================================================
-    public function tahsin($rombel_id)
+    public function tahsin($group_id)
     {
         if (!auth()->loggedIn()) return redirect()->to('login');
 
         $db = \Config\Database::connect();
-        $rombel = $db->table('class_rombel')->where('id', $rombel_id)->get()->getRowArray();
-        if (!$rombel) return redirect()->to('guru/quran')->with('error', 'Rombel tidak ditemukan.');
+        
+        // Ambil data kelompok (menggantikan rombel)
+        $kelompok = $db->table('quran_groups')->where('id', $group_id)->get()->getRowArray();
+        if (!$kelompok) return redirect()->to('guru/quran')->with('error', 'Kelompok tidak ditemukan.');
 
         // Filter Parameter
         $bulan = $this->request->getGet('bulan') ?? date('m');
         $tahun = $this->request->getGet('tahun') ?? date('Y');
         $pekan = $this->request->getGet('pekan') ?? 1;
 
-        // Ambil Daftar Siswa
-        $daftarSiswa = $db->table('class_rombel_students crs')
+        // Ambil Daftar Siswa berdasarkan anggota kelompok tersebut
+        $daftarSiswa = $db->table('quran_group_students qgs')
                           ->select('u.id as student_id, u.username')
-                          ->join('users u', 'u.id = crs.student_id')
-                          ->where('crs.rombel_id', $rombel_id)
+                          ->join('users u', 'u.id = qgs.student_id')
+                          ->where('qgs.group_id', $group_id)
                           ->orderBy('u.username', 'ASC')
                           ->get()->getResultArray();
 
@@ -78,8 +74,8 @@ class PenilaianQuranController extends BaseController
         }
 
         $data = [
-            'title'       => 'Input Tahsin - Kelas ' . $rombel['rombel_name'],
-            'rombel'      => $rombel,
+            'title'       => 'Input Tahsin - Kelompok ' . $kelompok['nama_kelompok'],
+            'kelompok'    => $kelompok,
             'bulan'       => sprintf('%02d', $bulan),
             'tahun'       => $tahun,
             'pekan'       => $pekan,
@@ -100,7 +96,8 @@ class PenilaianQuranController extends BaseController
         $db = \Config\Database::connect();
         $post = $this->request->getPost();
         
-        $rombel_id = $post['rombel_id'];
+        // Tangkap group_id (menggantikan rombel_id)
+        $group_id  = $post['group_id'];
         $bulan     = sprintf('%02d', $post['bulan']);
         $tahun     = $post['tahun'];
         $pekan     = $post['pekan'];
@@ -123,10 +120,10 @@ class PenilaianQuranController extends BaseController
                 // Jika sudah ada, cukup update khusus kolom Tahsin saja
                 $db->table('quran_penilaian')->where('id', $cek['id'])->update($updateData);
             } else {
-                // Jika belum ada, buat record baru
+                // Jika belum ada, buat record baru dengan menggunakan group_id
                 $insertData = array_merge($updateData, [
                     'student_id' => $student_id,
-                    'rombel_id'  => $rombel_id,
+                    'group_id'   => $group_id, 
                     'bulan'      => $bulan,
                     'tahun'      => $tahun,
                     'pekan'      => $pekan
@@ -135,29 +132,32 @@ class PenilaianQuranController extends BaseController
             }
         }
 
-        return redirect()->to("guru/quran/tahsin/{$rombel_id}?bulan={$bulan}&tahun={$tahun}&pekan={$pekan}")
+        return redirect()->to("guru/quran/tahsin/{$group_id}?bulan={$bulan}&tahun={$tahun}&pekan={$pekan}")
                          ->with('success', "Data Tahsin Pekan ke-{$pekan} berhasil disimpan!");
     }
 
     // =======================================================
     // HALAMAN INPUT TAHFIDZ
     // =======================================================
-    public function tahfidz($rombel_id)
+    public function tahfidz($group_id)
     {
         if (!auth()->loggedIn()) return redirect()->to('login');
 
         $db = \Config\Database::connect();
-        $rombel = $db->table('class_rombel')->where('id', $rombel_id)->get()->getRowArray();
-        if (!$rombel) return redirect()->to('guru/quran')->with('error', 'Rombel tidak ditemukan.');
+        
+        // Ambil data kelompok
+        $kelompok = $db->table('quran_groups')->where('id', $group_id)->get()->getRowArray();
+        if (!$kelompok) return redirect()->to('guru/quran')->with('error', 'Kelompok tidak ditemukan.');
 
         $bulan = $this->request->getGet('bulan') ?? date('m');
         $tahun = $this->request->getGet('tahun') ?? date('Y');
         $pekan = $this->request->getGet('pekan') ?? 1;
 
-        $daftarSiswa = $db->table('class_rombel_students crs')
+        // Ambil daftar siswa berdasarkan keanggotaan kelompok
+        $daftarSiswa = $db->table('quran_group_students qgs')
                           ->select('u.id as student_id, u.username')
-                          ->join('users u', 'u.id = crs.student_id')
-                          ->where('crs.rombel_id', $rombel_id)
+                          ->join('users u', 'u.id = qgs.student_id')
+                          ->where('qgs.group_id', $group_id)
                           ->orderBy('u.username', 'ASC')
                           ->get()->getResultArray();
 
@@ -178,8 +178,8 @@ class PenilaianQuranController extends BaseController
         }
 
         $data = [
-            'title'       => 'Input Tahfidz - Kelas ' . $rombel['rombel_name'],
-            'rombel'      => $rombel,
+            'title'       => 'Input Tahfidz - Kelompok ' . $kelompok['nama_kelompok'],
+            'kelompok'    => $kelompok,
             'bulan'       => sprintf('%02d', $bulan),
             'tahun'       => $tahun,
             'pekan'       => $pekan,
@@ -200,7 +200,8 @@ class PenilaianQuranController extends BaseController
         $db = \Config\Database::connect();
         $post = $this->request->getPost();
         
-        $rombel_id = $post['rombel_id'];
+        // Gunakan group_id
+        $group_id  = $post['group_id'];
         $bulan     = sprintf('%02d', $post['bulan']);
         $tahun     = $post['tahun'];
         $pekan     = $post['pekan'];
@@ -222,10 +223,10 @@ class PenilaianQuranController extends BaseController
                 // Update khusus kolom Tahfidz saja
                 $db->table('quran_penilaian')->where('id', $cek['id'])->update($updateData);
             } else {
-                // Insert baru jika belum ada
+                // Insert baru jika belum ada, simpan group_id
                 $insertData = array_merge($updateData, [
                     'student_id' => $student_id,
-                    'rombel_id'  => $rombel_id,
+                    'group_id'   => $group_id,
                     'bulan'      => $bulan,
                     'tahun'      => $tahun,
                     'pekan'      => $pekan
@@ -234,29 +235,32 @@ class PenilaianQuranController extends BaseController
             }
         }
 
-        return redirect()->to("guru/quran/tahfidz/{$rombel_id}?bulan={$bulan}&tahun={$tahun}&pekan={$pekan}")
+        return redirect()->to("guru/quran/tahfidz/{$group_id}?bulan={$bulan}&tahun={$tahun}&pekan={$pekan}")
                          ->with('success', "Data Tahfidz Pekan ke-{$pekan} berhasil disimpan!");
     }
 
     // =======================================================
     // HALAMAN INPUT KITABAH
     // =======================================================
-    public function kitabah($rombel_id)
+    public function kitabah($group_id)
     {
         if (!auth()->loggedIn()) return redirect()->to('login');
 
         $db = \Config\Database::connect();
-        $rombel = $db->table('class_rombel')->where('id', $rombel_id)->get()->getRowArray();
-        if (!$rombel) return redirect()->to('guru/quran')->with('error', 'Rombel tidak ditemukan.');
+        
+        // Ambil data kelompok
+        $kelompok = $db->table('quran_groups')->where('id', $group_id)->get()->getRowArray();
+        if (!$kelompok) return redirect()->to('guru/quran')->with('error', 'Kelompok tidak ditemukan.');
 
         $bulan = $this->request->getGet('bulan') ?? date('m');
         $tahun = $this->request->getGet('tahun') ?? date('Y');
         $pekan = $this->request->getGet('pekan') ?? 1;
 
-        $daftarSiswa = $db->table('class_rombel_students crs')
+        // Ambil daftar siswa berdasarkan keanggotaan kelompok
+        $daftarSiswa = $db->table('quran_group_students qgs')
                           ->select('u.id as student_id, u.username')
-                          ->join('users u', 'u.id = crs.student_id')
-                          ->where('crs.rombel_id', $rombel_id)
+                          ->join('users u', 'u.id = qgs.student_id')
+                          ->where('qgs.group_id', $group_id)
                           ->orderBy('u.username', 'ASC')
                           ->get()->getResultArray();
 
@@ -277,8 +281,8 @@ class PenilaianQuranController extends BaseController
         }
 
         $data = [
-            'title'       => 'Input Kitabah - Kelas ' . $rombel['rombel_name'],
-            'rombel'      => $rombel,
+            'title'       => 'Input Kitabah - Kelompok ' . $kelompok['nama_kelompok'],
+            'kelompok'    => $kelompok,
             'bulan'       => sprintf('%02d', $bulan),
             'tahun'       => $tahun,
             'pekan'       => $pekan,
@@ -299,7 +303,8 @@ class PenilaianQuranController extends BaseController
         $db = \Config\Database::connect();
         $post = $this->request->getPost();
         
-        $rombel_id = $post['rombel_id'];
+        // Gunakan group_id
+        $group_id  = $post['group_id'];
         $bulan     = sprintf('%02d', $post['bulan']);
         $tahun     = $post['tahun'];
         $pekan     = $post['pekan'];
@@ -320,10 +325,10 @@ class PenilaianQuranController extends BaseController
                 // Update khusus kolom Kitabah saja
                 $db->table('quran_penilaian')->where('id', $cek['id'])->update($updateData);
             } else {
-                // Insert baru jika belum ada
+                // Insert baru jika belum ada, simpan group_id
                 $insertData = array_merge($updateData, [
                     'student_id' => $student_id,
-                    'rombel_id'  => $rombel_id,
+                    'group_id'   => $group_id,
                     'bulan'      => $bulan,
                     'tahun'      => $tahun,
                     'pekan'      => $pekan
@@ -332,29 +337,32 @@ class PenilaianQuranController extends BaseController
             }
         }
 
-        return redirect()->to("guru/quran/kitabah/{$rombel_id}?bulan={$bulan}&tahun={$tahun}&pekan={$pekan}")
+        return redirect()->to("guru/quran/kitabah/{$group_id}?bulan={$bulan}&tahun={$tahun}&pekan={$pekan}")
                          ->with('success', "Data Kitabah Pekan ke-{$pekan} berhasil disimpan!");
     }
 
     // =======================================================
     // HALAMAN REKAP BULANAN
     // =======================================================
-    public function rekap($rombel_id)
+    public function rekap($group_id)
     {
         if (!auth()->loggedIn()) return redirect()->to('login');
 
         $db = \Config\Database::connect();
-        $rombel = $db->table('class_rombel')->where('id', $rombel_id)->get()->getRowArray();
-        if (!$rombel) return redirect()->to('guru/quran')->with('error', 'Rombel tidak ditemukan.');
+        
+        // Ambil data kelompok
+        $kelompok = $db->table('quran_groups')->where('id', $group_id)->get()->getRowArray();
+        if (!$kelompok) return redirect()->to('guru/quran')->with('error', 'Kelompok tidak ditemukan.');
 
-        // Filter default adalah bulan dan tahun saat ini (tanpa filter pekan karena ini rekap bulanan)
+        // Filter default adalah bulan dan tahun saat ini
         $bulan = $this->request->getGet('bulan') ?? date('m');
         $tahun = $this->request->getGet('tahun') ?? date('Y');
 
-        $daftarSiswa = $db->table('class_rombel_students crs')
+        // Ambil daftar siswa berdasarkan keanggotaan kelompok
+        $daftarSiswa = $db->table('quran_group_students qgs')
                           ->select('u.id as student_id, u.username')
-                          ->join('users u', 'u.id = crs.student_id')
-                          ->where('crs.rombel_id', $rombel_id)
+                          ->join('users u', 'u.id = qgs.student_id')
+                          ->where('qgs.group_id', $group_id)
                           ->orderBy('u.username', 'ASC')
                           ->get()->getResultArray();
 
@@ -384,6 +392,9 @@ class PenilaianQuranController extends BaseController
         // Proses pengelompokan data
         foreach ($records as $row) {
             $sId = $row['student_id'];
+            
+            // Hindari error offset jika ada sisa data lama yang muridnya sudah keluar kelompok
+            if (!isset($rawData[$sId])) continue;
             
             // Kategori Tahsin
             if (!empty(trim($row['tahsin_talqin'])))   $rawData[$sId]['t_talqin'][] = trim($row['tahsin_talqin']);
@@ -415,7 +426,6 @@ class PenilaianQuranController extends BaseController
                 return number_format(array_sum($arr) / count($arr), 1, ',', '');
             };
 
-            // Menggunakan array_unique agar tidak ada duplikasi penulisan surat yang sama berulang-ulang
             $rekapFinal[$sId] = [
                 'tahsin_talqin'   => implode(', ', array_unique($d['t_talqin'])),
                 'tahsin_riyadhah' => implode(', ', array_unique($d['t_riyadhah'])),
@@ -434,8 +444,8 @@ class PenilaianQuranController extends BaseController
         }
 
         $data = [
-            'title'       => 'Rekap Bulanan Al-Qur\'an - Kelas ' . $rombel['rombel_name'],
-            'rombel'      => $rombel,
+            'title'       => 'Rekap Bulanan Al-Qur\'an - Kelompok ' . $kelompok['nama_kelompok'],
+            'kelompok'    => $kelompok,
             'bulan'       => sprintf('%02d', $bulan),
             'tahun'       => $tahun,
             'daftarSiswa' => $daftarSiswa,
@@ -443,6 +453,118 @@ class PenilaianQuranController extends BaseController
         ];
 
         return view('guru/quran/rekap', $data);
+    }
+
+    // =======================================================
+    // HALAMAN JURNAL MENGAJAR
+    // =======================================================
+    public function jurnal($group_id)
+    {
+        if (!auth()->loggedIn()) return redirect()->to('login');
+
+        $db = \Config\Database::connect();
+        
+        $kelompok = $db->table('quran_groups')->where('id', $group_id)->get()->getRowArray();
+        if (!$kelompok) return redirect()->to('guru/quran')->with('error', 'Kelompok tidak ditemukan.');
+
+        $bulan = $this->request->getGet('bulan') ?? date('m');
+        $tahun = $this->request->getGet('tahun') ?? date('Y');
+
+        // Ambil daftar anggota kelompok untuk dropdown ketidakhadiran
+        $daftarSiswa = $db->table('quran_group_students qgs')
+                          ->select('u.username')
+                          ->join('users u', 'u.id = qgs.student_id')
+                          ->where('qgs.group_id', $group_id)
+                          ->orderBy('u.username', 'ASC')
+                          ->get()->getResultArray();
+
+        // Mengambil data jurnal berdasarkan kelompok
+        $jurnalList = $db->table('quran_journals')
+                         ->where('group_id', $group_id)
+                         ->where('MONTH(tanggal)', $bulan)
+                         ->where('YEAR(tanggal)', $tahun)
+                         ->orderBy('tanggal', 'ASC')
+                         ->get()->getResultArray();
+
+        $data = [
+            'title'       => 'Jurnal Mengajar - Kelompok ' . $kelompok['nama_kelompok'],
+            'kelompok'    => $kelompok,
+            'bulan'       => sprintf('%02d', $bulan),
+            'tahun'       => $tahun,
+            'jurnalList'  => $jurnalList,
+            'daftarSiswa' => $daftarSiswa // <-- Variabel baru untuk View
+        ];
+
+        return view('guru/quran/jurnal', $data);
+    }
+
+    // =======================================================
+    // PROSES SIMPAN / UPDATE JURNAL (VIA MODAL)
+    // =======================================================
+    public function saveJurnal()
+    {
+        if (!auth()->loggedIn()) return redirect()->to('login');
+
+        $db = \Config\Database::connect();
+        $post = $this->request->getPost();
+
+        $group_id = $post['group_id'];
+        $tanggal  = $post['tanggal'];
+        
+        $data = [
+            'group_id'          => $group_id,
+            'tanggal'           => $tanggal,
+            'kegiatan'          => $post['kegiatan'] ?? '',
+            'kendala'           => $post['kendala'] ?? '',
+            'tindak_lanjut'     => $post['tindak_lanjut'] ?? '',
+            'murid_tidak_hadir' => $post['murid_tidak_hadir'] ?? '' // Langsung simpan string dari textarea
+        ];
+
+        $existing = $db->table('quran_journals')
+                       ->where(['group_id' => $group_id, 'tanggal' => $tanggal])
+                       ->get()->getRowArray();
+
+        if ($existing) {
+            $db->table('quran_journals')->where('id', $existing['id'])->update($data);
+            $msg = "Jurnal tanggal " . date('d/m/Y', strtotime($tanggal)) . " berhasil diperbarui.";
+        } else {
+            $db->table('quran_journals')->insert($data);
+            $msg = "Jurnal tanggal " . date('d/m/Y', strtotime($tanggal)) . " berhasil ditambahkan.";
+        }
+
+        $bulan = date('m', strtotime($tanggal));
+        $tahun = date('Y', strtotime($tanggal));
+
+        return redirect()->to("guru/quran/jurnal/{$group_id}?bulan={$bulan}&tahun={$tahun}")
+                         ->with('success', $msg);
+    }
+
+    // =======================================================
+    // PROSES HAPUS JURNAL
+    // =======================================================
+    public function deleteJurnal($id)
+    {
+        if (!auth()->loggedIn()) return redirect()->to('login');
+
+        $db = \Config\Database::connect();
+        
+        // Cari data jurnal berdasarkan ID
+        $jurnal = $db->table('quran_journals')->where('id', $id)->get()->getRowArray();
+        
+        if (!$jurnal) {
+            return redirect()->back()->with('error', 'Data jurnal tidak ditemukan.');
+        }
+
+        $group_id = $jurnal['group_id'];
+        $bulan    = date('m', strtotime($jurnal['tanggal']));
+        $tahun    = date('Y', strtotime($jurnal['tanggal']));
+        $tanggal  = date('d/m/Y', strtotime($jurnal['tanggal']));
+
+        // Eksekusi hapus
+        $db->table('quran_journals')->where('id', $id)->delete();
+
+        return redirect()->to("guru/quran/jurnal/{$group_id}?bulan={$bulan}&tahun={$tahun}")
+                         ->with('success', "Jurnal tanggal {$tanggal} berhasil dihapus.");
     }
 
 }

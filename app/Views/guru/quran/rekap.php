@@ -33,7 +33,7 @@
         <!-- FILTER BULAN & TAHUN -->
         <div class="card shadow-sm border-0 mb-3">
             <div class="card-body py-3">
-                <form action="<?= base_url('guru/quran/rekap/'.$rombel['id']) ?>" method="GET" class="d-flex align-items-center">
+                <form action="<?= base_url('guru/quran/rekap/'.$kelompok['id']) ?>" method="GET" class="d-flex align-items-center">
                     <label class="font-weight-bold mr-2 mb-0">Bulan:</label>
                     <select name="bulan" class="form-control form-control-sm mr-3" style="width: 130px;">
                         <?php 
@@ -115,7 +115,7 @@
                         <?php endforeach; ?>
                         
                         <?php if(empty($daftarSiswa)): ?>
-                            <tr><td colspan="13" class="py-4 text-muted">Belum ada data siswa di kelas ini.</td></tr>
+                            <tr><td colspan="13" class="py-4 text-muted">Belum ada data siswa di kelompok ini.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

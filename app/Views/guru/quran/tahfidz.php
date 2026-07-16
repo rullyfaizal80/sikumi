@@ -28,15 +28,18 @@
         </div>
 
         <?php if(session()->getFlashdata('success')): ?>
-            <div class="alert alert-success shadow-sm">
+            <div class="alert alert-success shadow-sm alert-dismissible fade show">
                 <i class="fas fa-check-circle mr-1"></i> <?= session()->getFlashdata('success') ?>
+                <button type="button" class="close" onclick="this.parentElement.remove()" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
         <?php endif; ?>
 
         <!-- FILTER BULAN, TAHUN & PEKAN -->
         <div class="card shadow-sm border-0 mb-3">
             <div class="card-body py-3">
-                <form action="<?= base_url('guru/quran/tahfidz/'.$rombel['id']) ?>" method="GET" class="d-flex align-items-center">
+                <form action="<?= base_url('guru/quran/tahfidz/'.$kelompok['id']) ?>" method="GET" class="d-flex align-items-center">
                     
                     <label class="font-weight-bold mr-2 mb-0">Bulan:</label>
                     <select name="bulan" class="form-control form-control-sm mr-3" style="width: 130px;">
@@ -71,7 +74,8 @@
 
         <!-- FORM INPUT NILAI TAHFIDZ -->
         <form action="<?= base_url('guru/quran/tahfidz/save') ?>" method="POST">
-            <input type="hidden" name="rombel_id" value="<?= $rombel['id'] ?>">
+            <!-- Ubah hidden input menjadi group_id -->
+            <input type="hidden" name="group_id" value="<?= $kelompok['id'] ?>">
             <input type="hidden" name="bulan" value="<?= $bulan ?>">
             <input type="hidden" name="tahun" value="<?= $tahun ?>">
             <input type="hidden" name="pekan" value="<?= $pekan ?>">

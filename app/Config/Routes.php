@@ -270,6 +270,9 @@ $routes->group('guru/quran', static function($routes) {
     $routes->get('kitabah/(:num)', 'PenilaianQuranController::kitabah/$1');
     $routes->post('kitabah/save', 'PenilaianQuranController::saveKitabah');
     $routes->get('rekap/(:num)', 'PenilaianQuranController::rekap/$1');
+    $routes->get('jurnal/(:num)', 'PenilaianQuranController::jurnal/$1');
+    $routes->post('jurnal/save', 'PenilaianQuranController::saveJurnal');
+    $routes->get('jurnal/delete/(:num)', 'PenilaianQuranController::deleteJurnal/$1');
 });
 
 $routes->group('admin/spiritual', static function($routes) {

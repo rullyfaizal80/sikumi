@@ -28,15 +28,19 @@
         </div>
 
         <?php if(session()->getFlashdata('success')): ?>
-            <div class="alert alert-success shadow-sm">
+            <div class="alert alert-success shadow-sm alert-dismissible fade show">
                 <i class="fas fa-check-circle mr-1"></i> <?= session()->getFlashdata('success') ?>
+                <button type="button" class="close" onclick="this.parentElement.remove()" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
         <?php endif; ?>
 
         <!-- FILTER BULAN, TAHUN & PEKAN -->
         <div class="card shadow-sm border-0 mb-3">
             <div class="card-body py-3">
-                <form action="<?= base_url('guru/quran/tahsin/'.$rombel['id']) ?>" method="GET" class="d-flex align-items-center">
+                <!-- Direvisi menggunakan ID Kelompok -->
+                <form action="<?= base_url('guru/quran/tahsin/'.$kelompok['id']) ?>" method="GET" class="d-flex align-items-center">
                     
                     <label class="font-weight-bold mr-2 mb-0">Bulan:</label>
                     <select name="bulan" class="form-control form-control-sm mr-3" style="width: 130px;">
@@ -71,7 +75,8 @@
 
         <!-- FORM INPUT NILAI -->
         <form action="<?= base_url('guru/quran/tahsin/save') ?>" method="POST">
-            <input type="hidden" name="rombel_id" value="<?= $rombel['id'] ?>">
+            <!-- Diseragamkan menggunakan parameter nama group_id -->
+            <input type="hidden" name="group_id" value="<?= $kelompok['id'] ?>">
             <input type="hidden" name="bulan" value="<?= $bulan ?>">
             <input type="hidden" name="tahun" value="<?= $tahun ?>">
             <input type="hidden" name="pekan" value="<?= $pekan ?>">
@@ -122,8 +127,8 @@
                                     <input type="text" name="data[<?= $sId ?>][riyadhah]" class="form-control form-control-sm input-riyadhah" value="<?= esc($vRiyadhah) ?>" placeholder="Contoh: Hal 15">
                                 </td>
                                <td>
-    <input type="text" name="data[<?= $sId ?>][nilai]" class="form-control form-control-sm font-weight-bold text-center" value="<?= esc($vNilai) ?>" oninput="this.value = this.value.replace(/[^0-9,]/g, '');">
-</td>
+                                    <input type="text" name="data[<?= $sId ?>][nilai]" class="form-control form-control-sm font-weight-bold text-center" value="<?= esc($vNilai) ?>" oninput="this.value = this.value.replace(/[^0-9,]/g, '');">
+                               </td>
                                 <td>
                                     <input type="text" name="data[<?= $sId ?>][catatan]" class="form-control form-control-sm" value="<?= esc($vCatatan) ?>">
                                 </td>

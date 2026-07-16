@@ -26,10 +26,24 @@
         </div>
 
         <?php if(session()->getFlashdata('success')): ?>
-            <div class="alert alert-success shadow-sm">
-                <i class="fas fa-check-circle mr-1"></i> <?= session()->getFlashdata('success') ?>
-            </div>
-        <?php endif; ?>
+    <div class="alert alert-success shadow-sm alert-dismissible fade show">
+        <i class="fas fa-check-circle mr-1"></i> <?= session()->getFlashdata('success') ?>
+        <!-- Ditambahkan onclick untuk menutup alert secara paksa -->
+        <button type="button" class="close" onclick="this.parentElement.remove()" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+<?php endif; ?>
+
+<?php if(session()->getFlashdata('error')): ?>
+    <div class="alert alert-danger shadow-sm alert-dismissible fade show">
+        <i class="fas fa-exclamation-triangle mr-1"></i> <?= session()->getFlashdata('error') ?>
+        <!-- Ditambahkan onclick untuk menutup alert secara paksa -->
+        <button type="button" class="close" onclick="this.parentElement.remove()" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+<?php endif; ?>
 
         <div class="card shadow-sm border-0">
             <div class="card-body p-0">
@@ -59,10 +73,12 @@
                             <td class="text-left align-middle"><?= esc($k['pembimbing'] ?: 'Belum diset') ?></td>
                             <td class="align-middle font-weight-bold"><?= $k['jumlah_siswa'] ?> Siswa</td>
                            <td class="align-middle">
-    <div class="d-flex align-items-center gap-1">
-        <a href="<?= base_url('guru/quran_kelompok/show/'.$k['id']) ?>" class="btn btn-info btn-sm" title="Lihat Detail"><i class="fas fa-eye"></i></a>
-        <a href="<?= base_url('guru/quran_kelompok/edit/'.$k['id']) ?>" class="btn btn-warning btn-sm text-white" title="Edit Kelompok"><i class="fas fa-edit"></i></a>
-        <a href="<?= base_url('guru/quran_kelompok/delete/'.$k['id']) ?>" class="btn btn-danger btn-sm" title="Hapus Kelompok" onclick="return confirm('Yakin ingin menghapus kelompok ini? Data anggota siswa di dalamnya juga akan ikut terhapus dari kelompok ini.')"><i class="fas fa-trash"></i></a>
+    <div class="d-flex align-items-center justify-content-center">
+        <a href="<?= base_url('guru/quran_kelompok/show/'.$k['id']) ?>" class="btn btn-info btn-sm mr-1" title="Lihat Detail"><i class="fas fa-eye"></i></a>
+        <a href="<?= base_url('guru/quran_kelompok/edit/'.$k['id']) ?>" class="btn btn-warning btn-sm text-white mr-1" title="Edit Kelompok"><i class="fas fa-edit"></i></a>
+        
+        <!-- REVISI PADA TOMBOL INI (Mengubah teks confirm & mengganti kelas gap menjadi mr-1) -->
+        <a href="<?= base_url('guru/quran_kelompok/delete/'.$k['id']) ?>" class="btn btn-danger btn-sm" title="Hapus Kelompok" onclick="return confirm('Yakin ingin menghapus kelompok ini? Kelompok hanya bisa dihapus jika sudah tidak memiliki anggota siswa.')"><i class="fas fa-trash"></i></a>
     </div>
 </td>
 
