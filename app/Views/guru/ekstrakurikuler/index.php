@@ -18,7 +18,7 @@
             </div>
             <div>
                 <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm font-weight-bold shadow-sm">
-                    <i class="fas fa-home mr-1"></i> Dashboard Utama
+                    <i class="fas fa-home mr-1"></i> Dashboard
                 </a>
             </div>
         </div>
@@ -109,7 +109,7 @@
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
                 <h5 class="mb-0" style="font-weight: 600; color: #343a40;">
-                    <i class="fas fa-users mr-2 text-success"></i> Kelompok Eskul / Al-Quran
+                    <i class="fas fa-users mr-2 text-success"></i> Kelompok Ekstrakurikuler
                 </h5>
                 <a href="<?= base_url('guru/ekstrakurikuler/kelompok/create') ?>" class="btn btn-success btn-sm font-weight-bold shadow-sm">
                     <i class="fas fa-plus mr-1"></i> Buat Kelompok Baru
@@ -146,16 +146,19 @@
                                 <td class="align-middle font-weight-bold"><?= $klp['jumlah_siswa'] ?? 0 ?> Siswa</td>
                                 <td class="align-middle">
                                     <div class="d-flex align-items-center justify-content-center">
-                                        <!-- Tombol Nilai -->
-                                        <a href="<?= base_url('guru/ekstrakurikuler/kelompok/input/'.$klp['id']) ?>" class="btn btn-success btn-sm mr-1 font-weight-bold" title="Input Nilai"><i class="fas fa-edit mr-1"></i> Nilai</a>
-                                        
-                                        <!-- Tombol Manajemen -->
-                                        <div class="border-left pl-2 ml-1 d-flex">
-                                            <a href="<?= base_url('guru/ekstrakurikuler/kelompok/show/'.$klp['id']) ?>" class="btn btn-info btn-sm mr-1 text-white" title="Lihat Anggota"><i class="fas fa-eye"></i></a>
-                                            <a href="<?= base_url('guru/ekstrakurikuler/kelompok/edit/'.$klp['id']) ?>" class="btn btn-warning btn-sm mr-1 text-dark" title="Edit Kelompok"><i class="fas fa-cog"></i></a>
-                                            <a href="<?= base_url('guru/ekstrakurikuler/kelompok/delete/'.$klp['id']) ?>" class="btn btn-danger btn-sm" title="Hapus Kelompok" onclick="return confirm('Yakin ingin menghapus kelompok ini? Kelompok hanya bisa dihapus jika sudah tidak memiliki anggota siswa.')"><i class="fas fa-trash"></i></a>
-                                        </div>
-                                    </div>
+    <!-- Tombol Nilai -->
+    <a href="<?= base_url('guru/ekstrakurikuler/kelompok/input/'.$klp['id']) ?>" class="btn btn-success btn-sm mr-1 font-weight-bold" title="Input Nilai"><i class="fas fa-edit mr-1"></i> Nilai</a>
+    
+    <!-- Tombol Manajemen -->
+    <div class="border-left pl-2 ml-1 d-flex">
+        <a href="<?= base_url('guru/ekstrakurikuler/kelompok/show/'.$klp['id']) ?>" class="btn btn-info btn-sm mr-1 text-white" title="Lihat Anggota"><i class="fas fa-eye"></i></a>
+        <a href="<?= base_url('guru/ekstrakurikuler/kelompok/edit/'.$klp['id']) ?>" class="btn btn-warning btn-sm mr-1 text-dark" title="Edit Kelompok"><i class="fas fa-edit"></i></a>
+        <a href="<?= base_url('guru/ekstrakurikuler/kelompok/delete/'.$klp['id']) ?>" class="btn btn-danger btn-sm mr-1" title="Hapus Kelompok" onclick="return confirm('Yakin ingin menghapus kelompok ini? Kelompok hanya bisa dihapus jika sudah tidak memiliki anggota siswa.')"><i class="fas fa-trash"></i></a>
+        
+        <!-- Tombol Rekap Nilai Baru di Ujung -->
+        <a href="<?= base_url('guru/ekstrakurikuler/kelompok/rekap/'.$klp['id']) ?>" class="btn btn-primary btn-sm" title="Rekap Nilai"><i class="fas fa-file-alt"></i></a>
+    </div>
+</div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>

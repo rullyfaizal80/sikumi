@@ -310,14 +310,15 @@ $routes->get('guru/jurnal-karakter', 'JurnalKarakterController::index');
 $routes->post('guru/jurnal-karakter/save', 'JurnalKarakterController::saveJurnal');
 $routes->get('guru/jurnal-karakter/delete/(:segment)/(:num)', 'JurnalKarakterController::deleteJurnal/$1/$2');
 
-// ==========================================
-// MODUL EKSTRAKURIKULER
-// ==========================================
-// Halaman Index (Dashboard Filter)
-$routes->get('guru/ekstrakurikuler', 'EkstrakurikulerController::index');
-// Halaman Input Nilai (Target form dari Index)
-$routes->get('guru/ekstrakurikuler/pramuka', 'EkstrakurikulerController::pramuka');
-$routes->get('guru/ekstrakurikuler/peminatan', 'EkstrakurikulerController::peminatan');
-$routes->get('guru/ekstrakurikuler/quran', 'EkstrakurikulerController::quran');
-$routes->get('guru/ekstrakurikuler/kelompok/create', 'EkstrakurikulerController::kelompokCreate');
-$routes->post('guru/ekstrakurikuler/kelompok/store', 'EkstrakurikulerController::kelompokStore');
+$routes->group('guru/ekstrakurikuler', static function($routes) {
+    // Menampilkan daftar eskul
+    $routes->get('/', 'EkstrakurikulerController::index');
+    // Rute Manajemen Kelompok Eskul
+    $routes->get('kelompok/create', 'EkstrakurikulerController::kelompokCreate');
+    $routes->post('kelompok/store', 'EkstrakurikulerController::kelompokStore');
+    $routes->get('kelompok/show/(:num)', 'EkstrakurikulerController::kelompokShow/$1');
+    $routes->get('kelompok/edit/(:num)', 'EkstrakurikulerController::kelompokEdit/$1');
+    $routes->post('kelompok/update/(:num)', 'EkstrakurikulerController::kelompokUpdate/$1');
+    $routes->get('kelompok/delete/(:num)', 'EkstrakurikulerController::kelompokDelete/$1');
+    $routes->get('kelompok/rekap/(:num)', 'EkstrakurikulerController::kelompokRekap/$1');
+});
