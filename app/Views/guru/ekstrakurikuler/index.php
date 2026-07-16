@@ -146,19 +146,16 @@
                                 <td class="align-middle font-weight-bold"><?= $klp['jumlah_siswa'] ?? 0 ?> Siswa</td>
                                 <td class="align-middle">
                                     <div class="d-flex align-items-center justify-content-center">
-    <!-- Tombol Nilai -->
-    <a href="<?= base_url('guru/ekstrakurikuler/kelompok/input/'.$klp['id']) ?>" class="btn btn-success btn-sm mr-1 font-weight-bold" title="Input Nilai"><i class="fas fa-edit mr-1"></i> Nilai</a>
-    
-    <!-- Tombol Manajemen -->
-    <div class="border-left pl-2 ml-1 d-flex">
-        <a href="<?= base_url('guru/ekstrakurikuler/kelompok/show/'.$klp['id']) ?>" class="btn btn-info btn-sm mr-1 text-white" title="Lihat Anggota"><i class="fas fa-eye"></i></a>
-        <a href="<?= base_url('guru/ekstrakurikuler/kelompok/edit/'.$klp['id']) ?>" class="btn btn-warning btn-sm mr-1 text-dark" title="Edit Kelompok"><i class="fas fa-edit"></i></a>
-        <a href="<?= base_url('guru/ekstrakurikuler/kelompok/delete/'.$klp['id']) ?>" class="btn btn-danger btn-sm mr-1" title="Hapus Kelompok" onclick="return confirm('Yakin ingin menghapus kelompok ini? Kelompok hanya bisa dihapus jika sudah tidak memiliki anggota siswa.')"><i class="fas fa-trash"></i></a>
-        
-        <!-- Tombol Rekap Nilai Baru di Ujung -->
-        <a href="<?= base_url('guru/ekstrakurikuler/kelompok/rekap/'.$klp['id']) ?>" class="btn btn-primary btn-sm" title="Rekap Nilai"><i class="fas fa-file-alt"></i></a>
-    </div>
-</div>
+                                        <!-- Tombol Nilai -->
+                                        <a href="<?= base_url('guru/ekstrakurikuler/kelompok/input/'.$klp['id']) ?>" class="btn btn-success btn-sm mr-1 font-weight-bold" title="Input Nilai"><i class="fas fa-edit mr-1"></i> Input</a>
+                                        
+                                        <!-- Tombol Manajemen -->
+                                        <div class="border-left pl-2 ml-1 d-flex">
+                                            <a href="<?= base_url('guru/ekstrakurikuler/kelompok/show/'.$klp['id']) ?>" class="btn btn-info btn-sm mr-1 text-white" title="Lihat Anggota"><i class="fas fa-eye"></i></a>
+                                            <a href="<?= base_url('guru/ekstrakurikuler/kelompok/edit/'.$klp['id']) ?>" class="btn btn-warning btn-sm mr-1 text-dark" title="Edit Kelompok"><i class="fas fa-edit"></i></a>
+                                            <a href="<?= base_url('guru/ekstrakurikuler/kelompok/delete/'.$klp['id']) ?>" class="btn btn-danger btn-sm" title="Hapus Kelompok" onclick="return confirm('Yakin ingin menghapus kelompok ini? Kelompok hanya bisa dihapus jika sudah tidak memiliki anggota siswa.')"><i class="fas fa-trash"></i></a>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                             <?php endforeach; ?>

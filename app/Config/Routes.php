@@ -320,5 +320,7 @@ $routes->group('guru/ekstrakurikuler', static function($routes) {
     $routes->get('kelompok/edit/(:num)', 'EkstrakurikulerController::kelompokEdit/$1');
     $routes->post('kelompok/update/(:num)', 'EkstrakurikulerController::kelompokUpdate/$1');
     $routes->get('kelompok/delete/(:num)', 'EkstrakurikulerController::kelompokDelete/$1');
-    $routes->get('kelompok/rekap/(:num)', 'EkstrakurikulerController::kelompokRekap/$1');
+    // Rute untuk input nilai eskul
+$routes->get('kelompok/input/(:num)', 'EkstrakurikulerController::kelompokInput/$1');
+$routes->post('kelompok/save_nilai/(:num)', 'EkstrakurikulerController::kelompokSaveNilai/$1');
 });

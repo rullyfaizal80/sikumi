@@ -322,4 +322,160 @@ class EkstrakurikulerController extends BaseController
 
         return redirect()->to(base_url('guru/ekstrakurikuler'))->with('success', 'Kelompok eskul berhasil dihapus!');
     }
+
+    // =========================================================================
+    // HALAMAN INPUT NILAI ESKUL (1 SEMESTER MATRIKS)
+    // =========================================================================
+    public function kelompokInput($id)
+    {
+        if (!auth()->loggedIn()) return redirect()->to('login');
+        $db = \Config\Database::connect();
+
+        // 1. Ambil data kelompok
+        $kelompok = $db->table('eskul_groups')->where('id', $id)->get()->getRowArray();
+        if (!$kelompok) return redirect()->to(base_url('guru/ekstrakurikuler'))->with('error', 'Kelompok tidak ditemukan.');
+
+        // 2. Ambil anggota siswa
+        $anggota = $db->table('eskul_group_students egs')
+            ->select('u.id as student_id, u.username as nama_siswa')
+            ->join('users u', 'u.id = egs.student_id')
+            ->where('egs.group_id', $id)
+            ->orderBy('u.username', 'ASC')
+            ->get()->getResultArray();
+
+        // 3. Konfigurasi Tahun Ajaran & Semester (Otomatis dari Sistem)
+        $bulan_sekarang = (int) date('m');
+        $tahun_sekarang = (int) date('Y');
+
+        if ($bulan_sekarang >= 7) {
+            // Juli s/d Desember (Ganjil)
+            $tahun_ajaran = $tahun_sekarang . '/' . ($tahun_sekarang + 1);
+            $semester     = 'Ganjil';
+        } else {
+            // Januari s/d Juni (Genap)
+            $tahun_ajaran = ($tahun_sekarang - 1) . '/' . $tahun_sekarang;
+            $semester     = 'Genap';
+        }
+
+        // Tentukan list bulan berdasarkan semester yang aktif
+        if ($semester == 'Ganjil') {
+            $list_bulan = [
+                ['angka' => 7,  'nama' => 'Juli'],
+                ['angka' => 8,  'nama' => 'Agustus'],
+                ['angka' => 9,  'nama' => 'September'],
+                ['angka' => 10, 'nama' => 'Oktober'],
+                ['angka' => 11, 'nama' => 'November'],
+                ['angka' => 12, 'nama' => 'Desember']
+            ];
+            $tahun_kalender = substr($tahun_ajaran, 0, 4); // Ambil tahun awal
+        } else {
+            $list_bulan = [
+                ['angka' => 1,  'nama' => 'Januari'],
+                ['angka' => 2,  'nama' => 'Februari'],
+                ['angka' => 3,  'nama' => 'Maret'],
+                ['angka' => 4,  'nama' => 'April'],
+                ['angka' => 5,  'nama' => 'Mei'],
+                ['angka' => 6,  'nama' => 'Juni']
+            ];
+            $tahun_kalender = substr($tahun_ajaran, 5, 4); // Ambil tahun akhir
+        }
+
+        // 4. Logika Validasi Waktu (Kunci bulan yang belum datang)
+        $current_Ym = date('Y-m'); 
+        
+        foreach ($list_bulan as &$bln) {
+            $kolom_Ym = $tahun_kalender . '-' . str_pad($bln['angka'], 2, '0', STR_PAD_LEFT);
+            $bln['is_locked'] = ($kolom_Ym > $current_Ym);
+        }
+
+        // 5. Ambil nilai yang sudah ada di database
+        $gradesRaw = $db->table('eskul_grades')
+            ->where('group_id', $id)
+            ->where('tahun_ajaran', $tahun_ajaran)
+            ->where('semester', $semester)
+            ->get()->getResultArray();
+
+        // Susun nilai menjadi array asosiatif: $grades[student_id][bulan] = nilai
+        $grades = [];
+        foreach ($gradesRaw as $g) {
+            $grades[$g['student_id']][$g['bulan']] = $g['nilai'];
+        }
+
+        $data = [
+            'title'        => 'Input Nilai Eskul',
+            'kelompok'     => $kelompok,
+            'anggota'      => $anggota,
+            'list_bulan'   => $list_bulan,
+            'grades'       => $grades,
+            'tahun_ajaran' => $tahun_ajaran,
+            'semester'     => $semester
+        ];
+
+        return view('guru/ekstrakurikuler/kelompok_input', $data);
+    }
+
+    // =========================================================================
+    // PROSES SIMPAN NILAI ESKUL MATRIKS (REPLACE/UPDATE BATCH)
+    // =========================================================================
+    public function kelompokSaveNilai($id)
+    {
+        if (!auth()->loggedIn()) return redirect()->to('login');
+        
+        $db = \Config\Database::connect();
+        $post = $this->request->getPost();
+        
+        $tahun_ajaran = $post['tahun_ajaran'];
+        $semester     = $post['semester'];
+        $input_grades = $post['grades'] ?? []; // Format: grades[student_id][bulan] = nilai
+
+        if (empty($input_grades)) {
+            return redirect()->back()->with('error', 'Tidak ada data nilai yang dikirim.');
+        }
+
+        $dataToInsert = [];
+        foreach ($input_grades as $student_id => $bulans) {
+            foreach ($bulans as $bulan_angka => $nilai) {
+                
+                $nilai_clean = trim($nilai);
+                
+                // Pastikan nilai tidak kosong
+                if ($nilai_clean !== '') {
+                    
+                    // SOLUSI: Ubah koma (,) kembali menjadi titik (.) sebelum masuk ke DB
+                    $nilai_db = str_replace(',', '.', $nilai_clean);
+
+                    $dataToInsert[] = [
+                        'group_id'     => $id,
+                        'student_id'   => $student_id,
+                        'tahun_ajaran' => $tahun_ajaran,
+                        'semester'     => $semester,
+                        'bulan'        => $bulan_angka,
+                        'nilai'        => $nilai_db // Simpan dengan format titik desimal (misal: 95.5)
+                    ];
+                }
+            }
+        }
+
+        $db->transStart();
+
+        // Hapus nilai lama pada semester ini agar bisa diganti dengan data baru
+        $db->table('eskul_grades')
+           ->where('group_id', $id)
+           ->where('tahun_ajaran', $tahun_ajaran)
+           ->where('semester', $semester)
+           ->delete();
+
+        // Masukkan data baru jika ada
+        if (!empty($dataToInsert)) {
+            $db->table('eskul_grades')->insertBatch($dataToInsert);
+        }
+
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return redirect()->back()->with('error', 'Gagal menyimpan nilai.');
+        }
+
+        return redirect()->back()->with('success', 'Nilai eskul berhasil disimpan!');
+    }
 }
