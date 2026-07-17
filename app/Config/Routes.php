@@ -337,3 +337,7 @@ $routes->group('guru/peminatan', static function($routes) {
     $routes->get('input/(:num)', 'PeminatanController::input/$1');
     $routes->post('save_nilai/(:num)', 'PeminatanController::saveNilai/$1');
 });
+
+// Modul Penilaian Sumatif
+$routes->get('guru/nilai-sumatif', 'NilaiSumatifController::index');
+$routes->post('guru/nilai-sumatif/simpan', 'NilaiSumatifController::simpanNilai');
