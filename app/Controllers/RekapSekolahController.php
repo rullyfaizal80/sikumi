@@ -509,6 +509,148 @@ class RekapSekolahController extends BaseController
         }
 
         // =========================================================
+        // 3H. LOGIKA REKAP NILAI SUMATIF (Seluruh Sekolah & Filter BK)
+        // =========================================================
+        
+        // 1. Dapatkan ID Tahun Ajaran
+        $idTahunAjaran = $tahunAktifId ?? ($tahun_ajaran_id ?? 0);
+        if ($idTahunAjaran == 0 && isset($tahun) && $db->tableExists('academic_years')) {
+            $cekTahun = $db->table('academic_years')->where('academic_year', $tahun)->orWhere('id', $tahun)->get()->getRowArray();
+            if ($cekTahun) $idTahunAjaran = $cekTahun['id'];
+        }
+        if ($idTahunAjaran == 0 && $db->tableExists('academic_years')) {
+            $cekTahun = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+            if ($cekTahun) $idTahunAjaran = $cekTahun['id'];
+        }
+
+        $daftarMapel = [];
+        $mapelDitemukan = []; 
+
+        // 2. Setup Tabel Master
+        $tabelMapel = $db->tableExists('master_subjects') ? 'master_subjects' : ($db->tableExists('subjects') ? 'subjects' : 'mata_pelajaran');
+        $mapelFields = $db->getFieldNames($tabelMapel);
+        $kolomNamaMapel = in_array('subject_name', $mapelFields) ? 'subject_name' : (in_array('nama_mapel', $mapelFields) ? 'nama_mapel' : 'name');
+        $hasCombinedTable = $db->tableExists('schedule_combined_subjects');
+
+        // 3. Ambil Jadwal Aktif Sekolah
+        $jadwalAktif = $db->tableExists('schedule_versions') ? 
+                       $db->table('schedule_versions')->where('academic_year_id', $idTahunAjaran)->where('is_active', 1)->get()->getRowArray() : null;
+                       
+        if (!$jadwalAktif && $db->tableExists('schedule_versions')) {
+            $jadwalAktif = $db->table('schedule_versions')->where('is_active', 1)->get()->getRowArray();
+        }
+
+        // 4. Tarik Semua Mapel dari Jadwal Tingkat Sekolah (Bukan Per Guru)
+        if ($jadwalAktif) {
+            $jadwalAktifId = $jadwalAktif['id'];
+            $csFields = $db->getFieldNames('class_schedules');
+            $kolomSubjectId = in_array('subject_id', $csFields) ? 'subject_id' : 'mapel_id';
+            $kolomCombinedId = in_array('combined_subject_id', $csFields) ? 'combined_subject_id' : null;
+
+            // A. AMBIL MAPEL GABUNGAN TERLEBIH DAHULU
+            if ($kolomCombinedId && $hasCombinedTable) {
+                $mapelGabungan = $db->table('class_schedules cs')
+                             ->select("cs.{$kolomCombinedId} as combined_id, c.combined_name")  
+                             ->join("schedule_combined_subjects c", "c.id = cs.{$kolomCombinedId}", 'left') 
+                             ->where('cs.version_id', $jadwalAktifId)
+                             ->where("cs.{$kolomCombinedId} IS NOT NULL")
+                             ->where("cs.{$kolomCombinedId} !=", 0)
+                             ->groupBy("cs.{$kolomCombinedId}") // Ambil unik se-sekolah
+                             ->get()->getResultArray();
+                             
+                foreach ($mapelGabungan as $mg) {
+                    $namaMapel = trim($mg['combined_name'] ?? '');
+                    
+                    // Filter: Sembunyikan Bimbingan Konseling / BK
+                    if (empty($namaMapel) || stripos($namaMapel, 'Bimbingan Konseling') !== false || strtoupper($namaMapel) === 'BK') {
+                        continue;
+                    }
+
+                    $cId = 'C_' . $mg['combined_id'];
+                    if (!in_array($cId, $mapelDitemukan)) {
+                        $daftarMapel[] = ['id' => $cId, 'nama_mapel' => $namaMapel];
+                        $mapelDitemukan[] = $cId;
+                    }
+                }
+            }
+
+            // B. AMBIL MAPEL REGULER (YANG TIDAK DIGABUNG)
+            $queryReguler = $db->table('class_schedules cs')
+                          ->select("cs.{$kolomSubjectId} as id, s.{$kolomNamaMapel} as subject_name")
+                          ->join("{$tabelMapel} s", "s.id = cs.{$kolomSubjectId}", 'left')
+                          ->where('cs.version_id', $jadwalAktifId)
+                          ->where("cs.{$kolomSubjectId} IS NOT NULL")
+                          ->where("cs.{$kolomSubjectId} !=", 0);
+                          
+            // Filter sangat penting: Jangan ambil mapel asli jika record tersebut adalah jadwal mapel gabungan
+            if ($kolomCombinedId) {
+                $queryReguler->groupStart()
+                             ->where("cs.{$kolomCombinedId} IS NULL")
+                             ->orWhere("cs.{$kolomCombinedId}", 0)
+                             ->groupEnd();
+            }
+            
+            $mapelReguler = $queryReguler->groupBy("cs.{$kolomSubjectId}")->get()->getResultArray();
+                          
+            foreach ($mapelReguler as $m) {
+                $namaMapel = trim($m['subject_name'] ?? '');
+                
+                // Filter: Sembunyikan Bimbingan Konseling / BK
+                if (empty($namaMapel) || stripos($namaMapel, 'Bimbingan Konseling') !== false || strtoupper($namaMapel) === 'BK') {
+                    continue;
+                }
+
+                $mId = 'S_' . $m['id'];
+                if (!in_array($mId, $mapelDitemukan)) {
+                    $daftarMapel[] = ['id' => $mId, 'nama_mapel' => $namaMapel];
+                    $mapelDitemukan[] = $mId;
+                }
+            }
+        }
+
+        // Urutkan Mapel sesuai abjad A-Z agar tabel rapi
+        usort($daftarMapel, function($a, $b) {
+            return strcmp($a['nama_mapel'], $b['nama_mapel']);
+        });
+
+        // 5. Looping Hitung Rata-rata dari nilai_sumatif
+        $rekapSumatif = [];
+        $rataSumatifMapel = [];
+
+        foreach ($daftarRombel as $rombel) {
+            $rombel_id = $rombel['id'];
+            $rowNilai = ['rombel_name' => $rombel['rombel_name']];
+            
+            foreach ($daftarMapel as $mapel) {
+                $mapel_id = $mapel['id']; 
+                
+                $sumatifQuery = $db->table('nilai_sumatif')
+                                ->select('AVG(nilai_angka) as rata_nilai')
+                                ->where('rombel_id', $rombel_id)
+                                ->where('mapel_id', $mapel_id)
+                                ->where('academic_year_id', $idTahunAjaran);
+                                
+                if (!empty($bulan_array)) {
+                    $sumatifQuery->whereIn('bulan', $bulan_array);
+                }
+                
+                $sumatifData = $sumatifQuery->get()->getRowArray();
+                $nilaiAvg = round((float)($sumatifData['rata_nilai'] ?? 0), 2);
+                
+                $rowNilai['mapel_' . $mapel_id] = $nilaiAvg;
+                
+                if (!isset($rataSumatifMapel[$mapel_id])) {
+                    $rataSumatifMapel[$mapel_id] = ['total' => 0, 'count' => 0];
+                }
+                if ($nilaiAvg > 0) {
+                    $rataSumatifMapel[$mapel_id]['total'] += $nilaiAvg;
+                    $rataSumatifMapel[$mapel_id]['count']++;
+                }
+            }
+            $rekapSumatif[] = $rowNilai;
+        }
+
+        // =========================================================
         // 4. KIRIM SEMUA DATA KE VIEW
         // =========================================================
         $data = [
@@ -574,6 +716,11 @@ class RekapSekolahController extends BaseController
 
             // Variabel Eskul
             'rekapEskul'  => $rekapEskul,
+
+            // Variabel Nilai Sumatif
+            'daftarMapel'      => $daftarMapel,
+            'rekapSumatif'     => $rekapSumatif,
+            'rataSumatifMapel' => $rataSumatifMapel,
         ];
 
         return view('admin/rekap_sekolah/index', $data);

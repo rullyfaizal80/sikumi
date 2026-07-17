@@ -761,6 +761,63 @@
                 </table>
             </div>
         </div>
+        <!-- ============================================== -->
+        <!-- BAGIAN 9: REKAPITULASI NILAI SUMATIF           -->
+        <!-- ============================================== -->
+        <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-graduation-cap mr-2"></i> Laporan Rata-rata Nilai Sumatif (Per Kelas & Per Mapel)</h5>
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body p-0 table-responsive">
+                <table class="table-custom table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">Nama Kelas</th>
+                            <?php foreach ($daftarMapel as $mapel): ?>
+                                <th style="background-color: #d1ecf1; color: #333;"><?= esc($mapel['nama_mapel']) ?></th>
+                            <?php endforeach; ?>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                            if (!empty($rekapSumatif)):
+                            foreach ($rekapSumatif as $rs): 
+                        ?>
+                            <tr>
+                                <td class="col-kelas"><?= esc($rs['rombel_name']) ?></td>
+                                <?php foreach ($daftarMapel as $mapel): 
+                                    $nilai = $rs['mapel_' . $mapel['id']];
+                                ?>
+                                    <td class="font-weight-bold <?= $nilai > 0 ? 'text-primary' : 'text-muted' ?>" style="font-size: 15px;">
+                                        <?= $nilai > 0 ? number_format($nilai, 2, ',', '.') : '-' ?>
+                                    </td>
+                                <?php endforeach; ?>
+                            </tr>
+                        <?php 
+                            endforeach; 
+                            else:
+                        ?>
+                            <tr><td colspan="<?= count($daftarMapel) + 1 ?>" class="text-center py-4">Data nilai sumatif belum tersedia</td></tr>
+                        <?php endif; ?>
+
+                        <!-- Rata-rata Total per Mapel Tingkat Sekolah -->
+                        <?php if (!empty($rekapSumatif) && !empty($daftarMapel)): ?>
+                        <tr>
+                            <td class="col-rata py-3">Rata-rata Sekolah</td>
+                            <?php foreach ($daftarMapel as $mapel): 
+                                $mapel_id = $mapel['id'];
+                                $avgMapel = isset($rataSumatifMapel[$mapel_id]) && $rataSumatifMapel[$mapel_id]['count'] > 0 
+                                    ? ($rataSumatifMapel[$mapel_id]['total'] / $rataSumatifMapel[$mapel_id]['count']) 
+                                    : 0;
+                            ?>
+                                <td class="bg-tosca font-weight-bold" style="font-size: 16px;">
+                                    <?= $avgMapel > 0 ? number_format($avgMapel, 2, ',', '.') : '-' ?>
+                                </td>
+                            <?php endforeach; ?>
+                        </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
     </div>
 
