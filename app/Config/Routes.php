@@ -341,3 +341,6 @@ $routes->group('guru/peminatan', static function($routes) {
 // Modul Penilaian Sumatif
 $routes->get('guru/nilai-sumatif', 'NilaiSumatifController::index');
 $routes->post('guru/nilai-sumatif/simpan', 'NilaiSumatifController::simpanNilai');
+
+$routes->get('admin/laporan-siswa', 'LaporanSiswaController::index');
+$routes->get('admin/laporan-siswa/get-siswa-by-kelas', 'LaporanSiswaController::getSiswaByKelas');
