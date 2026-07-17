@@ -452,6 +452,63 @@ class RekapSekolahController extends BaseController
         $grand_total_sosial = $total_sekolah_disiplin + $total_sekolah_jujur + $total_sekolah_percaya_diri + $total_sekolah_santun + $total_sekolah_kerjasama + $total_sekolah_tj + $total_sekolah_adil;
         
         // =========================================================
+        // 3F. LOGIKA REKAP PEMINATAN & PRAMUKA (Per Kelas)
+        // =========================================================
+        $rekapPemPra = [];
+        foreach ($daftarRombel as $rombel) {
+            $rombel_id = $rombel['id'];
+
+            // Menggunakan AVG() untuk mencari rata-rata
+            $pemData = $db->table('peminatan_grades')
+                            ->select('AVG(nilai) as rata_peminatan')
+                            ->where('rombel_id', $rombel_id)
+                            ->whereIn('bulan', $bulan_array) 
+                            // ->where('tahun_ajaran', $tahun_ajaran) // Buka jika diperlukan
+                            ->get()->getRowArray();
+
+            $praData = $db->table('pramuka_grades')
+                            ->select('AVG(nilai) as rata_pramuka')
+                            ->where('rombel_id', $rombel_id)
+                            ->whereIn('bulan', $bulan_array)
+                            // ->where('tahun_ajaran', $tahun_ajaran) // Buka jika diperlukan
+                            ->get()->getRowArray();
+
+            $rekapPemPra[] = [
+                'rombel_name' => $rombel['rombel_name'],
+                // round() digunakan agar angka di belakang koma lebih rapi (maksimal 2 digit)
+                'peminatan'   => round((float)($pemData['rata_peminatan'] ?? 0), 2),
+                'pramuka'     => round((float)($praData['rata_pramuka'] ?? 0), 2)
+            ];
+        }
+
+        // =========================================================
+        // 3G. LOGIKA REKAP ESKUL (Per Kelompok)
+        // =========================================================
+        $rekapEskul = [];
+        
+        if ($db->tableExists('eskul_groups')) {
+            $daftarKelompok = $db->table('eskul_groups')->orderBy('nama_kelompok', 'ASC')->get()->getResultArray();
+            
+            foreach ($daftarKelompok as $kelompok) {
+                $kelompok_id = $kelompok['id'];
+
+                // Menggunakan AVG() untuk mencari rata-rata
+                $eskulData = $db->table('eskul_grades')
+                                ->select('AVG(nilai) as rata_nilai')
+                                ->where('group_id', $kelompok_id)
+                                ->whereIn('bulan', $bulan_array)
+                                // ->where('tahun_ajaran', $tahun_ajaran) // Buka jika diperlukan
+                                ->get()->getRowArray();
+
+                $rekapEskul[] = [
+                    'nama_kelompok' => $kelompok['nama_kelompok'],
+                    // Kehadiran dihilangkan, langsung ke nilai rata-rata
+                    'nilai'         => round((float)($eskulData['rata_nilai'] ?? 0), 2)
+                ];
+            }
+        }
+
+        // =========================================================
         // 4. KIRIM SEMUA DATA KE VIEW
         // =========================================================
         $data = [
@@ -511,10 +568,18 @@ class RekapSekolahController extends BaseController
             'total_sekolah_tanggung_jawab' => $total_sekolah_tj,
             'total_sekolah_adil'           => $total_sekolah_adil,
             'grand_total_sosial'           => $grand_total_sosial,
+
+            // Variabel Peminatan & Pramuka
+            'rekapPemPra' => $rekapPemPra,
+
+            // Variabel Eskul
+            'rekapEskul'  => $rekapEskul,
         ];
 
         return view('admin/rekap_sekolah/index', $data);
     }
+
+    
 
     // =========================================================
     // 5. METHOD CRUD HARI EFEKTIF (Dipindah dari AbsensiController)[cite: 3]

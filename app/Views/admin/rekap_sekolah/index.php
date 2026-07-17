@@ -694,6 +694,73 @@
                 </table>
             </div>
         </div>
+        <!-- ============================================== -->
+        <!-- BAGIAN 7: REKAPITULASI PEMINATAN & PRAMUKA     -->
+        <!-- ============================================== -->
+        <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-campground mr-2"></i> Laporan Peminatan & Pramuka (Per Kelas)</h5>
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body p-0 table-responsive">
+                <table class="table-custom table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">Nama Kelas</th>
+                            <th style="background-color: #d1ecf1; color: #333;">Rata-rata Peminatan</th>
+                            <th style="background-color: #cce5ff; color: #333;">Rata-rata Pramuka</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                            if (!empty($rekapPemPra)):
+                            foreach ($rekapPemPra as $rp): 
+                        ?>
+                            <tr>
+                                <td class="col-kelas"><?= esc($rp['rombel_name']) ?></td>
+                                <td class="font-weight-bold"><?= $rp['peminatan'] ?></td>
+                                <td class="font-weight-bold"><?= $rp['pramuka'] ?></td>
+                            </tr>
+                        <?php 
+                            endforeach; 
+                            else:
+                        ?>
+                            <tr><td colspan="3" class="text-center py-4">Data Peminatan & Pramuka belum tersedia</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- BAGIAN 8: REKAPITULASI EKSTRAKURIKULER (ESKUL) -->
+        <!-- ============================================== -->
+        <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-futbol mr-2"></i> Laporan Ekstrakurikuler (Per Kelompok)</h5>
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body p-0 table-responsive">
+                <table class="table-custom table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 200px;">Nama Kelompok Eskul</th>
+                            <th style="background-color: #e2e3e5; color: #333;">Rata-rata Nilai / Poin</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                            if (!empty($rekapEskul)):
+                            foreach ($rekapEskul as $re): 
+                        ?>
+                            <tr>
+                                <td class="col-kelas" style="background-color: #f8f9fa;"><?= esc($re['nama_kelompok']) ?></td>
+                                <td class="font-weight-bold"><?= $re['nilai'] ?></td>
+                            </tr>
+                        <?php 
+                            endforeach; 
+                            else:
+                        ?>
+                            <tr><td colspan="2" class="text-center py-4">Data Kelompok Eskul belum tersedia</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
     </div>
 
