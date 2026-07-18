@@ -355,3 +355,6 @@ $routes->post('catatansiswa/updateAnekdot', 'CatatanSiswaController::updateAnekd
 $routes->post('catatansiswa/hapusAnekdot', 'CatatanSiswaController::hapusAnekdot');
 $routes->post('catatansiswa/updatePrestasi', 'CatatanSiswaController::updatePrestasi');
 $routes->post('catatansiswa/hapusPrestasi', 'CatatanSiswaController::hapusPrestasi');
+
+$routes->get('siswa/rapor-berjalan', 'RaporBerjalanController::index'); 
+
