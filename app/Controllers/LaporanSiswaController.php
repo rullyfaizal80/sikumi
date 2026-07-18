@@ -315,6 +315,30 @@ class LaporanSiswaController extends BaseController
                     'nilai_angka' => $nilaiData ? $nilaiData['nilai_angka'] : null
                 ];
             }
+
+            // ... (Kode Nilai Sumatif sebelumnya di sini) ...
+
+            // =========================================================
+            // L. Ambil Catatan Anekdot & Prestasi Siswa[cite: 5]
+            // =========================================================
+            // Ambil Anekdot berdasarkan kolom 'tanggal'[cite: 5]
+            $anekdotSiswa = $db->table('catatan_anekdot')
+                               ->select('tanggal, kejadian')
+                               ->where('student_id', $student_id)
+                               ->where('MONTH(tanggal)', $bulan)
+                               ->where('YEAR(tanggal)', $tahun)
+                               ->orderBy('tanggal', 'ASC')
+                               ->get()->getResultArray();
+
+            // Ambil Prestasi berdasarkan kolom 'created_at' karena tidak ada field tanggal khusus[cite: 5]
+            $prestasiSiswa = $db->table('catatan_prestasi')
+                                ->select('nama_prestasi, keterangan, created_at')
+                                ->where('student_id', $student_id)
+                                ->where('MONTH(created_at)', $bulan)
+                                ->where('YEAR(created_at)', $tahun)
+                                ->orderBy('created_at', 'ASC')
+                                ->get()->getResultArray();
+
         $data = [
             'daftarRombel' => $daftarRombel,
             'rombel_id'    => $rombel_id,
@@ -333,6 +357,8 @@ class LaporanSiswaController extends BaseController
             'peminatanSiswa' => $peminatanSiswa, // <-- TAMBAHKAN INI
             'eskulSiswa'     => $eskulSiswa,     // <-- TAMBAHKAN INI
             'sumatifSiswa'   => $sumatifSiswa,   // <-- TAMBAHKAN INI
+            'anekdotSiswa'  => $anekdotSiswa,   // <-- TAMBAHKAN INI
+            'prestasiSiswa' => $prestasiSiswa,  // <-- TAMBAHKAN INI
         ];
 
         return view('admin/laporan_siswa/index', $data);

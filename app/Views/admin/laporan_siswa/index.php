@@ -489,6 +489,83 @@
             </div>
         </div>
         <?php endif; ?>
+
+        <!-- ... (TAMPILAN ROW NILAI SUMATIF & ESKUL SEBELUMNYA) ... -->
+
+        <?php if (!empty($dataSiswa)): ?>
+        <div class="row mt-4">
+            <!-- ========================================== -->
+            <!-- TAMPILAN CATATAN ANEKDOT                   -->
+            <!-- ========================================== -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm border-top-danger h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-clipboard text-danger mr-2"></i>Catatan Anekdot</h5>
+                    </div>
+                    <div class="card-body p-0 table-responsive">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th style="width: 100px;" class="pl-3">Tanggal</th>
+                                    <th>Kejadian</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($anekdotSiswa)): ?>
+                                    <?php foreach ($anekdotSiswa as $an): ?>
+                                        <tr>
+                                            <!-- Format tanggal menjadi dd/mm/yyyy -->
+                                            <td class="pl-3"><?= date('d/m/Y', strtotime($an['tanggal'])) ?></td>
+                                            <td><?= esc($an['kejadian']) ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="2" class="text-center py-3 text-muted small">Tidak ada catatan anekdot di bulan ini.</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- TAMPILAN CATATAN PRESTASI                  -->
+            <!-- ========================================== -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm border-top-info h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-trophy text-info mr-2"></i>Catatan Prestasi</h5>
+                    </div>
+                    <div class="card-body p-0 table-responsive">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="pl-3">Nama Prestasi</th>
+                                    <th>Keterangan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($prestasiSiswa)): ?>
+                                    <?php foreach ($prestasiSiswa as $pr): ?>
+                                        <tr>
+                                            <td class="pl-3 font-weight-bold text-primary"><?= esc($pr['nama_prestasi']) ?></td>
+                                            <td><?= esc($pr['keterangan']) ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <tr>
+                                        <td colspan="2" class="text-center py-3 text-muted small">Belum ada catatan prestasi di bulan ini.</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- SCRIPT AJAX UNTUK DROPDOWN DINAMIS -->
