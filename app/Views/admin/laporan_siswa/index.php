@@ -4,10 +4,19 @@
     <title>Laporan Per Siswa</title>
     <!-- Gunakan CSS yang sama dengan file sebelumnya -->
     <link rel="stylesheet" href="<?= base_url('assets/css/adminlte.min.css') ?>">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 </head>
 <body class="p-4 bg-light">
     <div class="container-fluid">
-        <h3 class="mb-4">Laporan Individu Siswa</h3>
+        <div class="d-flex justify-content-between align-items-center mb-4 w-100">
+    <!-- Judul di sisi kiri -->
+    <h3 class="mb-0">Laporan Individu Siswa</h3>
+    
+    <!-- Tombol terdorong ke sisi kanan -->
+    <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm font-weight-bold ml-auto">
+        <i class="fas fa-arrow-left mr-1"></i> Dashboard
+    </a>
+</div>
 
         <!-- PANEL FILTER -->
         <div class="card shadow-sm mb-4">

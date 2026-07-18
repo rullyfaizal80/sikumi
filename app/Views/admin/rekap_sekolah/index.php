@@ -819,6 +819,121 @@
             </div>
         </div>
 
+        <!-- ============================================== -->
+        <!-- BAGIAN 10: REKAPITULASI ANEKDOT                -->
+        <!-- ============================================== -->
+        <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-comments mr-2"></i> Laporan Catatan Anekdot (Akumulasi Insiden)</h5>
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body p-0 table-responsive">
+                <table class="table-custom table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">Nama Kelas</th>
+                            <th style="width: 150px; background-color: #d1ecf1; color: #333;">Total Catatan</th>
+                            <th style="min-width: 280px;">Rincian Keterangan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                            if (!empty($rekapAnekdot)):
+                            foreach ($rekapAnekdot as $ra): 
+                                // Penggabungan keterangan sama seperti logika kepatuhan
+                                $ketRawAnekdot = isset($ra['keterangan']) ? $ra['keterangan'] : '';
+                                $arrKetAnekdot = array_filter(array_map('trim', explode(',', $ketRawAnekdot)));
+                                $countKetAnekdot = array_count_values($arrKetAnekdot);
+                                
+                                $hasilKetAnekdot = [];
+                                foreach($countKetAnekdot as $teks => $jml) {
+                                    if ($jml > 1) {
+                                        $hasilKetAnekdot[] = $teks . " (<strong>" . $jml . "</strong>)";
+                                    } else {
+                                        $hasilKetAnekdot[] = $teks;
+                                    }
+                                }
+                                $teksAnekdot = !empty($hasilKetAnekdot) ? implode(', ', $hasilKetAnekdot) : '-';
+                        ?>
+                            <tr>
+                                <td class="col-kelas"><?= esc($ra['rombel_name']) ?></td>
+                                <td class="font-weight-bold text-info" style="font-size: 15px;"><?= $ra['total'] ?></td>
+                                <td class="text-left" style="font-size: 13px; line-height: 1.4;"><?= $teksAnekdot ?></td>
+                            </tr>
+                        <?php 
+                            endforeach; 
+                            else:
+                        ?>
+                            <tr><td colspan="3" class="text-center py-4">Data anekdot belum tersedia</td></tr>
+                        <?php endif; ?>
+
+                        <!-- Total Seluruh Sekolah -->
+                        <?php if (!empty($rekapAnekdot)): ?>
+                        <tr>
+                            <td class="col-rata py-3">Total Kasus / Catatan</td>
+                            <td class="bg-tosca font-weight-bold" style="font-size: 16px;"><?= $total_sekolah_anekdot ?? 0 ?></td>
+                            <td class="bg-tosca"></td>
+                        </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- BAGIAN 11: REKAPITULASI PRESTASI               -->
+        <!-- ============================================== -->
+        <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-trophy mr-2"></i> Laporan Prestasi Siswa (Akumulasi)</h5>
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body p-0 table-responsive">
+                <table class="table-custom table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 140px;">Nama Kelas</th>
+                            <th style="width: 150px; background-color: #fff3cd; color: #333;">Total Prestasi</th>
+                            <th style="min-width: 280px;">Rincian Prestasi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                            if (!empty($rekapPrestasi)):
+                            foreach ($rekapPrestasi as $rp): 
+                                $ketRawPrestasi = isset($rp['keterangan']) ? $rp['keterangan'] : '';
+                                $arrKetPrestasi = array_filter(array_map('trim', explode(',', $ketRawPrestasi)));
+                                $countKetPrestasi = array_count_values($arrKetPrestasi);
+                                
+                                $hasilKetPrestasi = [];
+                                foreach($countKetPrestasi as $teks => $jml) {
+                                    if ($jml > 1) {
+                                        $hasilKetPrestasi[] = $teks . " (<strong>" . $jml . "</strong>)";
+                                    } else {
+                                        $hasilKetPrestasi[] = $teks;
+                                    }
+                                }
+                                $teksPrestasi = !empty($hasilKetPrestasi) ? implode(', ', $hasilKetPrestasi) : '-';
+                        ?>
+                            <tr>
+                                <td class="col-kelas"><?= esc($rp['rombel_name']) ?></td>
+                                <td class="font-weight-bold text-warning" style="font-size: 15px;"><?= $rp['total'] ?></td>
+                                <td class="text-left" style="font-size: 13px; line-height: 1.4;"><?= $teksPrestasi ?></td>
+                            </tr>
+                        <?php 
+                            endforeach; 
+                            else:
+                        ?>
+                            <tr><td colspan="3" class="text-center py-4">Data prestasi belum tersedia</td></tr>
+                        <?php endif; ?>
+
+                        <!-- Total Seluruh Sekolah -->
+                        <?php if (!empty($rekapPrestasi)): ?>
+                        <tr>
+                            <td class="col-rata py-3" style="background-color: #fff3cd;">Total Capaian</td>
+                            <td class="font-weight-bold" style="background-color: #fff3cd; font-size: 16px;"><?= $total_sekolah_prestasi ?? 0 ?></td>
+                            <td style="background-color: #fff3cd;"></td>
+                        </tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
     </div>
 
     <!-- Script untuk Toggle Dropdown Filter (Sama dengan sebelumnya) -->

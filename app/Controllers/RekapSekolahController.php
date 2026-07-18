@@ -651,6 +651,72 @@ class RekapSekolahController extends BaseController
         }
 
         // =========================================================
+        // 3I. LOGIKA REKAP ANEKDOT (Akumulasi Insiden / Catatan)
+        // =========================================================
+        $rekapAnekdot = [];
+        $total_sekolah_anekdot = 0;
+
+        foreach ($daftarRombel as $rombel) {
+            $rombel_id = $rombel['id'];
+
+            // Menggunakan tabel 'catatan_anekdot' dan kolom 'kejadian'
+            $anekdot = $db->table('catatan_anekdot a')
+                            ->join('class_rombel_students crs', 'crs.student_id = a.student_id', 'left')
+                            ->select('
+                                COUNT(a.id) as total_insiden,
+                                GROUP_CONCAT(NULLIF(a.kejadian, "") SEPARATOR ", ") as keterangan
+                            ')
+                            ->where('crs.rombel_id', $rombel_id)
+                            ->whereIn('MONTH(a.tanggal)', $bulan_array)
+                            ->where('YEAR(a.tanggal)', $tahun)
+                            ->get()->getRowArray();
+
+            $tot = (int)($anekdot['total_insiden'] ?? 0);
+            $ket = $anekdot['keterangan'] ?? '';
+
+            $total_sekolah_anekdot += $tot;
+
+            $rekapAnekdot[] = [
+                'rombel_name' => $rombel['rombel_name'],
+                'total'       => $tot,
+                'keterangan'  => $ket
+            ];
+        }
+
+        // =========================================================
+        // 3J. LOGIKA REKAP PRESTASI
+        // =========================================================
+        $rekapPrestasi = [];
+        $total_sekolah_prestasi = 0;
+
+        foreach ($daftarRombel as $rombel) {
+            $rombel_id = $rombel['id'];
+
+            // Menggunakan tabel 'catatan_prestasi', kolom 'nama_prestasi', dan filter 'created_at'
+            $prestasi = $db->table('catatan_prestasi p')
+                            ->join('class_rombel_students crs', 'crs.student_id = p.student_id', 'left')
+                            ->select('
+                                COUNT(p.id) as total_prestasi,
+                                GROUP_CONCAT(NULLIF(p.nama_prestasi, "") SEPARATOR ", ") as keterangan
+                            ')
+                            ->where('crs.rombel_id', $rombel_id)
+                            ->whereIn('MONTH(p.created_at)', $bulan_array) // Filter menggunakan created_at karena tidak ada field tanggal
+                            ->where('YEAR(p.created_at)', $tahun)
+                            ->get()->getRowArray();
+
+            $tot = (int)($prestasi['total_prestasi'] ?? 0);
+            $ket = $prestasi['keterangan'] ?? '';
+
+            $total_sekolah_prestasi += $tot;
+
+            $rekapPrestasi[] = [
+                'rombel_name' => $rombel['rombel_name'],
+                'total'       => $tot,
+                'keterangan'  => $ket
+            ];
+        }
+
+        // =========================================================
         // 4. KIRIM SEMUA DATA KE VIEW
         // =========================================================
         $data = [
@@ -721,6 +787,12 @@ class RekapSekolahController extends BaseController
             'daftarMapel'      => $daftarMapel,
             'rekapSumatif'     => $rekapSumatif,
             'rataSumatifMapel' => $rataSumatifMapel,
+
+            // Variabel Anekdot & Prestasi
+            'rekapAnekdot'           => $rekapAnekdot,
+            'total_sekolah_anekdot'  => $total_sekolah_anekdot,
+            'rekapPrestasi'          => $rekapPrestasi,
+            'total_sekolah_prestasi' => $total_sekolah_prestasi,
         ];
 
         return view('admin/rekap_sekolah/index', $data);
