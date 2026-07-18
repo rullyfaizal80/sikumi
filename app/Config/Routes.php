@@ -344,3 +344,14 @@ $routes->post('guru/nilai-sumatif/simpan', 'NilaiSumatifController::simpanNilai'
 
 $routes->get('admin/laporan-siswa', 'LaporanSiswaController::index');
 $routes->get('admin/laporan-siswa/get-siswa-by-kelas', 'LaporanSiswaController::getSiswaByKelas');
+
+$routes->get('catatansiswa', 'CatatanSiswaController::index');
+$routes->post('catatansiswa/simpanAnekdot', 'CatatanSiswaController::simpanAnekdot');
+$routes->post('catatansiswa/simpanPrestasi', 'CatatanSiswaController::simpanPrestasi');
+$routes->get('catatansiswa/rekap', 'CatatanSiswaController::rekap');
+
+$routes->get('catatansiswa/rekapAll', 'CatatanSiswaController::rekapAll');
+$routes->post('catatansiswa/updateAnekdot', 'CatatanSiswaController::updateAnekdot');
+$routes->post('catatansiswa/hapusAnekdot', 'CatatanSiswaController::hapusAnekdot');
+$routes->post('catatansiswa/updatePrestasi', 'CatatanSiswaController::updatePrestasi');
+$routes->post('catatansiswa/hapusPrestasi', 'CatatanSiswaController::hapusPrestasi');
