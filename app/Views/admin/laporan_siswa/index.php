@@ -220,6 +220,266 @@
         </div>
         <?php endif; ?>
 
+        <!-- ... (TAMPILAN ROW KEPATUHAN & YAUMIYAH SEBELUMNYA) ... -->
+
+        <?php if (!empty($dataSiswa)): ?>
+        <div class="row mt-4">
+            <!-- ========================================== -->
+            <!-- TAMPILAN ASPEK SPIRITUAL                   -->
+            <!-- ========================================== -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm border-top-info h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-praying-hands text-info mr-2"></i>Catatan Spiritual</h5>
+                    </div>
+                    <div class="card-body">
+                        <?php 
+                            $spi = $spiritualSiswa;
+                            $totSpi = (int)($spi['berdoa']??0) + (int)($spi['kalimat_thoyibah']??0) + (int)($spi['shalat']??0) + 
+                                      (int)($spi['salam']??0) + (int)($spi['syukur']??0) + (int)($spi['lingkungan']??0) + (int)($spi['toleransi']??0);
+                            
+                            $ketSpiRaw = isset($spi['keterangan']) ? $spi['keterangan'] : '';
+                            $arrKetSpi = array_filter(array_map('trim', explode(',', $ketSpiRaw)));
+                            $countKetSpi = array_count_values($arrKetSpi);
+                            $hasilKetSpi = [];
+                            foreach($countKetSpi as $teks => $jml) {
+                                $hasilKetSpi[] = $jml > 1 ? "$teks(<strong>$jml</strong>)" : $teks;
+                            }
+                            $teksKetSpi = !empty($hasilKetSpi) ? implode(', ', $hasilKetSpi) : '-';
+                        ?>
+                        <table class="table table-sm table-bordered mb-3">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="text-center" title="Berdoa">Doa</th>
+                                    <th class="text-center" title="Kalimat Thoyibah">Thyb</th>
+                                    <th class="text-center" title="Shalat">Shlt</th>
+                                    <th class="text-center" title="Salam">Slm</th>
+                                    <th class="text-center" title="Syukur">Sykr</th>
+                                    <th class="text-center" title="Lingkungan">Lgkn</th>
+                                    <th class="text-center" title="Toleransi">Tlrn</th>
+                                    <th class="text-center bg-info text-white">TOT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="text-center font-weight-bold">
+                                    <td><?= (int)($spi['berdoa']??0) ?></td>
+                                    <td><?= (int)($spi['kalimat_thoyibah']??0) ?></td>
+                                    <td><?= (int)($spi['shalat']??0) ?></td>
+                                    <td><?= (int)($spi['salam']??0) ?></td>
+                                    <td><?= (int)($spi['syukur']??0) ?></td>
+                                    <td><?= (int)($spi['lingkungan']??0) ?></td>
+                                    <td><?= (int)($spi['toleransi']??0) ?></td>
+                                    <td class="bg-light text-info" style="font-size: 1.1rem;"><?= $totSpi ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="small">
+                            <strong>Keterangan Kasus:</strong><br>
+                            <?= $teksKetSpi ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- TAMPILAN ASPEK SOSIAL                      -->
+            <!-- ========================================== -->
+            <div class="col-md-6 mb-4">
+                <div class="card shadow-sm border-top-warning h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-users text-warning mr-2"></i>Catatan Sosial</h5>
+                    </div>
+                    <div class="card-body">
+                        <?php 
+                            $sos = $sosialSiswa;
+                            $totSos = (int)($sos['disiplin']??0) + (int)($sos['jujur']??0) + (int)($sos['percaya_diri']??0) + 
+                                      (int)($sos['santun']??0) + (int)($sos['kerjasama']??0) + (int)($sos['tanggung_jawab']??0) + (int)($sos['adil']??0);
+                            
+                            $ketSosRaw = isset($sos['keterangan']) ? $sos['keterangan'] : '';
+                            $arrKetSos = array_filter(array_map('trim', explode(',', $ketSosRaw)));
+                            $countKetSos = array_count_values($arrKetSos);
+                            $hasilKetSos = [];
+                            foreach($countKetSos as $teks => $jml) {
+                                $hasilKetSos[] = $jml > 1 ? "$teks(<strong>$jml</strong>)" : $teks;
+                            }
+                            $teksKetSos = !empty($hasilKetSos) ? implode(', ', $hasilKetSos) : '-';
+                        ?>
+                        <table class="table table-sm table-bordered mb-3">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="text-center" title="Disiplin">Dspl</th>
+                                    <th class="text-center" title="Jujur">Jjr</th>
+                                    <th class="text-center" title="Percaya Diri">PD</th>
+                                    <th class="text-center" title="Santun">Sntn</th>
+                                    <th class="text-center" title="Kerjasama">Krjs</th>
+                                    <th class="text-center" title="Tanggung Jawab">T.Jw</th>
+                                    <th class="text-center" title="Adil">Adil</th>
+                                    <th class="text-center bg-warning text-dark">TOT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="text-center font-weight-bold">
+                                    <td><?= (int)($sos['disiplin']??0) ?></td>
+                                    <td><?= (int)($sos['jujur']??0) ?></td>
+                                    <td><?= (int)($sos['percaya_diri']??0) ?></td>
+                                    <td><?= (int)($sos['santun']??0) ?></td>
+                                    <td><?= (int)($sos['kerjasama']??0) ?></td>
+                                    <td><?= (int)($sos['tanggung_jawab']??0) ?></td>
+                                    <td><?= (int)($sos['adil']??0) ?></td>
+                                    <td class="bg-light text-warning" style="font-size: 1.1rem;"><?= $totSos ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="small">
+                            <strong>Keterangan Kasus:</strong><br>
+                            <?= $teksKetSos ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- ========================================== -->
+            <!-- TAMPILAN AL-QUR'AN                         -->
+            <!-- ========================================== -->
+            <div class="col-md-12 mb-4">
+                <div class="card shadow-sm border-top-primary">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-book-open text-primary mr-2"></i>Penilaian Al-Qur'an</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-4 border-right">
+                                <h6 class="text-muted">Tahsin</h6>
+                                <h3 class="text-info"><?= !empty(trim($quranSiswa['tahsin_nilai']??'')) ? esc($quranSiswa['tahsin_nilai']) : '-' ?></h3>
+                            </div>
+                            <div class="col-md-4 border-right">
+                                <h6 class="text-muted">Tahfidz</h6>
+                                <h3 class="text-primary"><?= !empty(trim($quranSiswa['tahfidz_nilai']??'')) ? esc($quranSiswa['tahfidz_nilai']) : '-' ?></h3>
+                            </div>
+                            <div class="col-md-4">
+                                <h6 class="text-muted">Kitabah</h6>
+                                <h3 class="text-warning"><?= !empty(trim($quranSiswa['kitabah_nilai']??'')) ? esc($quranSiswa['kitabah_nilai']) : '-' ?></h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+        <!-- ... (TAMPILAN ROW AL-QUR'AN SEBELUMNYA) ... -->
+
+        <?php if (!empty($dataSiswa)): ?>
+        <div class="row mt-4">
+            <!-- ========================================== -->
+            <!-- TAMPILAN NILAI SUMATIF (AKADEMIK)          -->
+            <!-- ========================================== -->
+            <div class="col-md-8 mb-4">
+                <div class="card shadow-sm border-top-primary h-100">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0"><i class="fas fa-graduation-cap text-primary mr-2"></i>Nilai Sumatif (Akademik)</h5>
+                    </div>
+                    <div class="card-body p-0 table-responsive">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th style="width: 50px;" class="text-center">No</th>
+                                    <th>Mata Pelajaran</th>
+                                    <th class="text-center" style="width: 150px;">Nilai Angka</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                    if (!empty($sumatifSiswa)): 
+                                        $no = 1;
+                                        foreach ($sumatifSiswa as $ns):
+                                ?>
+                                    <tr>
+                                        <td class="text-center"><?= $no++ ?></td>
+                                        <td><?= esc($ns['nama_mapel']) ?></td>
+                                        <td class="text-center font-weight-bold <?= !empty($ns['nilai_angka']) ? 'text-primary' : 'text-muted' ?>">
+                                            <?= !empty($ns['nilai_angka']) ? str_replace('.', ',', (float)$ns['nilai_angka']) : '-' ?>
+                                        </td>
+                                    </tr>
+                                <?php 
+                                        endforeach; 
+                                    else:
+                                ?>
+                                    <tr>
+                                        <td colspan="3" class="text-center py-4 text-muted">Jadwal / Mata Pelajaran untuk tahun ajaran ini belum tersedia.</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- TAMPILAN ESKUL, PRAMUKA & PEMINATAN        -->
+            <!-- ========================================== -->
+            <div class="col-md-4 mb-4">
+                
+                <!-- PRAMUKA & PEMINATAN -->
+                <div class="card shadow-sm border-top-success mb-4">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0 font-weight-bold"><i class="fas fa-campground text-success mr-2"></i>Pramuka & Peminatan</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                <tr>
+                                    <td class="pl-3">Nilai Pramuka</td>
+                                    <td class="text-right pr-3 font-weight-bold"><?= !empty($pramukaSiswa['nilai']) ? esc($pramukaSiswa['nilai']) : '-' ?></td>
+                                </tr>
+                                <tr>
+                                    <td class="pl-3">Nilai Peminatan</td>
+                                    <td class="text-right pr-3 font-weight-bold"><?= !empty($peminatanSiswa['nilai']) ? esc($peminatanSiswa['nilai']) : '-' ?></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- EKSTRAKURIKULER -->
+                <div class="card shadow-sm border-top-warning">
+                    <div class="card-header bg-white">
+                        <h6 class="mb-0 font-weight-bold"><i class="fas fa-futbol text-warning mr-2"></i>Ekstrakurikuler</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table table-sm mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="pl-3">Kelompok</th>
+                                    <th class="text-right pr-3">Nilai</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php 
+                                    if (!empty($eskulSiswa)): 
+                                        foreach ($eskulSiswa as $es):
+                                ?>
+                                    <tr>
+                                        <td class="pl-3"><?= esc($es['nama_kelompok']) ?></td>
+                                        <td class="text-right pr-3 font-weight-bold"><?= esc($es['nilai']) ?></td>
+                                    </tr>
+                                <?php 
+                                        endforeach; 
+                                    else:
+                                ?>
+                                    <tr>
+                                        <td colspan="2" class="text-center py-3 text-muted small">Tidak mengikuti ekstrakurikuler.</td>
+                                    </tr>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+        <?php endif; ?>
     </div>
 
     <!-- SCRIPT AJAX UNTUK DROPDOWN DINAMIS -->

@@ -119,6 +119,202 @@ class LaporanSiswaController extends BaseController
                 'p_literasi' => $calcP((int)($yaumiyahRaw['t_lt'] ?? 0), $targetHarian),
             ];
 
+            // ... (Kode Yaumiyah sebelumnya di sini) ...
+
+            // =========================================================
+            // F. Hitung Aspek Spiritual Siswa
+            // =========================================================
+            $spiritualSiswa = $db->table('aspek_spiritual')
+                            ->select('
+                                SUM(berdoa) as berdoa,
+                                SUM(kalimat_thoyibah) as kalimat_thoyibah,
+                                SUM(shalat) as shalat,
+                                SUM(salam) as salam,
+                                SUM(syukur) as syukur,
+                                SUM(lingkungan) as lingkungan,
+                                SUM(toleransi) as toleransi,
+                                GROUP_CONCAT(NULLIF(keterangan, "") SEPARATOR ", ") as keterangan
+                            ')
+                            ->where('student_id', $student_id)
+                            ->where('MONTH(tanggal)', $bulan)
+                            ->where('YEAR(tanggal)', $tahun)
+                            ->get()->getRowArray();
+
+            // =========================================================
+            // G. Hitung Aspek Sosial Siswa
+            // =========================================================
+            $sosialSiswa = $db->table('aspek_sosial')
+                            ->select('
+                                SUM(disiplin) as disiplin,
+                                SUM(jujur) as jujur,
+                                SUM(percaya_diri) as percaya_diri,
+                                SUM(santun) as santun,
+                                SUM(kerjasama) as kerjasama,
+                                SUM(tanggung_jawab) as tanggung_jawab,
+                                SUM(adil) as adil,
+                                GROUP_CONCAT(NULLIF(keterangan, "") SEPARATOR ", ") as keterangan
+                            ')
+                            ->where('student_id', $student_id)
+                            ->where('MONTH(tanggal)', $bulan)
+                            ->where('YEAR(tanggal)', $tahun)
+                            ->get()->getRowArray();
+
+            // =========================================================
+            // H. Ambil Nilai Al-Qur'an Siswa
+            // =========================================================
+            $quranSiswa = $db->table('quran_penilaian')
+                            ->select('tahsin_nilai, tahfidz_nilai, kitabah_nilai')
+                            ->where('student_id', $student_id)
+                            ->where('bulan', $bulan)
+                            ->where('tahun', $tahun)
+                            ->get()->getRowArray();
+
+        // ... (Kode Al-Qur'an sebelumnya di sini) ...
+
+            // =========================================================
+            // I. Ambil Nilai Pramuka & Peminatan Siswa
+            // =========================================================
+            $pramukaSiswa = $db->table('pramuka_grades')
+                               ->select('nilai')
+                               ->where('student_id', $student_id)
+                               ->where('bulan', $bulan)
+                               ->get()->getRowArray();
+
+            $peminatanSiswa = $db->table('peminatan_grades')
+                                 ->select('nilai')
+                                 ->where('student_id', $student_id)
+                                 ->where('bulan', $bulan)
+                                 ->get()->getRowArray();
+
+            // =========================================================
+            // J. Ambil Nilai Ekstrakurikuler (Eskul) Siswa
+            // =========================================================
+            $eskulSiswa = [];
+            if ($db->tableExists('eskul_grades') && $db->tableExists('eskul_groups')) {
+                $eskulSiswa = $db->table('eskul_grades eg')
+                                 ->join('eskul_groups grp', 'grp.id = eg.group_id', 'left')
+                                 ->select('grp.nama_kelompok, eg.nilai')
+                                 ->where('eg.student_id', $student_id)
+                                 ->where('eg.bulan', $bulan)
+                                 ->get()->getResultArray();
+            }
+
+            // =========================================================
+            // K. Ambil Daftar Mapel & Nilai Sumatif (Cara Rekap Sekolah)
+            // =========================================================
+            
+            // 1. Dapatkan ID Tahun Ajaran (Persis seperti rekap)
+            $idTahunAjaran = 0;
+            if ($db->tableExists('academic_years')) {
+                $cekTahun = $db->table('academic_years')->where('academic_year', $tahun)->orWhere('id', $tahun)->get()->getRowArray();
+                if ($cekTahun) $idTahunAjaran = $cekTahun['id'];
+                if ($idTahunAjaran == 0) {
+                    $cekTahun = $db->table('academic_years')->where('is_active', 1)->get()->getRowArray();
+                    if ($cekTahun) $idTahunAjaran = $cekTahun['id'];
+                }
+            }
+
+            $daftarMapel = [];
+            $mapelDitemukan = []; 
+
+            // 2. Setup Tabel Master
+            $tabelMapel = $db->tableExists('master_subjects') ? 'master_subjects' : ($db->tableExists('subjects') ? 'subjects' : 'mata_pelajaran');
+            $mapelFields = $db->getFieldNames($tabelMapel);
+            $kolomNamaMapel = in_array('subject_name', $mapelFields) ? 'subject_name' : (in_array('nama_mapel', $mapelFields) ? 'nama_mapel' : 'name');
+            $hasCombinedTable = $db->tableExists('schedule_combined_subjects');
+
+            // 3. Ambil Jadwal Aktif Sekolah
+            $jadwalAktif = null;
+            if ($db->tableExists('schedule_versions')) {
+                $jadwalAktif = $db->table('schedule_versions')->where('academic_year_id', $idTahunAjaran)->where('is_active', 1)->get()->getRowArray();
+                if (!$jadwalAktif) {
+                    $jadwalAktif = $db->table('schedule_versions')->where('is_active', 1)->get()->getRowArray();
+                }
+            }
+
+            // 4. Tarik Semua Mapel dari Jadwal Tingkat Sekolah
+            if ($jadwalAktif) {
+                $jadwalAktifId = $jadwalAktif['id'];
+                $csFields = $db->getFieldNames('class_schedules');
+                $kolomSubjectId = in_array('subject_id', $csFields) ? 'subject_id' : 'mapel_id';
+                $kolomCombinedId = in_array('combined_subject_id', $csFields) ? 'combined_subject_id' : null;
+
+                // A. AMBIL MAPEL GABUNGAN
+                if ($kolomCombinedId && $hasCombinedTable) {
+                    $mapelGabungan = $db->table('class_schedules cs')
+                                 ->select("cs.{$kolomCombinedId} as combined_id, c.combined_name")  
+                                 ->join("schedule_combined_subjects c", "c.id = cs.{$kolomCombinedId}", 'left') 
+                                 ->where('cs.version_id', $jadwalAktifId)
+                                 ->where("cs.{$kolomCombinedId} IS NOT NULL")
+                                 ->where("cs.{$kolomCombinedId} !=", 0)
+                                 ->groupBy("cs.{$kolomCombinedId}")
+                                 ->get()->getResultArray();
+                                 
+                    foreach ($mapelGabungan as $mg) {
+                        $namaMapel = trim($mg['combined_name'] ?? '');
+                        if (empty($namaMapel) || stripos($namaMapel, 'Bimbingan Konseling') !== false || strtoupper($namaMapel) === 'BK') continue;
+
+                        $cId = 'C_' . $mg['combined_id'];
+                        if (!in_array($cId, $mapelDitemukan)) {
+                            $daftarMapel[] = ['id' => $cId, 'nama_mapel' => $namaMapel];
+                            $mapelDitemukan[] = $cId;
+                        }
+                    }
+                }
+
+                // B. AMBIL MAPEL REGULER
+                $queryReguler = $db->table('class_schedules cs')
+                              ->select("cs.{$kolomSubjectId} as id, s.{$kolomNamaMapel} as subject_name")
+                              ->join("{$tabelMapel} s", "s.id = cs.{$kolomSubjectId}", 'left')
+                              ->where('cs.version_id', $jadwalAktifId)
+                              ->where("cs.{$kolomSubjectId} IS NOT NULL")
+                              ->where("cs.{$kolomSubjectId} !=", 0);
+                              
+                if ($kolomCombinedId) {
+                    $queryReguler->groupStart()
+                                 ->where("cs.{$kolomCombinedId} IS NULL")
+                                 ->orWhere("cs.{$kolomCombinedId}", 0)
+                                 ->groupEnd();
+                }
+                
+                $mapelReguler = $queryReguler->groupBy("cs.{$kolomSubjectId}")->get()->getResultArray();
+                              
+                foreach ($mapelReguler as $m) {
+                    $namaMapel = trim($m['subject_name'] ?? '');
+                    if (empty($namaMapel) || stripos($namaMapel, 'Bimbingan Konseling') !== false || strtoupper($namaMapel) === 'BK') continue;
+
+                    $mId = 'S_' . $m['id'];
+                    if (!in_array($mId, $mapelDitemukan)) {
+                        $daftarMapel[] = ['id' => $mId, 'nama_mapel' => $namaMapel];
+                        $mapelDitemukan[] = $mId;
+                    }
+                }
+            }
+
+            // Urutkan Mapel A-Z
+            usort($daftarMapel, function($a, $b) {
+                return strcmp($a['nama_mapel'], $b['nama_mapel']);
+            });
+
+            // 5. Tarik Nilai Sumatif per Mapel untuk Siswa ini
+            $sumatifSiswa = [];
+            foreach ($daftarMapel as $mapel) {
+                $nilaiQuery = $db->table('nilai_sumatif')
+                                 ->select('nilai_angka')
+                                 ->where('student_id', $student_id)
+                                 ->where('mapel_id', $mapel['id']); // Mencocokkan 'S_1' atau 'C_2'
+                                 
+                if (!empty($bulan)) {
+                    $nilaiQuery->where('bulan', $bulan);
+                }
+                
+                $nilaiData = $nilaiQuery->get()->getRowArray();
+                
+                $sumatifSiswa[] = [
+                    'nama_mapel'  => $mapel['nama_mapel'],
+                    'nilai_angka' => $nilaiData ? $nilaiData['nilai_angka'] : null
+                ];
+            }
         $data = [
             'daftarRombel' => $daftarRombel,
             'rombel_id'    => $rombel_id,
@@ -130,6 +326,13 @@ class LaporanSiswaController extends BaseController
             'rekapAbsen'   => $rekapAbsen,
             'kepatuhanSiswa' => $kepatuhanSiswa, // <-- TAMBAHKAN INI
             'yaumiyahSiswa'  => $yaumiyahSiswa,  // <-- TAMBAHKAN INI
+            'spiritualSiswa' => $spiritualSiswa, // <-- TAMBAHKAN INI
+            'sosialSiswa'    => $sosialSiswa,    // <-- TAMBAHKAN INI
+            'quranSiswa'     => $quranSiswa,     // <-- TAMBAHKAN INI
+            'pramukaSiswa'   => $pramukaSiswa,   // <-- TAMBAHKAN INI
+            'peminatanSiswa' => $peminatanSiswa, // <-- TAMBAHKAN INI
+            'eskulSiswa'     => $eskulSiswa,     // <-- TAMBAHKAN INI
+            'sumatifSiswa'   => $sumatifSiswa,   // <-- TAMBAHKAN INI
         ];
 
         return view('admin/laporan_siswa/index', $data);
