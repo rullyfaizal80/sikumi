@@ -248,6 +248,66 @@ class RaporBerjalanController extends BaseController
                        ->orderBy('created_at', 'ASC')->get()->getResultArray();
 
         // =========================================================
+        // 7. TARIK DATA NILAI AL-QUR'AN (GROUP BY BULAN)
+        // =========================================================
+        // Asumsi tabel: nilai_quran (student_id, bulan, tahun, aspek, nilai_angka)
+        // Aspek contoh: "Tahfidz", "Tahsin", "Tarjumah"
+        $quranRaw = [];
+        if ($db->tableExists('nilai_quran')) {
+            $quranRaw = $db->table('nilai_quran')
+                           ->select("LPAD(bulan, 2, '0') as bulan, aspek, nilai_angka")
+                           ->where('student_id', $student_id)
+                           ->whereIn('LPAD(bulan, 2, "0")', $bulanAktif)
+                           ->where('tahun', $tahun)
+                           ->get()->getResultArray();
+        }
+
+        $matrixQuran = [];
+        foreach ($quranRaw as $qr) {
+            $aspek = $qr['aspek'];
+            $bln   = $qr['bulan'];
+            
+            if (!isset($matrixQuran[$aspek])) {
+                $matrixQuran[$aspek] = ['nilai' => [], 'total' => 0, 'count' => 0];
+                foreach ($bulanAktif as $b) {
+                    $matrixQuran[$aspek]['nilai'][$b] = null;
+                }
+            }
+            $matrixQuran[$aspek]['nilai'][$bln] = (float)$qr['nilai_angka'];
+            $matrixQuran[$aspek]['total'] += (float)$qr['nilai_angka'];
+            $matrixQuran[$aspek]['count']++;
+        }
+
+        // =========================================================
+        // 8. TARIK DATA EKSTRAKURIKULER & PRAMUKA (GROUP BY BULAN)
+        // =========================================================
+        // Asumsi tabel: nilai_eskul (student_id, bulan, tahun, nama_eskul, predikat)
+        // Predikat biasanya berupa huruf/teks: "A", "B", "Sangat Baik", "Aktif", dll.
+        $eskulRaw = [];
+        if ($db->tableExists('nilai_eskul')) {
+            $eskulRaw = $db->table('nilai_eskul')
+                           ->select("LPAD(bulan, 2, '0') as bulan, nama_eskul, predikat")
+                           ->where('student_id', $student_id)
+                           ->whereIn('LPAD(bulan, 2, "0")', $bulanAktif)
+                           ->where('tahun', $tahun)
+                           ->get()->getResultArray();
+        }
+
+        $matrixEskul = [];
+        foreach ($eskulRaw as $er) {
+            $nama = $er['nama_eskul'];
+            $bln  = $er['bulan'];
+            
+            if (!isset($matrixEskul[$nama])) {
+                $matrixEskul[$nama] = [];
+                foreach ($bulanAktif as $b) {
+                    $matrixEskul[$nama][$b] = '-';
+                }
+            }
+            $matrixEskul[$nama][$bln] = $er['predikat'];
+        }
+
+        // =========================================================
         // KEMAS DATA KE VIEW
         // =========================================================
         $data = [
@@ -263,7 +323,9 @@ class RaporBerjalanController extends BaseController
             'sosial'        => $sosial,
             'matrixSumatif' => $matrixSumatif,
             'anekdot'       => $anekdot,
-            'prestasi'      => $prestasi
+            'prestasi'      => $prestasi,
+            'matrixQuran'   => $matrixQuran,
+            'matrixEskul'   => $matrixEskul
         ];
 
         return view('siswa/rapor_berjalan', $data);

@@ -201,6 +201,40 @@
         </tbody>
     </table>
 
+    <!-- PERKEMBANGAN AL-QUR'AN -->
+    <div class="section-title">B. Perkembangan Al-Qur'an</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th rowspan="2" class="col-aspek">Aspek Penilaian</th>
+                <th colspan="<?= count($bulanAktif) ?>">Bulan Penilaian</th>
+                <th rowspan="2" class="col-rata">Rata-rata<br>Semester</th>
+            </tr>
+            <tr>
+                <?php foreach ($bulanAktif as $b): ?>
+                    <th><?= $namaBulanIndo[$b] ?></th>
+                <?php endforeach; ?>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (empty($matrixQuran)): ?>
+                <tr><td colspan="<?= count($bulanAktif) + 2 ?>" class="text-center text-muted">Belum ada data nilai Al-Qur'an.</td></tr>
+            <?php else: ?>
+                <?php foreach ($matrixQuran as $aspek => $dataQuran): ?>
+                    <tr>
+                        <td class="col-aspek"><?= esc($aspek) ?></td>
+                        <?php foreach ($bulanAktif as $b): ?>
+                            <td class="col-angka"><?= $fmt($dataQuran['nilai'][$b]) ?></td>
+                        <?php endforeach; ?>
+                        <td class="col-rata">
+                            <?= $dataQuran['count'] > 0 ? $fmt(round($dataQuran['total'] / $dataQuran['count'], 2)) : '-' ?>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </tbody>
+    </table>
+
     <!-- 2. KEHADIRAN (ABSENSI) -->
     <div class="section-title">B. Rekapitulasi Kehadiran</div>
     <table class="data-table">
@@ -301,6 +335,39 @@
                 <td class="col-rata"><?= $sosial['totals'][$k] ?: '-' ?></td>
             </tr>
             <?php endforeach; ?>
+        </tbody>
+    </table>
+
+    <!-- EKSTRAKURIKULER & PRAMUKA -->
+    <div class="section-title">F. Kegiatan Ekstrakurikuler (Pramuka & Peminatan)</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th class="col-aspek">Nama Kegiatan</th>
+                <?php foreach ($bulanAktif as $b): ?>
+                    <th><?= $namaBulanIndo[$b] ?></th>
+                <?php endforeach; ?>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (empty($matrixEskul)): ?>
+                <tr><td colspan="<?= count($bulanAktif) + 1 ?>" class="text-center text-muted">Belum ada data Ekstrakurikuler yang diikuti.</td></tr>
+            <?php else: ?>
+                <?php foreach ($matrixEskul as $namaEskul => $dataEskul): ?>
+                    <tr>
+                        <td class="col-aspek" style="font-weight: 600; color: #1a252f;">
+                            <?= esc($namaEskul) ?>
+                            <?php if (strtolower($namaEskul) == 'pramuka'): ?>
+                                <br><small style="color: #d35400; font-weight: normal;">*Wajib</small>
+                            <?php endif; ?>
+                        </td>
+                        <?php foreach ($bulanAktif as $b): ?>
+                            <!-- Predikat biasanya tidak dirata-rata, langsung ditampilkan nilai/hurufnya -->
+                            <td class="col-angka" style="font-weight: bold;"><?= esc($dataEskul[$b]) ?></td>
+                        <?php endforeach; ?>
+                    </tr>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </tbody>
     </table>
 
