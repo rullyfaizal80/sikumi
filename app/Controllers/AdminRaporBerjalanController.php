@@ -338,7 +338,7 @@ class AdminRaporBerjalanController extends BaseController
         $tabelMapel = $db->tableExists('master_subjects') ? 'master_subjects' : ($db->tableExists('subjects') ? 'subjects' : 'mata_pelajaran');
         $kolomNamaMapel = in_array('subject_name', $db->getFieldNames($tabelMapel)) ? 'subject_name' : (in_array('nama_mapel', $db->getFieldNames($tabelMapel)) ? 'nama_mapel' : 'name');
         
-        // B. Tarik data nilai mentah (tanpa JOIN, karena mapel_id mengandung teks 'S_' atau 'C_')
+        // B. Tarik data nilai mentah
         $sumatifRaw = $db->table('nilai_sumatif')
                          ->select("LPAD(bulan, 2, '0') as bulan, mapel_id, nilai_angka")
                          ->where('student_id', $student_id)
@@ -350,8 +350,8 @@ class AdminRaporBerjalanController extends BaseController
         if ($db->tableExists($tabelMapel)) {
             $mapelDb = $db->table($tabelMapel)->select("id, {$kolomNamaMapel} as nama_mapel")->get()->getResultArray();
             foreach ($mapelDb as $m) {
-                $refMapel['S_' . $m['id']] = $m['nama_mapel']; // Sesuai format insert NilaiSumatifController
-                $refMapel[$m['id']] = $m['nama_mapel'];        // Jaga-jaga jika ada data tanpa prefix
+                $refMapel['S_' . $m['id']] = $m['nama_mapel']; 
+                $refMapel[$m['id']] = $m['nama_mapel']; // Jaga-jaga jika ada data tanpa prefix
             }
         }
 
@@ -363,33 +363,98 @@ class AdminRaporBerjalanController extends BaseController
             }
         }
 
-        // E. Susun Matriks Nilai
+        // ==============================================================
+        // E. Susun Matriks Nilai (REVISI FINAL - DINAMIS TANPA HARDCODE)
+        // ==============================================================
+        
         $matrixSumatif = [];
-        foreach ($sumatifRaw as $sr) {
-            $mId = $sr['mapel_id'];
-            $bln = $sr['bulan']; // Pastikan integer sesuai key di $bulanAktif
-            
-            // Ambil nama mapel dari array referensi, default jika tidak ditemukan
-            $namaMapel = isset($refMapel[$mId]) ? $refMapel[$mId] : 'Mapel Tidak Diketahui (ID: ' . $mId . ')';
+        
+        // 1. Mapel yang disembunyikan mutlak (berdasarkan request Anda sebelumnya)
+        $mapelSembunyi = ['Seni dan Budaya', 'Bahasa Sunda', 'Bimbingan Konseling'];
+        
+        // 2. Lacak Mapel Anak secara DINAMIS dari database
+        $mapelAnakGabungan = [];
+        if ($db->tableExists('schedule_combined_details') && $db->tableExists('master_subjects')) {
+            $anakDb = $db->table('schedule_combined_details scd')
+                         ->select('ms.subject_name')
+                         ->join('master_subjects ms', 'ms.id = scd.master_subject_id', 'left')
+                         ->get()->getResultArray();
+                         
+            foreach ($anakDb as $anak) {
+                if (!empty($anak['subject_name'])) {
+                    $mapelAnakGabungan[] = $anak['subject_name'];
+                }
+            }
+        }
+        
+        // Gabungkan semua daftar mapel yang tidak boleh tampil
+        $semuaMapelDihide = array_merge($mapelSembunyi, $mapelAnakGabungan);
+        
+        $namaMapelUnik = []; // Tracker untuk mencegah mapel gabungan tampil double
 
-            if (!isset($matrixSumatif[$mId])) {
-                $matrixSumatif[$mId] = [
+        // 3. Inisialisasi SEMUA mapel dari referensi ke dalam matriks
+        foreach ($refMapel as $key => $namaMapel) {
+            // A. Ganti nama PJOK (Mencegat berbagai variasi penulisan)
+            if (stripos($namaMapel, 'Pendidikan Jasmani') !== false && stripos($namaMapel, 'Olahraga') !== false) {
+                $namaMapel = 'PJOK';
+            }
+
+            // B. Cek apakah mapel ini masuk daftar blacklist atau sudah pernah dicetak
+            $isSembunyi = in_array($namaMapel, $semuaMapelDihide);
+            $isDouble = in_array($namaMapel, $namaMapelUnik);
+
+            // C. Masukkan ke matriks HANYA jika lolos semua syarat di atas
+            if ((strpos($key, 'S_') === 0 || strpos($key, 'C_') === 0) && !$isSembunyi && !$isDouble) {
+                $matrixSumatif[$key] = [
                     'nama_mapel' => $namaMapel, 
                     'nilai'      => [], 
                     'total'      => 0, 
                     'count'      => 0
                 ];
-                // Inisialisasi bulan kosong
+                // Isi default semua bulan dengan null
                 foreach ($bulanAktif as $b) { 
-                    $matrixSumatif[$mId]['nilai'][$b] = null; 
+                    $matrixSumatif[$key]['nilai'][$b] = null; 
                 }
+                
+                $namaMapelUnik[] = $namaMapel; // Catat nama untuk mencegah duplikasi
             }
+        }
+
+        // 4. Timpa dengan nilai asli dari table nilai_sumatif
+        foreach ($sumatifRaw as $sr) {
+            $mId = $sr['mapel_id'];
+            $bln = $sr['bulan'];
             
-            // Masukkan nilai jika berupa angka valid
-            if (is_numeric($sr['nilai_angka'])) {
-                $matrixSumatif[$mId]['nilai'][$bln] = (float)$sr['nilai_angka'];
-                $matrixSumatif[$mId]['total'] += (float)$sr['nilai_angka'];
-                $matrixSumatif[$mId]['count']++;
+            // Proses standarisasi nama yang sama seperti langkah 3
+            $rawName = isset($refMapel[$mId]) ? $refMapel[$mId] : '';
+            if (stripos($rawName, 'Pendidikan Jasmani') !== false && stripos($rawName, 'Olahraga') !== false) {
+                $rawName = 'PJOK';
+            }
+
+            // Abaikan penarikan nilai jika ini milik mapel yang disembunyikan
+            if (in_array($rawName, $semuaMapelDihide)) {
+                continue;
+            }
+
+            // Jika mapelnya gabungan (beda ID tapi namanya sama), satukan nilainya ke row yang ada
+            $targetKey = $mId;
+            if (!isset($matrixSumatif[$mId])) {
+                 $foundKey = null;
+                 foreach ($matrixSumatif as $k => $v) {
+                     if ($v['nama_mapel'] === $rawName) {
+                         $foundKey = $k; break;
+                     }
+                 }
+                 if ($foundKey) {
+                     $targetKey = $foundKey;
+                 }
+            }
+
+            // Inject nilainya ke bulan yang tepat
+            if (isset($matrixSumatif[$targetKey]) && is_numeric($sr['nilai_angka'])) {
+                $matrixSumatif[$targetKey]['nilai'][$bln] = (float)$sr['nilai_angka'];
+                $matrixSumatif[$targetKey]['total'] += (float)$sr['nilai_angka'];
+                $matrixSumatif[$targetKey]['count']++;
             }
         }
 
@@ -397,7 +462,7 @@ class AdminRaporBerjalanController extends BaseController
         uasort($matrixSumatif, function($a, $b) {
             return strcmp($a['nama_mapel'], $b['nama_mapel']);
         });
-
+        
         // 6. AMBIL CATATAN ANEKDOT & PRESTASI[cite: 5]
         $anekdot = $db->table('catatan_anekdot')
                       ->select('tanggal, kejadian')
