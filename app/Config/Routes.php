@@ -137,6 +137,10 @@ $routes->group('admin', static function ($routes) {
     $routes->get('schedule/print/(:num)', '\App\Controllers\ScheduleController::printSchedule/$1');
 
     $routes->get('analisis-heb', '\App\Controllers\AnalysisController::index');
+
+    $routes->get('rapor-berjalan', 'AdminRaporBerjalanController::index');
+    $routes->post('rapor-berjalan/get-siswa', 'AdminRaporBerjalanController::getSiswa');
+    $routes->get('rapor-berjalan/lihat', 'AdminRaporBerjalanController::lihat');
     
 });
 
