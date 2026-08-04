@@ -384,7 +384,7 @@
                 <?php foreach ($bulanAktif as $b): ?>
                     <td class="col-angka"><?= $spiritual['matrix'][$k][$b] ?: '-' ?></td>
                 <?php endforeach; ?>
-                <td class="col-rata"><?= $spiritual['totals'][$k] ?: '-' ?></td>
+               <td class="col-rata"><?= $spiritual['totals_predikat'][$k] ?: '-' ?></td>
             </tr>
             <?php endforeach; ?>
 
@@ -398,47 +398,62 @@
                 <?php foreach ($bulanAktif as $b): ?>
                     <td class="col-angka"><?= $sosial['matrix'][$k][$b] ?: '-' ?></td>
                 <?php endforeach; ?>
-                <td class="col-rata"><?= $sosial['totals'][$k] ?: '-' ?></td>
+                <!-- Ganti bagian sosialnya juga menjadi seperti ini -->
+                <td class="col-rata"><?= $sosial['totals_predikat'][$k] ?: '-' ?></td>
             </tr>
             <?php endforeach; ?>
         </tbody>
     </table>
+    <div class="keterangan-predikat" style="margin-top: 15px; font-size: 14px;">
+    <strong>Keterangan Penilaian Karakter:</strong><br>
+    A = Tidak pernah melanggar ketentuan<br>
+    B = 1 - 2 kali melanggar ketentuan<br>
+    C = 3 - 4 kali melanggar ketentuan<br>
+    D = > 4 kali melanggar ketentuan
+    </div>
 
-    <!-- EKSTRAKURIKULER & PRAMUKA -->
-    <div class="section-title">F. Kegiatan Ekstrakurikuler (Pramuka & Peminatan)</div>
+   <!-- 6. EKSTRAKURIKULER, PRAMUKA & PEMINATAN -->
+    <div class="section-title">F. Ekstrakurikuler, Pramuka & Peminatan</div>
     <table class="data-table">
         <thead>
             <tr>
-                <th class="col-aspek">Nama Kegiatan</th>
+                <th class="col-aspek">Kegiatan / Ekstrakurikuler</th>
                 <?php foreach ($bulanAktif as $b): ?>
-                    <th><?= $namaBulanIndo[$b] ?></th>
+                    <th><?= $namaBulanIndo[$b] ?? $b ?></th>
                 <?php endforeach; ?>
+                <th class="col-rata">Predikat</th>
             </tr>
         </thead>
         <tbody>
             <?php if (empty($matrixEskul)): ?>
-                <tr><td colspan="<?= count($bulanAktif) + 1 ?>" class="text-center text-muted">Belum ada data Ekstrakurikuler yang diikuti.</td></tr>
+                <tr>
+                    <td colspan="<?= count($bulanAktif) + 2 ?>" class="text-center text-muted">Belum ada data ekstrakurikuler.</td>
+                </tr>
             <?php else: ?>
-                <?php foreach ($matrixEskul as $namaEskul => $dataEskul): ?>
-                    <tr>
-                        <td class="col-aspek" style="font-weight: 600; color: #1a252f;">
-                            <?= esc($namaEskul) ?>
-                            <?php if (strtolower($namaEskul) == 'pramuka'): ?>
-                                <br><small style="color: #d35400; font-weight: normal;">*Wajib</small>
-                            <?php endif; ?>
-                        </td>
-                        <?php foreach ($bulanAktif as $b): ?>
-                            <!-- Predikat biasanya tidak dirata-rata, langsung ditampilkan nilai/hurufnya -->
-                            <td class="col-angka" style="font-weight: bold;"><?= esc($dataEskul[$b]) ?></td>
-                        <?php endforeach; ?>
-                    </tr>
+                <?php foreach ($matrixEskul as $key => $row): ?>
+                <tr>
+                    <td class="col-aspek"><?= esc($row['label']) ?></td>
+                    <?php foreach ($bulanAktif as $b): ?>
+                        <td class="col-angka"><?= esc($row['bulan'][$b] ?? '-') ?></td>
+                    <?php endforeach; ?>
+                    <td class="col-rata"><strong><?= esc($row['predikat_akhir'] ?? '-') ?></strong></td>
+                </tr>
                 <?php endforeach; ?>
             <?php endif; ?>
         </tbody>
     </table>
 
-    <!-- 5. ANEKDOT & PRESTASI -->
-    <div class="section-title">E. Catatan Anekdot & Prestasi</div>
+    <!-- KETERANGAN PREDIKAT -->
+    <div class="keterangan-predikat" style="margin-top: 10px; font-size: 0.85em; line-height: 1.5; color: #333;">
+        <strong>Keterangan Predikat Nilai:</strong><br>
+        A = Sangat Baik (90 - 100)<br>
+        B = Baik (80 - 89)<br>
+        C = Cukup (70 - 79)<br>
+        D = Kurang (&lt; 69)
+    </div>
+
+    <!-- 7. ANEKDOT & PRESTASI -->
+    <div class="section-title">G. Catatan Anekdot & Prestasi</div>
     <div class="catatan-box-container">
         <div class="catatan-box">
             <h4>Prestasi / Penghargaan</h4>
