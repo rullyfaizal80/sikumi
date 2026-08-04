@@ -61,20 +61,28 @@ class AdminRaporBerjalanController extends BaseController
         // LOGIKA DI BAWAH INI SAMA PERSIS DENGAN RAPOR SISWA
         // =========================================================
         
-        // 1. AMBIL DATA PROFIL SISWA
+        // =========================================================
+        // 1. AMBIL DATA PROFIL SISWA & WALI KELAS
+        // =========================================================
         $dataSiswa = $db->table('users u')
                         ->join('student_profiles sp', 'sp.user_id = u.id', 'left')
                         ->select('u.id, u.username as name, sp.nisn, sp.nis, sp.gender')
                         ->where('u.id', $student_id)
                         ->get()->getRowArray();
 
+        // Ambil nama kelas siswa saat ini sekaligus nama Wali Kelas (Guru Homeroom)
         $kelasSiswa = $db->table('class_rombel_students crs')
                          ->join('class_rombel cr', 'cr.id = crs.rombel_id')
-                         ->select('cr.rombel_name')
+                         // Join ke tabel users menggunakan homeroom_teacher_id untuk mengambil nama Wali Kelas
+                         ->join('users w', 'w.id = cr.homeroom_teacher_id', 'left') 
+                         ->select('cr.rombel_name, w.username as nama_wali_kelas')
                          ->where('crs.student_id', $student_id)
                          ->get()->getRowArray();
                          
         $dataSiswa['kelas'] = $kelasSiswa ? $kelasSiswa['rombel_name'] : '-';
+        
+        // Masukkan nama wali kelas ke dalam array dataSiswa agar mudah dipanggil di view
+        $dataSiswa['wali_kelas'] = ($kelasSiswa && $kelasSiswa['nama_wali_kelas']) ? $kelasSiswa['nama_wali_kelas'] : '-';
 
         // 2. TENTUKAN BULAN YANG SUDAH DILALUI[cite: 5]
         $arrayBulanSemester = ($semester === 'ganjil') ? ['07', '08', '09', '10', '11', '12'] : ['01', '02', '03', '04', '05', '06'];

@@ -173,15 +173,17 @@
         <table class="identitas-table">
             <tr><td>Nama Lengkap</td><td>: <?= esc($dataSiswa['name']) ?></td></tr>
             <tr><td>NIS / NISN</td><td>: <?= esc($dataSiswa['nis'] ?: '-') ?> / <?= esc($dataSiswa['nisn'] ?: '-') ?></td></tr>
-            <tr><td>Jenis Kelamin</td><td>: <?= ($dataSiswa['gender'] == 'L') ? 'Laki-laki' : (($dataSiswa['gender'] == 'P') ? 'Perempuan' : '-') ?></td></tr>
+            
+            <!-- Baris ini menampilkan Wali Kelas -->
+            <tr><td>Wali Kelas</td><td>: <?= esc($dataSiswa['wali_kelas']) ?></td></tr>
+            
         </table>
         <table class="identitas-table">
             <tr><td>Kelas</td><td>: <?= esc($dataSiswa['kelas']) ?></td></tr>
-            <tr><td>Semester</td><td>: <?= $semester ?></td></tr>
-            <tr><td>Tahun Ajaran</td><td>: <?= $tahun ?>/<?= $tahun + 1 ?></td></tr>
+            <tr><td>Semester</td><td>: <?= esc($semester) ?></td></tr>
+            <tr><td>Tahun Ajaran</td><td>: <?= esc($tahun) ?>/<?= esc($tahun + 1) ?></td></tr>
         </table>
     </div>
-
     <?php 
         // Helper fungsi untuk format angka (menghilangkan .00 di belakang)
         $fmt = function($angka) {
