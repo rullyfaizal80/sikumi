@@ -481,6 +481,82 @@
         </div>
     </div>
 
+    <!-- 8. REKAPITULASI ASPEK YAUMIYAH -->
+    <div class="section-title">H. Rekapitulasi Aspek Yaumiyah</div>
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th class="col-aspek">Aspek Yaumiyah</th>
+                <?php foreach ($bulanAktif as $b): ?>
+                    <th><?= esc($namaBulanIndo[$b] ?? $b) ?></th>
+                <?php endforeach; ?>
+                <th class="col-rata">Rata-rata</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php 
+            // Mapping label aktivitas dengan key di matriks controller
+            $labelYaumiyah = [
+                'p_dzuhur'   => 'Shalat Dzuhur di Sekolah',
+                'p_ashar'    => 'Shalat Ashar di Sekolah',
+                'p_bakdiah'  => 'Ba\'diah Dzuhur di Sekolah',
+                'p_duha'     => 'Shalat Duha di Sekolah',
+                'p_tahajud'  => 'Shalat Tahajud (1x/minggu)',
+                'p_tilawah'  => 'Tilawah (1 halaman/hari)',
+                'p_infaq'    => 'Infaq (1x/minggu)',
+                'p_shaum'    => 'Puasa Sunah (2x/bulan)',
+                'p_literasi' => 'Literasi (1 halaman/hari)'
+            ];
+            
+            // Cek apakah matriks yaumiyah tersedia
+            if (isset($matrixYaumiyah) && !empty($matrixYaumiyah)):
+                foreach ($labelYaumiyah as $key => $label): 
+                    $totalSatuBaris = 0;
+                    $jumlahBulanAktif = 0;
+            ?>
+                <tr>
+                    <td class="col-aspek" style="padding-left: 25px; font-weight: normal;">- <?= esc($label) ?></td>
+                    <?php foreach ($bulanAktif as $b): 
+                        // Ambil nilai persentase, default 0
+                        $nilaiPersen = isset($matrixYaumiyah[$key][$b]) ? (float)$matrixYaumiyah[$key][$b] : 0;
+                        
+                        // Jika ada nilainya, tambahkan ke total untuk perhitungan rata-rata
+                        if ($nilaiPersen > 0) {
+                            $totalSatuBaris += $nilaiPersen;
+                            $jumlahBulanAktif++;
+                        }
+                    ?>
+                        <td class="col-angka text-center">
+                            <!-- Ubah tampilan 0 menjadi tanda strip (-) agar serasi dengan tabel lain -->
+                            <?= $nilaiPersen > 0 ? number_format($nilaiPersen, 0) . '%' : '-' ?>
+                        </td>
+                    <?php endforeach; ?>
+                    
+                    <?php 
+                        // Rata-rata hanya dibagi dengan bulan yang memang ada datanya
+                        $rataRata = $jumlahBulanAktif > 0 ? ($totalSatuBaris / $jumlahBulanAktif) : 0; 
+                    ?>
+                    <td class="col-rata text-center">
+                        <strong><?= $rataRata > 0 ? number_format($rataRata, 0) . '%' : '-' ?></strong>
+                    </td>
+                </tr>
+            <?php 
+                endforeach; 
+            else:
+            ?>
+                <tr>
+                    <td colspan="<?= count($bulanAktif) + 2 ?>" class="text-center text-muted">
+                        Belum ada data rekapitulasi yaumiyah di semester ini.
+                    </td>
+                </tr>
+            <?php endif; ?>
+        </tbody>
+    </table>
+
+    <div style="margin-top: 5px; margin-bottom: 25px; font-size: 0.85em; color: #555;">
+        <em>* Nilai yang ditampilkan adalah persentase capaian (%) dari target berdasarkan jumlah hari efektif per bulan.</em>
+    </div>
+
 </div>
 
 </body>

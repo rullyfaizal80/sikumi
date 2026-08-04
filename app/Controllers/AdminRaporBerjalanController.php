@@ -751,6 +751,77 @@ class AdminRaporBerjalanController extends BaseController
             }
         }
 
+        // =========================================================
+        // 9. TARIK DATA YAUMIYAH (GROUP BY BULAN)
+        // =========================================================
+        // A. Ambil Target Hari Efektif per Bulan di Semester/Tahun Tersebut
+        $hariEfektifBulanan = [];
+        $cekHari = $db->table('hari_efektif')
+                      ->where('tahun', $tahun)
+                      ->whereIn('LPAD(bulan, 2, "0")', $bulanAktif)
+                      ->get()->getResultArray();
+                      
+        foreach ($cekHari as $ch) {
+            $hariEfektifBulanan[str_pad($ch['bulan'], 2, '0', STR_PAD_LEFT)] = (int)$ch['jumlah_hari'];
+        }
+
+        // B. Tarik Data Jurnal Yaumiyah Siswa
+        $yaumiyahRaw = $db->table('yaumiyah')
+                        ->select('
+                            LPAD(MONTH(tanggal), 2, "0") as bulan,
+                            SUM(dzuhur) as t_dz, SUM(ashar) as t_as, SUM(bakdiah_dzuhur) as t_bd,
+                            SUM(duha) as t_dh, SUM(tahajud) as t_th, SUM(tilawah) as t_tl,
+                            SUM(infaq) as t_if, SUM(shaum) as t_sh, SUM(literasi) as t_lt
+                        ')
+                        ->where('student_id', $student_id)
+                        ->whereIn('LPAD(MONTH(tanggal), 2, "0")', $bulanAktif)
+                        ->where('YEAR(tanggal)', $tahun)
+                        ->where('DAYOFWEEK(tanggal) !=', 1)
+                        ->where('DAYOFWEEK(tanggal) !=', 7) // Abaikan Sabtu & Minggu
+                        ->groupBy('MONTH(tanggal)')
+                        ->get()->getResultArray();
+
+        // C. Siapkan Matriks & Fungsi Kalkulasi
+        $matrixYaumiyah = [
+            'p_dzuhur'   => [], 'p_ashar'    => [], 'p_bakdiah'  => [],
+            'p_duha'     => [], 'p_tahajud'  => [], 'p_tilawah'  => [],
+            'p_infaq'    => [], 'p_shaum'    => [], 'p_literasi' => []
+        ];
+
+        // Inisialisasi default 0% untuk semua bulan aktif
+        foreach (array_keys($matrixYaumiyah) as $k) {
+            foreach ($bulanAktif as $b) {
+                $matrixYaumiyah[$k][$b] = 0;
+            }
+        }
+
+        $calcP = function($total, $target) {
+            if ($target == 0) return 0;
+            $p = ($total / $target) * 100;
+            return $p > 100 ? 100 : $p;
+        };
+
+        // D. Hitung Persentase per Bulan
+        foreach ($yaumiyahRaw as $yr) {
+            $b = $yr['bulan'];
+            // Jika hari efektif belum diset di database, asumsikan default 20 hari
+            $hEfektif = $hariEfektifBulanan[$b] ?? 20; 
+            
+            $targetHarian = $hEfektif;
+            $targetMingguan = ceil($hEfektif / 5);
+            $targetShaum = ($hEfektif <= 15) ? 1 : 2;
+
+            $matrixYaumiyah['p_dzuhur'][$b]   = $calcP((int)($yr['t_dz'] ?? 0), $targetHarian);
+            $matrixYaumiyah['p_ashar'][$b]    = $calcP((int)($yr['t_as'] ?? 0), $targetHarian);
+            $matrixYaumiyah['p_bakdiah'][$b]  = $calcP((int)($yr['t_bd'] ?? 0), $targetHarian);
+            $matrixYaumiyah['p_duha'][$b]     = $calcP((int)($yr['t_dh'] ?? 0), $targetHarian);
+            $matrixYaumiyah['p_tahajud'][$b]  = $calcP((int)($yr['t_th'] ?? 0), $targetMingguan);
+            $matrixYaumiyah['p_tilawah'][$b]  = $calcP((int)($yr['t_tl'] ?? 0), $targetHarian);
+            $matrixYaumiyah['p_infaq'][$b]    = $calcP((int)($yr['t_if'] ?? 0), $targetMingguan);
+            $matrixYaumiyah['p_shaum'][$b]    = $calcP((int)($yr['t_sh'] ?? 0), $targetShaum);
+            $matrixYaumiyah['p_literasi'][$b] = $calcP((int)($yr['t_lt'] ?? 0), $targetHarian);
+        }
+
         // F. Passing Data ke View
         $data = [
             'dataSiswa'             => $dataSiswa,
@@ -768,7 +839,8 @@ class AdminRaporBerjalanController extends BaseController
             'anekdot'               => $anekdot,
             'prestasi'              => $prestasi,
             'matrixQuran'           => $matrixQuran,
-            'matrixEskul'           => $matrixEskul
+            'matrixEskul'           => $matrixEskul,
+            'matrixYaumiyah'=> $matrixYaumiyah // <--- TAMBAHAN UNTUK YAUMIYAH
         ];
 
         return view('admin/rapor_berjalan_cetak', $data);
