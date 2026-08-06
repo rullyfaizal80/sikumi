@@ -11,6 +11,9 @@ use CodeIgniter\Router\RouteCollection;
 // =========================================================================
 $routes->get('/', 'Home::index', ['as' => 'dashboard', 'filter' => 'session']);
 
+// KEMBALIKAN BARIS INI:
+$routes->post('test-restore', '\App\Controllers\RestoreController::process');
+
 $routes->get('login', '\App\Controllers\Auth\LoginController::loginView');
 $routes->post('login', '\App\Controllers\Auth\LoginController::loginAction');
 
@@ -141,6 +144,11 @@ $routes->group('admin', static function ($routes) {
     $routes->get('rapor-berjalan', 'AdminRaporBerjalanController::index');
     $routes->post('rapor-berjalan/get-siswa', 'AdminRaporBerjalanController::getSiswa');
     $routes->get('rapor-berjalan/lihat', 'AdminRaporBerjalanController::lihat');
+
+    // --- TAMBAHKAN KODE INI DI SINI (SEBELUM PENUTUP GRUP ADMIN) ---
+    $routes->get('backup', function() {
+        return view('admin/backup_view');
+    });
     
 });
 
@@ -362,3 +370,9 @@ $routes->post('catatansiswa/hapusPrestasi', 'CatatanSiswaController::hapusPresta
 
 $routes->get('siswa/rapor-berjalan', 'RaporBerjalanController::index'); 
 
+// ====================================================================
+// ROUTE BACKUP & RESTORE (Jalur Absolut Anti-404)
+// ====================================================================
+$routes->get('backup-database', '\App\Controllers\BackupController::index');
+$routes->get('admin/restore', '\App\Controllers\RestoreController::index');
+$routes->post('admin/restore-process', '\App\Controllers\RestoreController::process');
