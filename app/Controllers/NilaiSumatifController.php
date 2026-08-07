@@ -49,10 +49,10 @@ class NilaiSumatifController extends BaseController
         }
         
         $reqRombelId = $this->request->getGet('rombel_id');
-        $selectedRombelId = $reqRombelId ?? (!empty($daftarRombel) ? $daftarRombel[0]['id'] : null);
+        $selectedRombelId = ($reqRombelId !== null && $reqRombelId !== '') ? $reqRombelId : (!empty($daftarRombel) ? $daftarRombel[0]['id'] : null);
 
         // ==============================================================
-        // 3. LOGIKA MAPEL: MUNCULKAN SEMUA TERJADWAL (REGULER & GABUNGAN)
+        // 3. LOGIKA MAPEL: MENGGUNAKAN PREFIX PREFIX UNTUK MENCEGAH BUG DROPDOWN
         // ==============================================================
         $daftarMapel = [];
         $mapelGuruDefaultId = null; 
@@ -67,7 +67,7 @@ class NilaiSumatifController extends BaseController
             $mapelFields = $db->getFieldNames($tabelMapel);
             $kolomNamaMapel = in_array('subject_name', $mapelFields) ? 'subject_name' : (in_array('nama_mapel', $mapelFields) ? 'nama_mapel' : 'name');
     
-            // A. Ambil Mapel Reguler yang Terjadwal (Otomatis membuang mapel tergabung)
+            // A. Ambil Mapel Reguler Terjadwal -> Beri prefix S_ (Subject)
             $semuaMapelTerjadwal = $db->table('class_schedules cs')
                           ->select("cs.{$kolomSubjectId} as id, s.{$kolomNamaMapel} as subject_name")
                           ->join("{$tabelMapel} s", "s.id = cs.{$kolomSubjectId}", 'left')
@@ -81,17 +81,17 @@ class NilaiSumatifController extends BaseController
             foreach ($semuaMapelTerjadwal as $m) {
                 if (!empty($m['id'])) {
                     $daftarMapel[] = [
-                        'id' => $m['id'], // Menggunakan ID integer murni
+                        'id' => 'S_' . $m['id'], // Prefix agar unik di dropdown
                         'subject_name' => $m['subject_name'] ?? 'Mapel Tidak Diketahui',
-                        'type' => 'mapel_terjadwal'
+                        'type' => 'reguler'
                     ];
                 }
             }    
 
-            // B. Ambil Mapel Gabungan yang Terjadwal
+            // B. Ambil Mapel Gabungan Terjadwal -> Beri prefix C_ (Combined)
             if ($kolomCombinedId && $db->tableExists('schedule_combined_subjects')) { 
                 $cFields = $db->getFieldNames('schedule_combined_subjects');
-                $cSubjectCol = in_array('subject_id', $cFields) ? 'COALESCE(c.subject_id, c.id)' : "cs.{$kolomCombinedId}";
+                $cSubjectCol = in_array('subject_id', $cFields) ? 'COALESCE(c.subject_id, c.id)' : "c.id";
 
                 $semuaMapelGabungan = $db->table('class_schedules cs')
                              ->select("{$cSubjectCol} as id, c.combined_name")  
@@ -106,7 +106,7 @@ class NilaiSumatifController extends BaseController
                 foreach ($semuaMapelGabungan as $mg) {
                     if (!empty($mg['id'])) {
                         $daftarMapel[] = [
-                            'id' => $mg['id'],
+                            'id' => 'C_' . $mg['id'], // Prefix agar unik di dropdown
                             'subject_name' => $mg['combined_name'] ?? 'Mapel Gabungan',
                             'type' => 'gabungan'
                         ];
@@ -114,8 +114,8 @@ class NilaiSumatifController extends BaseController
                 }
             }
     
-            // C. Cari Tahu Mapel Apa yang Diampu Guru Saat Ini
-            $mapelGuru = $db->table('class_schedules cs')
+            // C. Cari Tahu Mapel Guru Saat Ini 
+            $mapelGuruReguler = $db->table('class_schedules cs')
                             ->select("cs.{$kolomSubjectId} as id")
                             ->where('cs.version_id', $jadwalAktifId)
                             ->where("cs.{$kolomIdGuru}", $userId)
@@ -123,11 +123,11 @@ class NilaiSumatifController extends BaseController
                             ->where("cs.{$kolomSubjectId} !=", 0)
                             ->get()->getRowArray();
     
-            if ($mapelGuru) {
-                $mapelGuruDefaultId = $mapelGuru['id'];
-            } else if ($kolomCombinedId) {
+            if ($mapelGuruReguler && !empty($mapelGuruReguler['id'])) {
+                $mapelGuruDefaultId = 'S_' . $mapelGuruReguler['id'];
+            } else if ($kolomCombinedId && $db->tableExists('schedule_combined_subjects')) {
                 $cFields = $db->getFieldNames('schedule_combined_subjects');
-                $cSubjectCol = in_array('subject_id', $cFields) ? 'COALESCE(c.subject_id, c.id)' : "cs.{$kolomCombinedId}";
+                $cSubjectCol = in_array('subject_id', $cFields) ? 'COALESCE(c.subject_id, c.id)' : "c.id";
                 
                 $mapelGuruGabungan = $db->table('class_schedules cs')
                                         ->select("{$cSubjectCol} as id")
@@ -137,18 +137,26 @@ class NilaiSumatifController extends BaseController
                                         ->where("cs.{$kolomCombinedId} IS NOT NULL")
                                         ->where("cs.{$kolomCombinedId} !=", 0)
                                         ->get()->getRowArray();
-                if ($mapelGuruGabungan) {
-                    $mapelGuruDefaultId = $mapelGuruGabungan['id'];
+                if ($mapelGuruGabungan && !empty($mapelGuruGabungan['id'])) {
+                    $mapelGuruDefaultId = 'C_' . $mapelGuruGabungan['id'];
                 }
             }
         }
         
-        // D. Prioritas Pilihan User -> Mapel Guru -> Mapel Pertama
+        // D. Tentukan Mapel Terpilih
         $reqMapelId = $this->request->getGet('mapel_id');
-        $selectedMapelId = $reqMapelId ?? $mapelGuruDefaultId ?? (!empty($daftarMapel) ? $daftarMapel[0]['id'] : null);
+        $selectedMapelId = ($reqMapelId !== null && $reqMapelId !== '') ? $reqMapelId : $mapelGuruDefaultId;
+        if (empty($selectedMapelId) && !empty($daftarMapel)) {
+            $selectedMapelId = $daftarMapel[0]['id'];
+        }
 
         // ==============================================================
-        // 4. LOGIKA BULAN, SEMESTER & LOCK BULAN BELUM BERJALAN
+        // EKSTRAKSI ID MURNI (Membuang Prefix S_ atau C_ untuk Query DB)
+        // ==============================================================
+        $realMapelId = (int) preg_replace('/[^0-9]/', '', $selectedMapelId);
+
+        // ==============================================================
+        // 4. LOGIKA BULAN, SEMESTER & LOCK BULAN
         // ==============================================================
         $semesterAktif = $tahunAktif['semester'] ?? 'ganjil';
         $isGanjil = strtolower($semesterAktif) === 'ganjil';
@@ -166,16 +174,10 @@ class NilaiSumatifController extends BaseController
 
         foreach ($bulanList as $bln) {
             $tahunBulan = ($isGanjil) ? $thnStart : $thnEnd;
-            if (!$isGanjil && $bln > 6) { 
-                $tahunBulan = $thnStart; 
-            }
-
+            if (!$isGanjil && $bln > 6) { $tahunBulan = $thnStart; }
             $isLocked = false;
-            if ($tahunBulan > $currentYear) {
-                $isLocked = true;
-            } elseif ($tahunBulan === $currentYear && $bln > $currentMonth) {
-                $isLocked = true;
-            }
+            if ($tahunBulan > $currentYear) { $isLocked = true; } 
+            elseif ($tahunBulan === $currentYear && $bln > $currentMonth) { $isLocked = true; }
 
             $statusBulan[] = [
                 'id_bulan' => $bln,
@@ -185,7 +187,7 @@ class NilaiSumatifController extends BaseController
         }
 
         // ==============================================================
-        // 5. AMBIL DATA SISWA & NILAI SUMATIF (DENGAN PENYELAMATAN DATA LAMA)
+        // 5. AMBIL DATA SISWA & NILAI SUMATIF (MENGGUNAKAN ID INTEGER MURNI)
         // ==============================================================
         $siswaData = [];
         if ($selectedRombelId && $db->tableExists('class_rombel_students')) {
@@ -198,14 +200,15 @@ class NilaiSumatifController extends BaseController
                             
             if ($db->tableExists('nilai_sumatif')) {
                 foreach ($siswaData as &$siswa) {
+                    // PENCARIAN BERDASARKAN ANGKA MURNI AGAR NILAI LAMA TERBACA
                     $nilaiRecord = $db->table('nilai_sumatif')
                                       ->where('student_id', $siswa['student_id'])
                                       ->where('rombel_id', $selectedRombelId)
                                       ->where('academic_year_id', $tahunAktifId)
-                                      ->groupStart() // Mencari format baru maupun sisa uji coba sebelumnya
-                                          ->where('mapel_id', $selectedMapelId)
-                                          ->orWhere('mapel_id', 'S_' . $selectedMapelId)
-                                          ->orWhere('mapel_id', 'C_' . $selectedMapelId)
+                                      ->groupStart()
+                                          ->where('mapel_id', $realMapelId) // Angka murni dari database (ex: 5)
+                                          ->orWhere('mapel_id', (string)$realMapelId) 
+                                          ->orWhere('mapel_id', $selectedMapelId) // Antisipasi jika masih ada nilai S_5 yang tersimpan
                                       ->groupEnd()
                                       ->get()->getResultArray();
                                       
@@ -223,7 +226,7 @@ class NilaiSumatifController extends BaseController
             'daftarRombel'     => $daftarRombel,
             'daftarMapel'      => $daftarMapel,
             'selectedRombelId' => $selectedRombelId,
-            'selectedMapelId'  => $selectedMapelId,
+            'selectedMapelId'  => $selectedMapelId, // Prefix tetap dikirim ke view agar option terseleksi
             'statusBulan'      => $statusBulan,
             'siswaData'        => $siswaData,
         ];
@@ -246,13 +249,16 @@ class NilaiSumatifController extends BaseController
         }
 
         $rombelId = $request->getPost('rombel_id');
-        $mapelId = $request->getPost('mapel_id'); 
+        $mapelIdRaw = $request->getPost('mapel_id'); // ID yang dikirim (misal S_5 atau C_5)
         $academicYearId = $request->getPost('academic_year_id');
         $dataNilai = $request->getPost('data_nilai'); 
 
-        if (empty($rombelId) || empty($mapelId) || empty($dataNilai) || !is_array($dataNilai)) {
+        if (empty($rombelId) || empty($mapelIdRaw) || empty($dataNilai) || !is_array($dataNilai)) {
             return $this->response->setJSON(['status' => 'error', 'message' => 'Data tidak lengkap.']);
         }
+        
+        // EKSTRAK HANYA ANGKA UNTUK DISIMPAN KE DB (AGAR TERBACA OLEH RAPOR)
+        $realMapelId = (int) preg_replace('/[^0-9]/', '', $mapelIdRaw);
 
         $db->transStart();
 
@@ -267,27 +273,28 @@ class NilaiSumatifController extends BaseController
                                ->where('rombel_id', $rombelId)
                                ->where('bulan', $bulan)
                                ->where('academic_year_id', $academicYearId)
-                               ->groupStart() // Mencari format baru maupun sisa uji coba sebelumnya
-                                   ->where('mapel_id', $mapelId)
-                                   ->orWhere('mapel_id', 'S_' . $mapelId)
-                                   ->orWhere('mapel_id', 'C_' . $mapelId)
+                               ->groupStart()
+                                   ->where('mapel_id', $realMapelId)
+                                   ->orWhere('mapel_id', (string)$realMapelId)
+                                   ->orWhere('mapel_id', $mapelIdRaw)
                                ->groupEnd()
                                ->get()->getRowArray();
 
                 if ($existing) {
-                    // Update data sekaligus mengkonversi ID mapel menjadi format angka murni
+                    // Update dengan mapel_id Angka Murni ($realMapelId)
                     $db->table('nilai_sumatif')
                        ->where('id', $existing['id'])
                        ->update([
-                           'mapel_id'    => $mapelId, 
+                           'mapel_id'    => $realMapelId, 
                            'nilai_angka' => $nilaiAngka,
                            'updated_at'  => date('Y-m-d H:i:s')
                        ]);
                 } else {
+                    // Simpan dengan mapel_id Angka Murni ($realMapelId)
                     $db->table('nilai_sumatif')->insert([
                         'student_id'       => $studentId,
                         'rombel_id'        => $rombelId,
-                        'mapel_id'         => $mapelId, // Selalu simpan dengan ID angka murni
+                        'mapel_id'         => $realMapelId, 
                         'bulan'            => $bulan,
                         'academic_year_id' => $academicYearId,
                         'nilai_angka'      => $nilaiAngka,
