@@ -149,6 +149,8 @@ $routes->group('admin', static function ($routes) {
     $routes->get('backup', function() {
         return view('admin/backup_view');
     });
+
+    $routes->get('monitoring', 'MonitoringController::index');
     
 });
 
