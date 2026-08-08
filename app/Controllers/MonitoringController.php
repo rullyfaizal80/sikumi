@@ -27,7 +27,7 @@ class MonitoringController extends BaseController
         }
 
         // ====================================================================
-        // BAGIAN A: MONITORING PER KELAS / ROMBEL
+        // BAGIAN A: MONITORING PER KELAS / ROMBEL (Tanpa Sumatif)
         // ====================================================================
         $daftarRombel = $db->table('class_rombel')->orderBy('rombel_name', 'ASC')->get()->getResultArray();
         $monitoringKelas = [];
@@ -60,16 +60,6 @@ class MonitoringController extends BaseController
             $recordYaumiyah = (int)($cekYaumiyah['record_diinput'] ?? 0);
             $persenYaumiyah = $targetYaumiyah > 0 ? min(100, ($recordYaumiyah / $targetYaumiyah) * 100) : 0;
 
-            // Persentase Sumatif
-            $cekSumatif = $db->table('nilai_sumatif')
-                             ->where('rombel_id', $rombel_id)
-                             ->where('academic_year_id', $idTahunAjaran)
-                             ->where('bulan', $bulan)
-                             ->select('COUNT(DISTINCT student_id) as siswa_dinilai')
-                             ->get()->getRowArray();
-            $siswaDinilaiS = (int)($cekSumatif['siswa_dinilai'] ?? 0);
-            $persenSumatif = min(100, ($siswaDinilaiS / $jmlSiswa) * 100);
-
             // Aktivitas Jurnal Insidental
             $kepatuhanCount = $db->table('kepatuhan')->where('rombel_id', $rombel_id)->where('MONTH(tanggal)', $bulan)->where('YEAR(tanggal)', $tahun)->countAllResults();
             $spiritualCount = $db->table('aspek_spiritual')->where('rombel_id', $rombel_id)->where('MONTH(tanggal)', $bulan)->where('YEAR(tanggal)', $tahun)->countAllResults();
@@ -85,7 +75,6 @@ class MonitoringController extends BaseController
                 'jml_siswa'      => $jmlSiswa,
                 'persen_absen'   => round($persenAbsen),
                 'persen_yaumiyah'=> round($persenYaumiyah),
-                'persen_sumatif' => round($persenSumatif),
                 'total_insiden'  => $totalInsiden
             ];
         }
@@ -135,12 +124,143 @@ class MonitoringController extends BaseController
             ];
         }
 
+        // ====================================================================
+        // BAGIAN C: MONITORING NILAI SUMATIF PER MAPEL & PER KELAS
+        // ====================================================================
+        $daftarMapel = [];
+        $mapelDitemukan = []; 
+        $tabelMapel = $db->tableExists('master_subjects') ? 'master_subjects' : ($db->tableExists('subjects') ? 'subjects' : 'mata_pelajaran');
+        $mapelFields = $db->getFieldNames($tabelMapel);
+        $kolomNamaMapel = in_array('subject_name', $mapelFields) ? 'subject_name' : (in_array('nama_mapel', $mapelFields) ? 'nama_mapel' : 'name');
+        $hasCombinedTable = $db->tableExists('schedule_combined_subjects');
+
+        $jadwalAktif = $db->tableExists('schedule_versions') ? 
+                       $db->table('schedule_versions')->where('academic_year_id', $idTahunAjaran)->where('is_active', 1)->get()->getRowArray() : null;
+        if (!$jadwalAktif && $db->tableExists('schedule_versions')) {
+            $jadwalAktif = $db->table('schedule_versions')->where('is_active', 1)->get()->getRowArray();
+        }
+
+        $classSubjects = []; 
+        $monitoringSumatif = [];
+        
+        if ($jadwalAktif) {
+            $jadwalAktifId = $jadwalAktif['id'];
+            $csFields = $db->getFieldNames('class_schedules');
+            $kolomSubjectId = in_array('subject_id', $csFields) ? 'subject_id' : 'mapel_id';
+            $kolomCombinedId = in_array('combined_subject_id', $csFields) ? 'combined_subject_id' : null;
+
+            // Mapping jadwal untuk validasi mapel per rombel (Smart Schedule Filter)
+            $schedules = $db->table('class_schedules')
+                            ->where('version_id', $jadwalAktifId)
+                            ->get()->getResultArray();
+            foreach ($schedules as $sch) {
+                $rId = $sch['rombel_id'];
+                if (!isset($classSubjects[$rId])) $classSubjects[$rId] = [];
+                
+                if ($kolomCombinedId && !empty($sch[$kolomCombinedId])) {
+                    $classSubjects[$rId]['C_' . $sch[$kolomCombinedId]] = true;
+                } else if (!empty($sch[$kolomSubjectId])) {
+                    $classSubjects[$rId]['S_' . $sch[$kolomSubjectId]] = true;
+                }
+            }
+
+            // Ambil Mapel Gabungan
+            if ($kolomCombinedId && $hasCombinedTable) {
+                $mapelGabungan = $db->table('class_schedules cs')
+                             ->select("cs.{$kolomCombinedId} as combined_id, c.combined_name")  
+                             ->join("schedule_combined_subjects c", "c.id = cs.{$kolomCombinedId}", 'left') 
+                             ->where('cs.version_id', $jadwalAktifId)
+                             ->where("cs.{$kolomCombinedId} IS NOT NULL")
+                             ->where("cs.{$kolomCombinedId} !=", 0)
+                             ->groupBy("cs.{$kolomCombinedId}") 
+                             ->get()->getResultArray();
+                             
+                foreach ($mapelGabungan as $mg) {
+                    $namaMapel = trim($mg['combined_name'] ?? '');
+                    if (empty($namaMapel) || stripos($namaMapel, 'Bimbingan Konseling') !== false || strtoupper($namaMapel) === 'BK') continue;
+                    $cId = 'C_' . $mg['combined_id'];
+                    if (!in_array($cId, $mapelDitemukan)) {
+                        $daftarMapel[] = ['id' => $cId, 'nama_mapel' => $namaMapel];
+                        $mapelDitemukan[] = $cId;
+                    }
+                }
+            }
+
+            // Ambil Mapel Reguler
+            $queryReguler = $db->table('class_schedules cs')
+                          ->select("cs.{$kolomSubjectId} as id, s.{$kolomNamaMapel} as subject_name")
+                          ->join("{$tabelMapel} s", "s.id = cs.{$kolomSubjectId}", 'left')
+                          ->where('cs.version_id', $jadwalAktifId)
+                          ->where("cs.{$kolomSubjectId} IS NOT NULL")
+                          ->where("cs.{$kolomSubjectId} !=", 0);
+                          
+            if ($kolomCombinedId) {
+                $queryReguler->groupStart()
+                             ->where("cs.{$kolomCombinedId} IS NULL")
+                             ->orWhere("cs.{$kolomCombinedId}", 0)
+                             ->groupEnd();
+            }
+            
+            $mapelReguler = $queryReguler->groupBy("cs.{$kolomSubjectId}")->get()->getResultArray();
+                          
+            foreach ($mapelReguler as $m) {
+                $namaMapel = trim($m['subject_name'] ?? '');
+                if (empty($namaMapel) || stripos($namaMapel, 'Bimbingan Konseling') !== false || strtoupper($namaMapel) === 'BK') continue;
+                $mId = 'S_' . $m['id'];
+                if (!in_array($mId, $mapelDitemukan)) {
+                    $daftarMapel[] = ['id' => $mId, 'nama_mapel' => $namaMapel];
+                    $mapelDitemukan[] = $mId;
+                }
+            }
+            
+            // Urutkan Abjad
+            usort($daftarMapel, function($a, $b) {
+                return strcmp($a['nama_mapel'], $b['nama_mapel']);
+            });
+            
+            // Hitung Capaian Sumatif
+            foreach ($daftarRombel as $rombel) {
+                $rombel_id = $rombel['id'];
+                $jmlSiswa = $db->table('class_rombel_students')->where('rombel_id', $rombel_id)->countAllResults();
+                if ($jmlSiswa == 0) continue;
+
+                $rowMapel = [];
+                foreach ($daftarMapel as $mapel) {
+                    $mapel_id = $mapel['id'];
+                    
+                    // Cek di jadwal: Apakah kelas ini belajar mapel tersebut?
+                    $isTaught = isset($classSubjects[$rombel_id][$mapel_id]);
+
+                    if (!$isTaught) {
+                        $rowMapel[$mapel_id] = -1; // Kode (-1) jika kelas tidak diajarkan mapel ini
+                    } else {
+                        $cekSumatif = $db->table('nilai_sumatif')
+                                         ->where('rombel_id', $rombel_id)
+                                         ->where('mapel_id', $mapel_id)
+                                         ->where('academic_year_id', $idTahunAjaran)
+                                         ->where('bulan', $bulan)
+                                         ->select('COUNT(DISTINCT student_id) as siswa_dinilai')
+                                         ->get()->getRowArray();
+                        $siswaDinilaiS = (int)($cekSumatif['siswa_dinilai'] ?? 0);
+                        $rowMapel[$mapel_id] = min(100, round(($siswaDinilaiS / $jmlSiswa) * 100));
+                    }
+                }
+                
+                $monitoringSumatif[] = [
+                    'rombel_name' => $rombel['rombel_name'],
+                    'mapel'       => $rowMapel
+                ];
+            }
+        }
+
         $data = [
-            'bulan'           => $bulan,
-            'tahun'           => $tahun,
-            'hariEfektif'     => $hariEfektif,
-            'monitoringKelas' => $monitoringKelas,
-            'monitoringQuran' => $monitoringQuran
+            'bulan'             => $bulan,
+            'tahun'             => $tahun,
+            'hariEfektif'       => $hariEfektif,
+            'monitoringKelas'   => $monitoringKelas,
+            'monitoringQuran'   => $monitoringQuran,
+            'daftarMapel'       => $daftarMapel,
+            'monitoringSumatif' => $monitoringSumatif
         ];
 
         return view('admin/monitoring/index', $data);
