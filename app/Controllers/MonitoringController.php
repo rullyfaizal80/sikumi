@@ -12,9 +12,14 @@ class MonitoringController extends BaseController
         $db      = Database::connect();
         $request = \Config\Services::request();
 
-        // 1. Ambil Filter
-        $bulan = $request->getGet('bulan') ?? date('m');
-        $tahun = $request->getGet('tahun') ?? date('Y');
+        // 1. Logika Pintar Filter Default Berdasarkan Tanggal Hari Ini
+        $currentDay = (int) date('j');
+        $defaultMonth = ($currentDay <= 15) ? date('m', strtotime('-1 month')) : date('m');
+        $defaultYear  = ($currentDay <= 15) ? date('Y', strtotime('-1 month')) : date('Y');
+
+        // Ambil dari parameter GET, jika kosong gunakan default pintar di atas
+        $bulan = $request->getGet('bulan') ?? $defaultMonth;
+        $tahun = $request->getGet('tahun') ?? $defaultYear;
 
         // 2. Ambil Hari Efektif & Tahun Ajaran Aktif
         $cekHari = $db->table('hari_efektif')->where(['bulan' => $bulan, 'tahun' => $tahun])->get()->getRowArray();
@@ -27,7 +32,8 @@ class MonitoringController extends BaseController
         }
 
         // ====================================================================
-        // BAGIAN A: MONITORING PER KELAS / ROMBEL (Tanpa Sumatif)
+        // BAGIAN A: MONITORING PER KELAS / ROMBEL
+        // (Hanya: Absensi, Yaumiyah, Peminatan, Pramuka)
         // ====================================================================
         $daftarRombel = $db->table('class_rombel')->orderBy('rombel_name', 'ASC')->get()->getResultArray();
         $monitoringKelas = [];
@@ -38,7 +44,7 @@ class MonitoringController extends BaseController
 
             if ($jmlSiswa == 0) continue; 
 
-            // Persentase Absensi
+            // 1. Persentase Absensi
             $cekAbsen = $db->table('absensi')
                            ->select('COUNT(DISTINCT tanggal) as hari_diinput')
                            ->where('rombel_id', $rombel_id)
@@ -48,7 +54,7 @@ class MonitoringController extends BaseController
             $hariDiinput = (int)($cekAbsen['hari_diinput'] ?? 0);
             $persenAbsen = $hariEfektif > 0 ? min(100, ($hariDiinput / $hariEfektif) * 100) : 0;
 
-            // Persentase Yaumiyah
+            // 2. Persentase Yaumiyah
             $targetYaumiyah = $jmlSiswa * $hariEfektif;
             $cekYaumiyah = $db->table('yaumiyah y')
                               ->join('class_rombel_students crs', 'crs.student_id = y.student_id')
@@ -60,22 +66,29 @@ class MonitoringController extends BaseController
             $recordYaumiyah = (int)($cekYaumiyah['record_diinput'] ?? 0);
             $persenYaumiyah = $targetYaumiyah > 0 ? min(100, ($recordYaumiyah / $targetYaumiyah) * 100) : 0;
 
-            // Aktivitas Jurnal Insidental
-            $kepatuhanCount = $db->table('kepatuhan')->where('rombel_id', $rombel_id)->where('MONTH(tanggal)', $bulan)->where('YEAR(tanggal)', $tahun)->countAllResults();
-            $spiritualCount = $db->table('aspek_spiritual')->where('rombel_id', $rombel_id)->where('MONTH(tanggal)', $bulan)->where('YEAR(tanggal)', $tahun)->countAllResults();
-            $sosialCount = $db->table('aspek_sosial')->where('rombel_id', $rombel_id)->where('MONTH(tanggal)', $bulan)->where('YEAR(tanggal)', $tahun)->countAllResults();
-            $catatanAnekdotCount = $db->table('catatan_anekdot a')
-                                      ->join('class_rombel_students crs', 'crs.student_id = a.student_id')
-                                      ->where('crs.rombel_id', $rombel_id)->where('MONTH(a.tanggal)', $bulan)->where('YEAR(a.tanggal)', $tahun)->countAllResults();
+            // 3. Persentase Peminatan
+            $cekPem = $db->table('peminatan_grades')
+                         ->where('rombel_id', $rombel_id)
+                         ->where('bulan', $bulan)
+                         ->select('COUNT(DISTINCT student_id) as siswa_dinilai')
+                         ->get()->getRowArray();
+            $persenPem = min(100, round((($cekPem['siswa_dinilai'] ?? 0) / $jmlSiswa) * 100));
 
-            $totalInsiden = $kepatuhanCount + $spiritualCount + $sosialCount + $catatanAnekdotCount;
+            // 4. Persentase Pramuka
+            $cekPra = $db->table('pramuka_grades')
+                         ->where('rombel_id', $rombel_id)
+                         ->where('bulan', $bulan)
+                         ->select('COUNT(DISTINCT student_id) as siswa_dinilai')
+                         ->get()->getRowArray();
+            $persenPra = min(100, round((($cekPra['siswa_dinilai'] ?? 0) / $jmlSiswa) * 100));
 
             $monitoringKelas[] = [
-                'rombel_name'    => $rombel['rombel_name'],
-                'jml_siswa'      => $jmlSiswa,
-                'persen_absen'   => round($persenAbsen),
-                'persen_yaumiyah'=> round($persenYaumiyah),
-                'total_insiden'  => $totalInsiden
+                'rombel_name'      => $rombel['rombel_name'],
+                'jml_siswa'        => $jmlSiswa,
+                'persen_absen'     => round($persenAbsen),
+                'persen_yaumiyah'  => round($persenYaumiyah),
+                'persen_peminatan' => $persenPem,
+                'persen_pramuka'   => $persenPra
             ];
         }
 
@@ -125,7 +138,48 @@ class MonitoringController extends BaseController
         }
 
         // ====================================================================
-        // BAGIAN C: MONITORING NILAI SUMATIF PER MAPEL & PER KELAS
+        // BAGIAN C: MONITORING EKSTRAKURIKULER (KHUSUS REGULER)
+        // ====================================================================
+        $monitoringEskul = [];
+        if ($db->tableExists('eskul_groups')) {
+            $eskulGroups = $db->table('eskul_groups eg')
+                              ->select('eg.id, eg.nama_kelompok, u.username as pembimbing')
+                              ->join('users u', 'u.id = eg.pembimbing_id', 'left')
+                              ->where('eg.jenis_kelompok', 'Reguler')
+                              ->orderBy('eg.nama_kelompok', 'ASC')
+                              ->get()->getResultArray();
+
+            foreach ($eskulGroups as $eg) {
+                $groupId = $eg['id'];
+                $jmlSiswaEskul = 0;
+                
+                if ($db->tableExists('eskul_group_students')) {
+                    $jmlSiswaEskul = $db->table('eskul_group_students')->where('group_id', $groupId)->countAllResults();
+                }
+                
+                if ($jmlSiswaEskul == 0) continue;
+
+                $dinilai = 0;
+                if ($db->tableExists('eskul_grades')) {
+                    $cekEskul = $db->table('eskul_grades')
+                                   ->where('group_id', $groupId)
+                                   ->where('bulan', $bulan)
+                                   ->select('COUNT(DISTINCT student_id) as siswa_dinilai')
+                                   ->get()->getRowArray();
+                    $dinilai = (int)($cekEskul['siswa_dinilai'] ?? 0);
+                }
+
+                $monitoringEskul[] = [
+                    'nama_kelompok'  => $eg['nama_kelompok'],
+                    'pembimbing'     => $eg['pembimbing'],
+                    'jml_siswa'      => $jmlSiswaEskul,
+                    'persen_nilai'   => min(100, round(($dinilai / $jmlSiswaEskul) * 100)),
+                ];
+            }
+        }
+
+        // ====================================================================
+        // BAGIAN D: MONITORING NILAI SUMATIF PER MAPEL & PER KELAS
         // ====================================================================
         $daftarMapel = [];
         $mapelDitemukan = []; 
@@ -149,7 +203,6 @@ class MonitoringController extends BaseController
             $kolomSubjectId = in_array('subject_id', $csFields) ? 'subject_id' : 'mapel_id';
             $kolomCombinedId = in_array('combined_subject_id', $csFields) ? 'combined_subject_id' : null;
 
-            // Mapping jadwal untuk validasi mapel per rombel (Smart Schedule Filter)
             $schedules = $db->table('class_schedules')
                             ->where('version_id', $jadwalAktifId)
                             ->get()->getResultArray();
@@ -164,7 +217,6 @@ class MonitoringController extends BaseController
                 }
             }
 
-            // Ambil Mapel Gabungan
             if ($kolomCombinedId && $hasCombinedTable) {
                 $mapelGabungan = $db->table('class_schedules cs')
                              ->select("cs.{$kolomCombinedId} as combined_id, c.combined_name")  
@@ -186,7 +238,6 @@ class MonitoringController extends BaseController
                 }
             }
 
-            // Ambil Mapel Reguler
             $queryReguler = $db->table('class_schedules cs')
                           ->select("cs.{$kolomSubjectId} as id, s.{$kolomNamaMapel} as subject_name")
                           ->join("{$tabelMapel} s", "s.id = cs.{$kolomSubjectId}", 'left')
@@ -213,12 +264,10 @@ class MonitoringController extends BaseController
                 }
             }
             
-            // Urutkan Abjad
             usort($daftarMapel, function($a, $b) {
                 return strcmp($a['nama_mapel'], $b['nama_mapel']);
             });
             
-            // Hitung Capaian Sumatif
             foreach ($daftarRombel as $rombel) {
                 $rombel_id = $rombel['id'];
                 $jmlSiswa = $db->table('class_rombel_students')->where('rombel_id', $rombel_id)->countAllResults();
@@ -227,12 +276,10 @@ class MonitoringController extends BaseController
                 $rowMapel = [];
                 foreach ($daftarMapel as $mapel) {
                     $mapel_id = $mapel['id'];
-                    
-                    // Cek di jadwal: Apakah kelas ini belajar mapel tersebut?
                     $isTaught = isset($classSubjects[$rombel_id][$mapel_id]);
 
                     if (!$isTaught) {
-                        $rowMapel[$mapel_id] = -1; // Kode (-1) jika kelas tidak diajarkan mapel ini
+                        $rowMapel[$mapel_id] = -1;
                     } else {
                         $cekSumatif = $db->table('nilai_sumatif')
                                          ->where('rombel_id', $rombel_id)
@@ -259,6 +306,7 @@ class MonitoringController extends BaseController
             'hariEfektif'       => $hariEfektif,
             'monitoringKelas'   => $monitoringKelas,
             'monitoringQuran'   => $monitoringQuran,
+            'monitoringEskul'   => $monitoringEskul,
             'daftarMapel'       => $daftarMapel,
             'monitoringSumatif' => $monitoringSumatif
         ];

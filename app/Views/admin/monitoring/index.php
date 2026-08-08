@@ -13,12 +13,11 @@
         
         .col-kelas { font-weight: bold; text-align: left !important; background-color: #f8f9fa; }
         .col-kelompok { font-weight: bold; text-align: left !important; background-color: #eef7fa; }
-        .col-pembimbing { text-align: left !important; padding-left: 15px !important; } /* Khusus Rata Kiri Pembimbing */
+        .col-pembimbing { text-align: left !important; padding-left: 15px !important; }
         
         /* Modifikasi Progress Bar */
         .progress { height: 20px; background-color: #e9ecef; border-radius: 4px; margin-bottom: 0; box-shadow: inset 0 1px 2px rgba(0,0,0,.1); }
         .progress-bar { font-size: 11px; line-height: 20px; font-weight: bold; }
-        .badge-insiden { font-size: 13px; padding: 5px 10px; }
         
         /* Skala Warna Status */
         .bg-danger-custom { background-color: #dc3545 !important; color: #fff !important; }     /* < 50% */
@@ -69,7 +68,7 @@
                         <input type="number" name="tahun" class="form-control form-control-sm font-weight-bold" value="<?= esc($tahun) ?>" required onchange="document.getElementById('formFilter').submit()">
                     </div>
                     <div class="col-md-4 text-md-right text-muted small pt-3">
-                        <i class="fas.fa-info-circle mr-1"></i> Data akan otomatis memperbarui saat filter diubah.
+                        <i class="fas fa-info-circle mr-1"></i> Data akan otomatis memperbarui saat filter diubah.
                     </div>
                 </form>
             </div>
@@ -93,17 +92,18 @@
         <!-- ========================================== -->
         <!-- TABEL 1: MONITORING PER KELAS / ROMBEL -->
         <!-- ========================================== -->
-        <h5 class="font-weight-bold text-secondary mb-3 mt-4"><i class="fas fa-chalkboard-teacher mr-2"></i> Progress Laporan Per Kelas (Harian)</h5>
+        <h5 class="font-weight-bold text-secondary mb-3 mt-4"><i class="fas fa-chalkboard-teacher mr-2"></i> Progress Laporan Per Kelas</h5>
         <div class="card shadow-sm border-0 mb-5">
             <div class="card-body p-0 table-responsive">
                 <table class="table-custom table-hover">
                     <thead>
                         <tr>
                             <th style="width: 150px;">Kelas (Rombel)</th>
-                            <th style="width: 80px;">Siswa</th>
-                            <th style="width: 25%;">Absensi Harian</th>
-                            <th style="width: 25%;">Jurnal Yaumiyah</th>
-                            <th title="Total input data Pelanggaran/Karakter/Anekdot.">Aktivitas Insidental <i class="fas fa-info-circle"></i></th>
+                            <th style="width: 70px;">Siswa</th>
+                            <th style="width: 20%;">Absensi Harian</th>
+                            <th style="width: 20%;">Jurnal Yaumiyah</th>
+                            <th style="width: 20%;">Peminatan</th>
+                            <th style="width: 20%;">Pramuka</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -118,30 +118,32 @@
                                 <td>
                                     <div class="progress">
                                         <div class="progress-bar <?= $getColor($row['persen_absen']) ?>" style="width: <?= $row['persen_absen'] ?>%"><?= $row['persen_absen'] ?>%</div>
-                                    </div>
-                                    <small class="text-muted">Target: <?= $hariEfektif ?> Hari</small>
+                                    </div>                                    
                                 </td>
 
                                 <td>
                                     <div class="progress">
                                         <div class="progress-bar <?= $getColor($row['persen_yaumiyah']) ?>" style="width: <?= $row['persen_yaumiyah'] ?>%"><?= $row['persen_yaumiyah'] ?>%</div>
-                                    </div>
-                                    <small class="text-muted">Target: <?= $row['jml_siswa'] * $hariEfektif ?> Record</small>
+                                    </div>                                    
                                 </td>
 
                                 <td>
-                                    <?php if ($row['total_insiden'] > 0): ?>
-                                        <span class="badge badge-info badge-insiden shadow-sm"><?= $row['total_insiden'] ?> Catatan</span>
-                                    <?php else: ?>
-                                        <span class="badge badge-light badge-insiden text-muted border">-</span>
-                                    <?php endif; ?>
+                                    <div class="progress">
+                                        <div class="progress-bar <?= $getColor($row['persen_peminatan']) ?>" style="width: <?= $row['persen_peminatan'] ?>%"><?= $row['persen_peminatan'] ?>%</div>
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <div class="progress">
+                                        <div class="progress-bar <?= $getColor($row['persen_pramuka']) ?>" style="width: <?= $row['persen_pramuka'] ?>%"><?= $row['persen_pramuka'] ?>%</div>
+                                    </div>
                                 </td>
                             </tr>
                         <?php 
                             endforeach; 
                             else:
                         ?>
-                            <tr><td colspan="5" class="text-center py-5 text-muted">Belum ada data Rombel yang terdaftar.</td></tr>
+                            <tr><td colspan="6" class="text-center py-5 text-muted">Belum ada data Rombel yang terdaftar.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -175,7 +177,6 @@
                         ?>
                             <tr>
                                 <td class="col-kelompok text-dark"><?= esc($quran['nama_kelompok']) ?></td>
-                                <!-- Kolom Pembimbing Diatur Rata Kiri -->
                                 <td class="col-pembimbing font-weight-bold text-dark"><?= esc($quran['pembimbing']) ?: '-' ?></td>
                                 <td class="font-weight-bold text-muted"><?= $quran['jml_siswa'] ?></td>
                                 
@@ -207,7 +208,49 @@
         </div>
 
         <!-- ========================================== -->
-        <!-- TABEL 3: MONITORING NILAI SUMATIF -->
+        <!-- TABEL 3: MONITORING EKSTRAKURIKULER -->
+        <!-- ========================================== -->
+        <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-futbol mr-2"></i> Progress Penilaian Ekstrakurikuler (Kelompok Reguler)</h5>
+        <div class="card shadow-sm border-0 mb-5">
+            <div class="card-body p-0 table-responsive">
+                <table class="table-custom table-hover">
+                    <thead>
+                        <tr>
+                            <th style="width: 22%; background-color: #28a745; vertical-align: middle;">Nama Kelompok</th>
+                            <th style="width: 23%; background-color: #28a745; vertical-align: middle;">Pembimbing</th>
+                            <th style="width: 10%; background-color: #28a745; vertical-align: middle;">Siswa</th>
+                            <th style="background-color: #28a745; vertical-align: middle;">Progress Input Nilai Bulanan</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                            if (!empty($monitoringEskul)):
+                            foreach ($monitoringEskul as $eskul): 
+                        ?>
+                            <tr>
+                                <td class="col-kelompok text-dark"><?= esc($eskul['nama_kelompok']) ?></td>
+                                <td class="col-pembimbing font-weight-bold text-dark"><?= esc($eskul['pembimbing']) ?: '-' ?></td>
+                                <td class="font-weight-bold text-muted"><?= $eskul['jml_siswa'] ?></td>
+                                
+                                <td style="padding-left: 20px; padding-right: 20px;">
+                                    <div class="progress">
+                                        <div class="progress-bar <?= $getColor($eskul['persen_nilai']) ?>" style="width: <?= $eskul['persen_nilai'] ?>%"><?= $eskul['persen_nilai'] ?>%</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php 
+                            endforeach; 
+                            else:
+                        ?>
+                            <tr><td colspan="4" class="text-center py-5 text-muted">Belum ada Kelompok Ekstrakurikuler Reguler.</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TABEL 4: MONITORING NILAI SUMATIF -->
         <!-- ========================================== -->
         <h5 class="font-weight-bold text-secondary mb-3 mt-5"><i class="fas fa-graduation-cap mr-2"></i> Progress Penilaian Sumatif (Per Mata Pelajaran)</h5>
         <div class="card shadow-sm border-0 mb-4">
@@ -256,12 +299,12 @@
             </div>
         </div>
 
-        <!-- LEGENDA WARNA PUSAT -->
-        <div class="d-flex align-items-center mb-5 pb-3">
-            <span class="font-weight-bold text-muted mr-3 small">Indikator Warna Status:</span>
-            <span class="badge bg-danger-custom px-2 py-1 mr-2 shadow-sm">Merah (< 50%)</span>
-            <span class="badge bg-warning-custom px-2 py-1 mr-2 shadow-sm">Kuning (50% - 79%)</span>
-            <span class="badge bg-info-custom px-2 py-1 mr-2 shadow-sm">Hijau Muda (80% - 99%)</span>
+       <!-- LEGENDA WARNA PUSAT -->
+        <div class="d-flex align-items-center flex-wrap mt-4 mb-5 pb-3" style="gap: 10px;">
+            <span class="font-weight-bold text-muted small mr-2">Indikator Warna Status:</span>
+            <span class="badge bg-danger-custom px-2 py-1 shadow-sm">Merah (< 50%)</span>
+            <span class="badge bg-warning-custom px-2 py-1 shadow-sm">Kuning (50% - 79%)</span>
+            <span class="badge bg-info-custom px-2 py-1 shadow-sm">Hijau Muda (80% - 99%)</span>
             <span class="badge bg-success-custom px-2 py-1 shadow-sm">Hijau Tua (100% Tuntas Sempurna)</span>
         </div>
 
