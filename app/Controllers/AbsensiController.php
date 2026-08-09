@@ -164,61 +164,76 @@ class AbsensiController extends BaseController
     }
 
     public function rekap()
-    {
-        $db = \Config\Database::connect();
-        $request = \Config\Services::request();
+{
+    $db = \Config\Database::connect();
+    $request = \Config\Services::request();
 
-        // Ambil filter dari URL (jika ada), default ke bulan & tahun sekarang
-        $rombel_id = $request->getGet('rombel_id');
-        $bulan     = $request->getGet('bulan') ?? date('m');
-        $tahun     = $request->getGet('tahun') ?? date('Y');
+    // Ambil filter dari URL, default ke bulan & tahun sekarang
+    $rombel_id = $request->getGet('rombel_id');
+    $bulan     = $request->getGet('bulan') ?? date('m');
+    $tahun     = $request->getGet('tahun') ?? date('Y');
 
-        $daftarRombel = $db->table('class_rombel')->orderBy('rombel_name', 'ASC')->get()->getResultArray();
+    // Pastikan format bulan selalu 2 digit (contoh: '01', '02', dst)
+    $bulan = str_pad($bulan, 2, '0', STR_PAD_LEFT);
 
-        $siswaKelas = [];
-        $rekapData  = [];
-        $jumlahHari = date('t', strtotime("$tahun-$bulan-01")); 
+    $daftarRombel = $db->table('class_rombel')->orderBy('rombel_name', 'ASC')->get()->getResultArray();
 
-        if (!empty($rombel_id)) {
-            // 1. Ambil Daftar Siswa di kelas tersebut
-            $siswaKelas = $db->table('class_rombel_students crs')
-                             ->select('u.id as student_id, u.username')
-                             ->join('users u', 'u.id = crs.student_id')
-                             ->where('crs.rombel_id', $rombel_id)
-                             ->orderBy('u.username', 'ASC')
+    $siswaKelas = [];
+    $rekapData  = [];
+
+    // Menghitung jumlah hari secara dinamis berdasarkan bulan dan tahun yang dipilih
+    // Menggunakan cal_days_in_month lebih akurat dibandingkan strtotime
+    $jumlahHari = cal_days_in_month(CAL_GREGORIAN, (int)$bulan, (int)$tahun);
+
+    // Definisi array nama bulan agar bisa dikirim dengan aman ke view
+    $namaBulan = [
+        '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', 
+        '04' => 'April', '05' => 'Mei', '06' => 'Juni', 
+        '07' => 'Juli', '08' => 'Agustus', '09' => 'September', 
+        '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
+    ];
+
+    if (!empty($rombel_id)) {
+        // 1. Ambil Daftar Siswa di kelas tersebut
+        $siswaKelas = $db->table('class_rombel_students crs')
+                         ->select('u.id as student_id, u.username')
+                         ->join('users u', 'u.id = crs.student_id')
+                         ->where('crs.rombel_id', $rombel_id)
+                         ->orderBy('u.username', 'ASC')
+                         ->get()->getResultArray();
+
+        // 2. Ambil data absensi beserta menit keterlambatan
+        $absensiBulanan = $db->table('absensi a')
+                             ->select('a.tanggal, ad.student_id, ad.status, ad.keterlambatan_menit')
+                             ->join('absensi_details ad', 'ad.absensi_id = a.id')
+                             ->where('a.rombel_id', $rombel_id)
+                             ->where('MONTH(a.tanggal)', (int)$bulan)
+                             ->where('YEAR(a.tanggal)', (int)$tahun)
                              ->get()->getResultArray();
 
-            // 2. Ambil data absensi beserta menit keterlambatan
-            $absensiBulanan = $db->table('absensi a')
-                                 ->select('a.tanggal, ad.student_id, ad.status, ad.keterlambatan_menit')
-                                 ->join('absensi_details ad', 'ad.absensi_id = a.id')
-                                 ->where('a.rombel_id', $rombel_id)
-                                 ->where('MONTH(a.tanggal)', $bulan)
-                                 ->where('YEAR(a.tanggal)', $tahun)
-                                 ->get()->getResultArray();
-
-            // 3. Susun ulang data menjadi array multi-dimensi (Status & Menit)
-            foreach ($absensiBulanan as $row) {
-                $tgl = (int) date('j', strtotime($row['tanggal'])); 
-                $rekapData[$row['student_id']][$tgl] = [
-                    'status' => $row['status'],
-                    'menit'  => $row['keterlambatan_menit']
-                ];
-            }
+        // 3. Susun ulang data menjadi array multi-dimensi (Status & Menit)
+        foreach ($absensiBulanan as $row) {
+            $tgl = (int) date('j', strtotime($row['tanggal'])); 
+            $rekapData[$row['student_id']][$tgl] = [
+                'status' => $row['status'],
+                'menit'  => $row['keterlambatan_menit']
+            ];
         }
-
-        $data = [
-            'daftarRombel' => $daftarRombel,
-            'rombel_id'    => $rombel_id,
-            'bulan'        => $bulan,
-            'tahun'        => $tahun,
-            'jumlahHari'   => $jumlahHari,
-            'siswaKelas'   => $siswaKelas,
-            'rekapData'    => $rekapData
-        ];
-
-        return view('admin/absensi/rekap', $data);
     }
+
+    $data = [
+        'daftarRombel' => $daftarRombel,
+        'rombel_id'    => $rombel_id,
+        'bulan'        => $bulan,
+        'tahun'        => $tahun,
+        'jumlahHari'   => $jumlahHari,
+        'namaBulan'    => $namaBulan,
+        'siswaKelas'   => $siswaKelas,
+        'rekapData'    => $rekapData
+    ];
+
+    return view('admin/absensi/rekap', $data);
+}
 
 }
 

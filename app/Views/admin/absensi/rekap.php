@@ -102,9 +102,16 @@
                             </tr>
                             <tr>
                                 <!-- Generate Kolom Tanggal -->
-                                <?php for ($i = 1; $i <= $jumlahHari; $i++): ?>
-                                    <th style="min-width: 40px; padding: 5px; font-size: 0.85rem;"><?= $i ?></th>
-                                <?php endfor; ?>
+<?php for ($i = 1; $i <= $jumlahHari; $i++): ?>
+    <?php 
+        $currentDate = "$tahun-$bulan-" . str_pad($i, 2, '0', STR_PAD_LEFT);
+        $dayOfWeek = date('N', strtotime($currentDate)); // 6 = Sabtu, 7 = Minggu
+        $isWeekend = ($dayOfWeek == 6 || $dayOfWeek == 7);
+    ?>
+    <th style="min-width: 40px; padding: 5px; font-size: 0.85rem;" class="<?= $isWeekend ? 'bg-danger text-white' : '' ?>">
+        <?= $i ?>
+    </th>
+<?php endfor; ?>
                                 
                                 <!-- Kolom Total (Ditambah T dan Menit) -->
                                 <th style="width: 40px; background-color: #28a745;" title="Total Hadir">H</th>
@@ -134,38 +141,43 @@
                                         <td class="sticky-col-2" style="text-align: left;"><strong><?= esc($siswa['username']) ?></strong></td>
                                         
                                         <!-- Looping Tanggal -->
-                                        <?php for ($i = 1; $i <= $jumlahHari; $i++): ?>
-                                            <?php 
-                                                $dataAbsen = $rekapData[$studentId][$i] ?? null;
-                                                $status = '-';
-                                                $menit = 0;
-                                                $colorClass = 'text-muted';
+<?php for ($i = 1; $i <= $jumlahHari; $i++): ?>
+    <?php 
+        $currentDate = "$tahun-$bulan-" . str_pad($i, 2, '0', STR_PAD_LEFT);
+        $dayOfWeek = date('N', strtotime($currentDate));
+        $isWeekend = ($dayOfWeek == 6 || $dayOfWeek == 7);
 
-                                                if ($dataAbsen) {
-                                                    $status = $dataAbsen['status'];
-                                                    $menit  = (int) $dataAbsen['menit'];
+        $dataAbsen = $rekapData[$studentId][$i] ?? null;
+        $status = '-';
+        $menit = 0;
+        $colorClass = 'text-muted';
 
-                                                    // Hitung Total Kehadiran
-                                                    if ($status === 'H') { $totalH++; $colorClass = 'text-success font-weight-bold'; }
-                                                    if ($status === 'S') { $totalS++; $colorClass = 'text-warning font-weight-bold'; }
-                                                    if ($status === 'I') { $totalI++; $colorClass = 'text-info font-weight-bold'; }
-                                                    if ($status === 'A') { $totalA++; $colorClass = 'text-danger font-weight-bold'; }
-                                                    
-                                                    // Hitung Keterlambatan
-                                                    if ($menit > 0) {
-                                                        $totalKaliTerlambat++;
-                                                        $totalMenitTerlambat += $menit;
-                                                    }
-                                                }
-                                            ?>
-                                            <td style="padding: 5px;">
-                                                <span class="<?= $colorClass ?>"><?= $status ?></span>
-                                                <?php if ($menit > 0): ?>
-                                                    <!-- Jika telat, tampilkan teks menit kecil di bawah huruf H -->
-                                                    <br><small class="text-danger font-weight-bold" style="font-size: 0.7rem;"><?= $menit ?>m</small>
-                                                <?php endif; ?>
-                                            </td>
-                                        <?php endfor; ?>
+        if ($dataAbsen) {
+            $status = $dataAbsen['status'];
+            $menit  = (int) $dataAbsen['menit'];
+
+            // Hitung Total Kehadiran
+            if ($status === 'H') { $totalH++; $colorClass = 'text-success font-weight-bold'; }
+            if ($status === 'S') { $totalS++; $colorClass = 'text-warning font-weight-bold'; }
+            if ($status === 'I') { $totalI++; $colorClass = 'text-info font-weight-bold'; }
+            if ($status === 'A') { $totalA++; $colorClass = 'text-danger font-weight-bold'; }
+            
+            // Hitung Keterlambatan
+            if ($menit > 0) {
+                $totalKaliTerlambat++;
+                $totalMenitTerlambat += $menit;
+            }
+        }
+    ?>
+    <!-- Beri warna latar belakang berbeda jika hari Sabtu/Minggu -->
+    <td style="padding: 5px; <?= $isWeekend ? 'background-color: #f8d7da;' : '' ?>">
+        <span class="<?= $colorClass ?>"><?= $status ?></span>
+        <?php if ($menit > 0): ?>
+            <!-- Jika telat, tampilkan teks menit kecil di bawah huruf H -->
+            <br><small class="text-danger font-weight-bold" style="font-size: 0.7rem;"><?= $menit ?>m</small>
+        <?php endif; ?>
+    </td>
+<?php endfor; ?>
 
                                         <!-- Menampilkan Total per Siswa -->
                                         <td class="font-weight-bold bg-light"><?= $totalH ?></td>
