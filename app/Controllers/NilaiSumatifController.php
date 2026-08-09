@@ -187,39 +187,35 @@ class NilaiSumatifController extends BaseController
         }
 
         // ==============================================================
-        // 5. AMBIL DATA SISWA & NILAI SUMATIF (MENGGUNAKAN ID INTEGER MURNI)
-        // ==============================================================
-        $siswaData = [];
-        if ($selectedRombelId && $db->tableExists('class_rombel_students')) {
-            $siswaData = $db->table('class_rombel_students crs')
-                            ->select('u.id as student_id, u.username as name') 
-                            ->join('users u', 'u.id = crs.student_id') 
-                            ->where('crs.rombel_id', $selectedRombelId)
-                            ->orderBy('u.username', 'ASC')
-                            ->get()->getResultArray();
-                            
-            if ($db->tableExists('nilai_sumatif')) {
-                foreach ($siswaData as &$siswa) {
-                    // PENCARIAN BERDASARKAN ANGKA MURNI AGAR NILAI LAMA TERBACA
-                    $nilaiRecord = $db->table('nilai_sumatif')
-                                      ->where('student_id', $siswa['student_id'])
-                                      ->where('rombel_id', $selectedRombelId)
-                                      ->where('academic_year_id', $tahunAktifId)
-                                      ->groupStart()
-                                          ->where('mapel_id', $realMapelId) // Angka murni dari database (ex: 5)
-                                          ->orWhere('mapel_id', (string)$realMapelId) 
-                                          ->orWhere('mapel_id', $selectedMapelId) // Antisipasi jika masih ada nilai S_5 yang tersimpan
-                                      ->groupEnd()
-                                      ->get()->getResultArray();
-                                      
-                    $siswa['nilai'] = [];
-                    foreach ($nilaiRecord as $nr) {
-                        $siswa['nilai'][$nr['bulan']] = $nr['nilai_angka'];
-                    }
-                }
-                unset($siswa); 
+// 5. AMBIL DATA SISWA & NILAI SUMATIF (MENGGUNAKAN PREFIX)
+// ==============================================================
+$siswaData = [];
+if ($selectedRombelId && $db->tableExists('class_rombel_students')) {
+    $siswaData = $db->table('class_rombel_students crs')
+                    ->select('u.id as student_id, u.username as name') 
+                    ->join('users u', 'u.id = crs.student_id') 
+                    ->where('crs.rombel_id', $selectedRombelId)
+                    ->orderBy('u.username', 'ASC')
+                    ->get()->getResultArray();
+                    
+    if ($db->tableExists('nilai_sumatif')) {
+        foreach ($siswaData as &$siswa) {
+            // Langsung cari berdasarkan string mapel_id yang lengkap (misal: S_1 atau C_3)
+            $nilaiRecord = $db->table('nilai_sumatif')
+                              ->where('student_id', $siswa['student_id'])
+                              ->where('rombel_id', $selectedRombelId)
+                              ->where('academic_year_id', $tahunAktifId)
+                              ->where('mapel_id', $selectedMapelId) 
+                              ->get()->getResultArray();
+                              
+            $siswa['nilai'] = [];
+            foreach ($nilaiRecord as $nr) {
+                $siswa['nilai'][$nr['bulan']] = $nr['nilai_angka'];
             }
         }
+        unset($siswa); 
+    }
+}
 
         $data = [
             'tahunAktifId'     => $tahunAktifId,
@@ -234,82 +230,71 @@ class NilaiSumatifController extends BaseController
         return view('guru/nilai_sumatif_manage', $data);
     }
 
-    /**
-     * Fungsi untuk menyimpan nilai via AJAX
-     *
-     * @return ResponseInterface
-     */
     public function simpanNilai(): ResponseInterface
-    {
-        $db = \Config\Database::connect();
-        $request = \Config\Services::request();
+{
+    $db = \Config\Database::connect();
+    $request = \Config\Services::request();
 
-        if (!$request->isAJAX()) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Akses tidak sah.']);
-        }
+    if (!$request->isAJAX()) {
+        return $this->response->setJSON(['status' => 'error', 'message' => 'Akses tidak sah.']);
+    }
 
-        $rombelId = $request->getPost('rombel_id');
-        $mapelIdRaw = $request->getPost('mapel_id'); // ID yang dikirim (misal S_5 atau C_5)
-        $academicYearId = $request->getPost('academic_year_id');
-        $dataNilai = $request->getPost('data_nilai'); 
+    $rombelId = $request->getPost('rombel_id');
+    $mapelIdRaw = $request->getPost('mapel_id'); // Sudah membawa format S_5 atau C_5
+    $academicYearId = $request->getPost('academic_year_id');
+    $dataNilai = $request->getPost('data_nilai'); 
 
-        if (empty($rombelId) || empty($mapelIdRaw) || empty($dataNilai) || !is_array($dataNilai)) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Data tidak lengkap.']);
-        }
-        
-        // EKSTRAK HANYA ANGKA UNTUK DISIMPAN KE DB (AGAR TERBACA OLEH RAPOR)
-        $realMapelId = (int) preg_replace('/[^0-9]/', '', $mapelIdRaw);
+    if (empty($rombelId) || empty($mapelIdRaw) || empty($dataNilai) || !is_array($dataNilai)) {
+        return $this->response->setJSON(['status' => 'error', 'message' => 'Data tidak lengkap.']);
+    }
+    
+    // TIDAK PERLU LAGI MENGHAPUS PREFIX, GUNAKAN LANGSUNG $mapelIdRaw
 
-        $db->transStart();
+    $db->transStart();
 
-        foreach ($dataNilai as $studentId => $bulanNilai) {
-            foreach ($bulanNilai as $bulan => $nilaiAngka) {
-                if ($nilaiAngka === '' || $nilaiAngka === null) {
-                    continue; 
-                }
+    foreach ($dataNilai as $studentId => $bulanNilai) {
+        foreach ($bulanNilai as $bulan => $nilaiAngka) {
+            if ($nilaiAngka === '' || $nilaiAngka === null) {
+                continue; 
+            }
 
-                $existing = $db->table('nilai_sumatif')
-                               ->where('student_id', $studentId)
-                               ->where('rombel_id', $rombelId)
-                               ->where('bulan', $bulan)
-                               ->where('academic_year_id', $academicYearId)
-                               ->groupStart()
-                                   ->where('mapel_id', $realMapelId)
-                                   ->orWhere('mapel_id', (string)$realMapelId)
-                                   ->orWhere('mapel_id', $mapelIdRaw)
-                               ->groupEnd()
-                               ->get()->getRowArray();
+            $existing = $db->table('nilai_sumatif')
+                           ->where('student_id', $studentId)
+                           ->where('rombel_id', $rombelId)
+                           ->where('bulan', $bulan)
+                           ->where('academic_year_id', $academicYearId)
+                           ->where('mapel_id', $mapelIdRaw) // Cek berdasarkan ID lengkap ber-prefix
+                           ->get()->getRowArray();
 
-                if ($existing) {
-                    // Update dengan mapel_id Angka Murni ($realMapelId)
-                    $db->table('nilai_sumatif')
-                       ->where('id', $existing['id'])
-                       ->update([
-                           'mapel_id'    => $realMapelId, 
-                           'nilai_angka' => $nilaiAngka,
-                           'updated_at'  => date('Y-m-d H:i:s')
-                       ]);
-                } else {
-                    // Simpan dengan mapel_id Angka Murni ($realMapelId)
-                    $db->table('nilai_sumatif')->insert([
-                        'student_id'       => $studentId,
-                        'rombel_id'        => $rombelId,
-                        'mapel_id'         => $realMapelId, 
-                        'bulan'            => $bulan,
-                        'academic_year_id' => $academicYearId,
-                        'nilai_angka'      => $nilaiAngka,
-                        'created_at'       => date('Y-m-d H:i:s')
-                    ]);
-                }
+            if ($existing) {
+                // Update nilai
+                $db->table('nilai_sumatif')
+                   ->where('id', $existing['id'])
+                   ->update([
+                       'nilai_angka' => $nilaiAngka,
+                       'updated_at'  => date('Y-m-d H:i:s')
+                   ]);
+            } else {
+                // Simpan baru dengan mapel_id yang memiliki prefix (S_... atau C_...)
+                $db->table('nilai_sumatif')->insert([
+                    'student_id'       => $studentId,
+                    'rombel_id'        => $rombelId,
+                    'mapel_id'         -> $mapelIdRaw, 
+                    'bulan'            => $bulan,
+                    'academic_year_id' => $academicYearId,
+                    'nilai_angka'      => $nilaiAngka,
+                    'created_at'       => date('Y-m-d H:i:s')
+                ]);
             }
         }
-
-        $db->transComplete();
-
-        if ($db->transStatus() === FALSE) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Gagal menyimpan nilai.']);
-        }
-
-        return $this->response->setJSON(['status' => 'success', 'message' => 'Nilai sumatif berhasil disimpan!']);
     }
+
+    $db->transComplete();
+
+    if ($db->transStatus() === FALSE) {
+        return $this->response->setJSON(['status' => 'error', 'message' => 'Gagal menyimpan nilai.']);
+    }
+
+    return $this->response->setJSON(['status' => 'success', 'message' => 'Nilai sumatif berhasil disimpan!']);
+}
 }
