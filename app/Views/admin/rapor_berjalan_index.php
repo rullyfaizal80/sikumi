@@ -127,10 +127,11 @@
 <!-- 2. BAGIAN HALAMAN RAPOR -->
 <?php if (!empty($dataSiswa)): ?>
 <?php 
-    // FUNGSI & VARIABEL PEMBANTU UNTUK VIEW
-    $fmt = function($angka) { return $angka != null ? str_replace('.', ',', (float)$angka) : '-'; };
+    $fmt = function($angka, $b) use ($bulanAktif) { 
+        if (!in_array($b, $bulanAktif)) return ''; 
+        return $angka !== null ? str_replace('.', ',', (float)$angka) : '-'; 
+    };
     
-    // TENTUKAN 6 BULAN PENUH (Selalu 6 Kolom)
     $semuaBulan = (strtolower($semester) === 'ganjil') ? ['07', '08', '09', '10', '11', '12'] : ['01', '02', '03', '04', '05', '06'];
 ?>
 <div class="rapor-wrapper">
@@ -178,8 +179,10 @@
                     <?php foreach ($matrixSumatif as $mapel): ?>
                         <tr>
                             <td style="font-weight: 600;"><?= esc($mapel['nama_mapel']) ?></td>
-                            <?php foreach ($semuaBulan as $b): ?><td class="text-center"><?= $fmt($mapel['nilai'][$b] ?? null) ?></td><?php endforeach; ?>
-                            <td class="col-rata"><?= $mapel['count'] > 0 ? $fmt(round($mapel['total'] / $mapel['count'], 2)) : '-' ?></td>
+                            <?php foreach ($semuaBulan as $b): ?>
+                                <td class="text-center"><?= $fmt($mapel['nilai'][$b] ?? null, $b) ?></td>
+                            <?php endforeach; ?>
+                            <td class="col-rata"><?= $mapel['count'] > 0 ? str_replace('.', ',', round($mapel['total'] / $mapel['count'], 2)) : '-' ?></td>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -203,11 +206,22 @@
                 <?php if (empty($matrixQuran)): ?>
                     <tr><td colspan="<?= count($semuaBulan) + 2 ?>" class="text-center text-muted">Belum ada data nilai Al-Qur'an.</td></tr>
                 <?php else: ?>
+                    <?php 
+                        $kelasSiswa = $dataSiswa['kelas'] ?? '';
+                        $isKelas7 = preg_match('/(7|VII)/i', $kelasSiswa);
+                    ?>
                     <?php foreach ($matrixQuran as $aspek => $dataQuran): ?>
+                        <?php 
+                            if ($isKelas7 && strtolower($aspek) === 'tahfidz') {
+                                continue;
+                            }
+                        ?>
                         <tr>
                             <td style="font-weight: 600;"><?= esc($aspek) ?></td>
-                            <?php foreach ($semuaBulan as $b): ?><td class="text-center"><?= $fmt($dataQuran['nilai'][$b] ?? null) ?></td><?php endforeach; ?>
-                            <td class="col-rata"><?= $dataQuran['count'] > 0 ? $fmt(round($dataQuran['total'] / $dataQuran['count'], 2)) : '-' ?></td>
+                            <?php foreach ($semuaBulan as $b): ?>
+                                <td class="text-center"><?= $fmt($dataQuran['nilai'][$b] ?? null, $b) ?></td>
+                            <?php endforeach; ?>
+                            <td class="col-rata"><?= $dataQuran['count'] > 0 ? str_replace('.', ',', round($dataQuran['total'] / $dataQuran['count'], 2)) : '-' ?></td>
                         </tr>
                     <?php endforeach; ?>
                 <?php endif; ?>
@@ -231,8 +245,32 @@
                 ?>
                 <tr>
                     <td style="font-weight: 600;"><?= $label ?></td>
-                    <?php foreach ($semuaBulan as $b): ?><td class="text-center"><?= esc($matrixAbsen[$kode][$b] ?? '-') ?></td><?php endforeach; ?>
-                    <td class="col-rata"><?= esc($totalAbsen[$kode] ?? '-') ?></td>
+                    <?php foreach ($semuaBulan as $b): ?>
+                        <td class="text-center">
+                            <?php 
+                                if (!in_array($b, $bulanAktif)) {
+                                    echo '';
+                                } else {
+                                    $val = $matrixAbsen[$kode][$b] ?? '-';
+                                    if ($kode === 'M' && ($val === '-' || $val === '' || $val === null)) {
+                                        echo '0';
+                                    } else {
+                                        echo esc($val);
+                                    }
+                                }
+                            ?>
+                        </td>
+                    <?php endforeach; ?>
+                    <td class="col-rata">
+                        <?php 
+                            $valTotal = $totalAbsen[$kode] ?? '-';
+                            if ($kode === 'M' && ($valTotal === '-' || $valTotal === '' || $valTotal === null)) {
+                                echo '0';
+                            } else {
+                                echo esc($valTotal);
+                            }
+                        ?>
+                    </td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -255,7 +293,9 @@
                 ?>
                 <tr>
                     <td class="col-aspek"><?= $label ?></td>
-                    <?php foreach ($semuaBulan as $b): ?><td class="col-angka"><?= $kepatuhan['matrix'][$k][$b] ?? '-' ?></td><?php endforeach; ?>
+                    <?php foreach ($semuaBulan as $b): ?>
+                        <td class="col-angka"><?= in_array($b, $bulanAktif) ? ($kepatuhan['matrix'][$k][$b] ?? 0) : '' ?></td>
+                    <?php endforeach; ?>
                     <td class="col-rata"><?= $kepatuhan['totals'][$k] ?></td>
                 </tr>
                 <?php endforeach; ?>
@@ -286,7 +326,9 @@
                 ?>
                 <tr>
                     <td class="col-aspek" style="padding-left: 25px; font-weight: normal;">- <?= $label ?></td>
-                    <?php foreach ($semuaBulan as $b): ?><td class="col-angka"><?= $spiritual['matrix'][$k][$b] ?? '-' ?></td><?php endforeach; ?>
+                    <?php foreach ($semuaBulan as $b): ?>
+                        <td class="col-angka"><?= in_array($b, $bulanAktif) ? ($spiritual['matrix'][$k][$b] ?? '-') : '' ?></td>
+                    <?php endforeach; ?>
                    <td class="col-rata"><?= $spiritual['totals_predikat'][$k] ?? '-' ?></td>
                 </tr>
                 <?php endforeach; ?>
@@ -298,7 +340,9 @@
                 ?>
                 <tr>
                     <td class="col-aspek" style="padding-left: 25px; font-weight: normal;">- <?= $label ?></td>
-                    <?php foreach ($semuaBulan as $b): ?><td class="col-angka"><?= $sosial['matrix'][$k][$b] ?? '-' ?></td><?php endforeach; ?>
+                    <?php foreach ($semuaBulan as $b): ?>
+                        <td class="col-angka"><?= in_array($b, $bulanAktif) ? ($sosial['matrix'][$k][$b] ?? '-') : '' ?></td>
+                    <?php endforeach; ?>
                     <td class="col-rata"><?= $sosial['totals_predikat'][$k] ?? '-' ?></td>
                 </tr>
                 <?php endforeach; ?>
@@ -329,7 +373,9 @@
                     <?php foreach ($matrixEskul as $key => $row): ?>
                     <tr>
                         <td class="col-aspek"><?= esc($row['label']) ?></td>
-                        <?php foreach ($semuaBulan as $b): ?><td class="col-angka"><?= esc($row['bulan'][$b] ?? '-') ?></td><?php endforeach; ?>
+                        <?php foreach ($semuaBulan as $b): ?>
+                            <td class="col-angka"><?= in_array($b, $bulanAktif) ? esc($row['bulan'][$b] ?? '-') : '' ?></td>
+                        <?php endforeach; ?>
                         <td class="col-rata"><strong><?= esc($row['predikat_akhir'] ?? '-') ?></strong></td>
                     </tr>
                     <?php endforeach; ?>
@@ -405,20 +451,24 @@
                     <tr>
                         <td class="col-aspek" style="padding-left: 25px; font-weight: normal;">- <?= esc($label) ?></td>
                         <?php foreach ($semuaBulan as $b): 
-                            $nilaiPersen = isset($matrixYaumiyah[$key][$b]) ? (float)$matrixYaumiyah[$key][$b] : 0;
-                            if ($nilaiPersen > 0) {
-                                $totalSatuBaris += $nilaiPersen;
-                                $jumlahBulanAktif++;
+                            if (!in_array($b, $bulanAktif)) {
+                                echo '<td class="col-angka text-center"></td>'; // Kosong untuk bulan depan
+                            } else {
+                                $nilaiPersen = isset($matrixYaumiyah[$key][$b]) ? (float)$matrixYaumiyah[$key][$b] : 0;
+                                if ($nilaiPersen > 0) {
+                                    $totalSatuBaris += $nilaiPersen;
+                                    $jumlahBulanAktif++;
+                                }
+                                // Jika tidak punya nilai atau bernilai 0 / strip, tampilkan '0%'
+                                $tampilanNilai = $nilaiPersen > 0 ? number_format($nilaiPersen, 0) . '%' : '0%';
+                                echo '<td class="col-angka text-center">' . $tampilanNilai . '</td>';
                             }
                         ?>
-                            <td class="col-angka text-center">
-                                <?= $nilaiPersen > 0 ? number_format($nilaiPersen, 0) . '%' : '-' ?>
-                            </td>
                         <?php endforeach; ?>
                         
                         <?php $rataRata = $jumlahBulanAktif > 0 ? ($totalSatuBaris / $jumlahBulanAktif) : 0; ?>
                         <td class="col-rata text-center">
-                            <strong><?= $rataRata > 0 ? number_format($rataRata, 0) . '%' : '-' ?></strong>
+                            <strong><?= $rataRata > 0 ? number_format($rataRata, 0) . '%' : '0%' ?></strong>
                         </td>
                     </tr>
                 <?php 
