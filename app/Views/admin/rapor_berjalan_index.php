@@ -43,7 +43,6 @@
         @media print {
             body { background: none; padding: 0; }
             .filter-container, .rapor-wrapper { background: none; padding: 0; margin: 0; }
-            /* Menyembunyikan Form Filter dan Tombol Cetak saat halaman di-print */
             .filter-container, .aksi-admin { display: none !important; } 
             .rapor-container { box-shadow: none; border-top: 8px solid #1976d2 !important; padding: 0; }
             .section-title { background-color: #0d47a1 !important; color: #fff !important; }
@@ -54,9 +53,7 @@
 </head>
 <body>
 
-<!-- ========================================================================= -->
 <!-- 1. BAGIAN FORM FILTER PENCARIAN -->
-<!-- ========================================================================= -->
 <div class="container filter-container">
     <div class="row justify-content-center">
         <div class="col-lg-10">
@@ -78,7 +75,6 @@
                         Silakan tentukan tahun ajaran, semester, dan kelas terlebih dahulu untuk memunculkan daftar siswa.
                     </div>
 
-                    <!-- PENTING: action kosong ("") agar form dikirim ke halaman itu sendiri -->
                     <form action="" method="GET">
                         <div class="row g-4">
                             <div class="col-md-6 col-lg-3">
@@ -96,7 +92,6 @@
 
                             <div class="col-md-6 col-lg-3">
                                 <label for="rombel_id" class="form-label">Kelas (Rombel)</label>
-                                <!-- PENTING: pastikan 'name="rombel_id"' ada agar tersimpan saat form disubmit -->
                                 <select id="rombel_id" name="rombel_id" class="form-select" required>
                                     <option value="">-- Pilih Kelas --</option>
                                     <?php if (!empty($daftarRombel)): ?>
@@ -129,14 +124,18 @@
     </div>
 </div>
 
-<!-- ========================================================================= -->
-<!-- 2. BAGIAN HALAMAN RAPOR (Hanya tampil jika ada Data Siswa yang dicari) -->
-<!-- ========================================================================= -->
+<!-- 2. BAGIAN HALAMAN RAPOR -->
 <?php if (!empty($dataSiswa)): ?>
+<?php 
+    // FUNGSI & VARIABEL PEMBANTU UNTUK VIEW
+    $fmt = function($angka) { return $angka != null ? str_replace('.', ',', (float)$angka) : '-'; };
+    
+    // TENTUKAN 6 BULAN PENUH (Selalu 6 Kolom)
+    $semuaBulan = (strtolower($semester) === 'ganjil') ? ['07', '08', '09', '10', '11', '12'] : ['01', '02', '03', '04', '05', '06'];
+?>
 <div class="rapor-wrapper">
     <div class="rapor-container">
         
-        <!-- Aksi Admin -->
         <div class="aksi-admin d-flex justify-content-end mb-4">
             <button onclick="window.print()" class="btn btn-success fw-bold"><i class="fas fa-print me-2"></i> Cetak Dokumen Rapor</button>
         </div>
@@ -158,10 +157,6 @@
                 <tr><td>Tahun Ajaran</td><td>: <?= esc($tahun) ?>/<?= esc($tahun + 1) ?></td></tr>
             </table>
         </div>
-        
-        <?php 
-            $fmt = function($angka) { return $angka != null ? str_replace('.', ',', (float)$angka) : '-'; };
-        ?>
 
         <!-- A. PERKEMBANGAN AKADEMIK -->
         <div class="section-title">A. Perkembangan Akademik (Nilai Sumatif)</div>
@@ -169,21 +164,21 @@
             <thead>
                 <tr>
                     <th rowspan="2" style="width: 30%; vertical-align: middle;">Mata Pelajaran</th>
-                    <th colspan="<?= count($bulanAktif) ?>" style="border-bottom: 1px solid #1976d2;">Bulan Penilaian</th>
+                    <th colspan="<?= count($semuaBulan) ?>" style="border-bottom: 1px solid #1976d2;">Bulan Penilaian</th>
                     <th rowspan="2" style="width: 10%; vertical-align: middle;">Rata-rata<br>Semester</th>
                 </tr>
                 <tr>
-                    <?php foreach ($bulanAktif as $b): ?><th style="width: 10%;"><?= $namaBulanIndo[$b] ?></th><?php endforeach; ?>
+                    <?php foreach ($semuaBulan as $b): ?><th style="width: 10%;"><?= $namaBulanIndo[$b] ?></th><?php endforeach; ?>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($matrixSumatif)): ?>
-                    <tr><td colspan="<?= count($bulanAktif) + 2 ?>" class="text-center text-muted">Belum ada data nilai mata pelajaran.</td></tr>
+                    <tr><td colspan="<?= count($semuaBulan) + 2 ?>" class="text-center text-muted">Belum ada data nilai mata pelajaran.</td></tr>
                 <?php else: ?>
                     <?php foreach ($matrixSumatif as $mapel): ?>
                         <tr>
                             <td style="font-weight: 600;"><?= esc($mapel['nama_mapel']) ?></td>
-                            <?php foreach ($bulanAktif as $b): ?><td class="text-center"><?= $fmt($mapel['nilai'][$b]) ?></td><?php endforeach; ?>
+                            <?php foreach ($semuaBulan as $b): ?><td class="text-center"><?= $fmt($mapel['nilai'][$b] ?? null) ?></td><?php endforeach; ?>
                             <td class="col-rata"><?= $mapel['count'] > 0 ? $fmt(round($mapel['total'] / $mapel['count'], 2)) : '-' ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -197,21 +192,21 @@
             <thead>
                 <tr>
                     <th rowspan="2" style="width: 30%; vertical-align: middle;">Aspek Penilaian</th>
-                    <th colspan="<?= count($bulanAktif) ?>" style="border-bottom: 1px solid #1976d2;">Bulan Penilaian</th>
+                    <th colspan="<?= count($semuaBulan) ?>" style="border-bottom: 1px solid #1976d2;">Bulan Penilaian</th>
                     <th rowspan="2" style="width: 10%; vertical-align: middle;">Rata-rata<br>Semester</th>
                 </tr>
                 <tr>
-                    <?php foreach ($bulanAktif as $b): ?><th style="width: 10%;"><?= $namaBulanIndo[$b] ?></th><?php endforeach; ?>
+                    <?php foreach ($semuaBulan as $b): ?><th style="width: 10%;"><?= $namaBulanIndo[$b] ?></th><?php endforeach; ?>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($matrixQuran)): ?>
-                    <tr><td colspan="<?= count($bulanAktif) + 2 ?>" class="text-center text-muted">Belum ada data nilai Al-Qur'an.</td></tr>
+                    <tr><td colspan="<?= count($semuaBulan) + 2 ?>" class="text-center text-muted">Belum ada data nilai Al-Qur'an.</td></tr>
                 <?php else: ?>
                     <?php foreach ($matrixQuran as $aspek => $dataQuran): ?>
                         <tr>
                             <td style="font-weight: 600;"><?= esc($aspek) ?></td>
-                            <?php foreach ($bulanAktif as $b): ?><td class="text-center"><?= $fmt($dataQuran['nilai'][$b]) ?></td><?php endforeach; ?>
+                            <?php foreach ($semuaBulan as $b): ?><td class="text-center"><?= $fmt($dataQuran['nilai'][$b] ?? null) ?></td><?php endforeach; ?>
                             <td class="col-rata"><?= $dataQuran['count'] > 0 ? $fmt(round($dataQuran['total'] / $dataQuran['count'], 2)) : '-' ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -225,7 +220,7 @@
             <thead>
                 <tr>
                     <th style="width: 30%;">Keterangan</th>
-                    <?php foreach ($bulanAktif as $b): ?><th style="width: 10%;"><?= $namaBulanIndo[$b] ?></th><?php endforeach; ?>
+                    <?php foreach ($semuaBulan as $b): ?><th style="width: 10%;"><?= $namaBulanIndo[$b] ?></th><?php endforeach; ?>
                     <th style="width: 10%;">Total</th>
                 </tr>
             </thead>
@@ -236,8 +231,8 @@
                 ?>
                 <tr>
                     <td style="font-weight: 600;"><?= $label ?></td>
-                    <?php foreach ($bulanAktif as $b): ?><td class="text-center"><?= esc($matrixAbsen[$kode][$b] ?? '0') ?></td><?php endforeach; ?>
-                    <td class="col-rata"><?= esc($totalAbsen[$kode] ?? '0') ?></td>
+                    <?php foreach ($semuaBulan as $b): ?><td class="text-center"><?= esc($matrixAbsen[$kode][$b] ?? '-') ?></td><?php endforeach; ?>
+                    <td class="col-rata"><?= esc($totalAbsen[$kode] ?? '-') ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -249,7 +244,7 @@
             <thead>
                 <tr>
                     <th class="col-aspek">Indikator Kepatuhan</th>
-                    <?php foreach ($bulanAktif as $b): ?><th><?= $namaBulanIndo[$b] ?></th><?php endforeach; ?>
+                    <?php foreach ($semuaBulan as $b): ?><th><?= $namaBulanIndo[$b] ?></th><?php endforeach; ?>
                     <th class="col-rata">Total Kasus</th>
                 </tr>
             </thead>
@@ -260,13 +255,13 @@
                 ?>
                 <tr>
                     <td class="col-aspek"><?= $label ?></td>
-                    <?php foreach ($bulanAktif as $b): ?><td class="col-angka"><?= $kepatuhan['matrix'][$k][$b] ?></td><?php endforeach; ?>
+                    <?php foreach ($semuaBulan as $b): ?><td class="col-angka"><?= $kepatuhan['matrix'][$k][$b] ?? '-' ?></td><?php endforeach; ?>
                     <td class="col-rata"><?= $kepatuhan['totals'][$k] ?></td>
                 </tr>
                 <?php endforeach; ?>
                 <tr style="background-color: #f9f9f9;">
                     <td class="col-aspek" style="font-weight: bold; font-style: italic;">Rincian Pelanggaran:</td>
-                    <td colspan="<?= count($bulanAktif) + 1 ?>" style="font-size: 0.9em; padding: 6px 12px; line-height: 1.5; color: #444; text-align: left;">
+                    <td colspan="<?= count($semuaBulan) + 1 ?>" style="font-size: 0.9em; padding: 6px 12px; line-height: 1.5; color: #444; text-align: left;">
                         <?= $keteranganPelanggaran ?>
                     </td>
                 </tr>
@@ -279,32 +274,32 @@
             <thead>
                 <tr>
                     <th class="col-aspek">Sikap yang Diamati</th>
-                    <?php foreach ($bulanAktif as $b): ?><th><?= $namaBulanIndo[$b] ?></th><?php endforeach; ?>
+                    <?php foreach ($semuaBulan as $b): ?><th><?= $namaBulanIndo[$b] ?></th><?php endforeach; ?>
                     <th class="col-rata">Total Catatan</th>
                 </tr>
             </thead>
             <tbody>
-                <tr><td colspan="<?= count($bulanAktif) + 2 ?>" style="background-color: #fdfefe; font-weight: bold; padding-left: 15px; color: #4a6375;">Sikap Spiritual</td></tr>
+                <tr><td colspan="<?= count($semuaBulan) + 2 ?>" style="background-color: #fdfefe; font-weight: bold; padding-left: 15px; color: #4a6375;">Sikap Spiritual</td></tr>
                 <?php
                     $labelSpiritual = ['berdoa' => 'Membiasakan Berdoa', 'kalimat_thoyibah' => 'Mengucapkan Kalimat Thoyibah', 'shalat' => 'Menjalankan Ibadah Shalat', 'salam' => 'Membudayakan Salam', 'syukur' => 'Menunjukkan Rasa Syukur', 'lingkungan' => 'Menjaga Lingkungan', 'toleransi' => 'Toleransi Beragama'];
                     foreach ($labelSpiritual as $k => $label):
                 ?>
                 <tr>
                     <td class="col-aspek" style="padding-left: 25px; font-weight: normal;">- <?= $label ?></td>
-                    <?php foreach ($bulanAktif as $b): ?><td class="col-angka"><?= $spiritual['matrix'][$k][$b] ?: '-' ?></td><?php endforeach; ?>
-                   <td class="col-rata"><?= $spiritual['totals_predikat'][$k] ?: '-' ?></td>
+                    <?php foreach ($semuaBulan as $b): ?><td class="col-angka"><?= $spiritual['matrix'][$k][$b] ?? '-' ?></td><?php endforeach; ?>
+                   <td class="col-rata"><?= $spiritual['totals_predikat'][$k] ?? '-' ?></td>
                 </tr>
                 <?php endforeach; ?>
 
-                <tr><td colspan="<?= count($bulanAktif) + 2 ?>" style="background-color: #fdfefe; font-weight: bold; padding-left: 15px; color: #4a6375;">Sikap Sosial</td></tr>
+                <tr><td colspan="<?= count($semuaBulan) + 2 ?>" style="background-color: #fdfefe; font-weight: bold; padding-left: 15px; color: #4a6375;">Sikap Sosial</td></tr>
                 <?php
                     $labelSosial = ['disiplin' => 'Kedisiplinan', 'jujur' => 'Kejujuran', 'percaya_diri' => 'Kepercayaan Diri', 'santun' => 'Kesantunan', 'kerjasama' => 'Kerja Sama', 'tanggung_jawab' => 'Tanggung Jawab', 'adil' => 'Keadilan'];
                     foreach ($labelSosial as $k => $label):
                 ?>
                 <tr>
                     <td class="col-aspek" style="padding-left: 25px; font-weight: normal;">- <?= $label ?></td>
-                    <?php foreach ($bulanAktif as $b): ?><td class="col-angka"><?= $sosial['matrix'][$k][$b] ?: '-' ?></td><?php endforeach; ?>
-                    <td class="col-rata"><?= $sosial['totals_predikat'][$k] ?: '-' ?></td>
+                    <?php foreach ($semuaBulan as $b): ?><td class="col-angka"><?= $sosial['matrix'][$k][$b] ?? '-' ?></td><?php endforeach; ?>
+                    <td class="col-rata"><?= $sosial['totals_predikat'][$k] ?? '-' ?></td>
                 </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -323,18 +318,18 @@
             <thead>
                 <tr>
                     <th class="col-aspek">Kegiatan / Ekstrakurikuler</th>
-                    <?php foreach ($bulanAktif as $b): ?><th><?= $namaBulanIndo[$b] ?? $b ?></th><?php endforeach; ?>
+                    <?php foreach ($semuaBulan as $b): ?><th><?= $namaBulanIndo[$b] ?? $b ?></th><?php endforeach; ?>
                     <th class="col-rata">Predikat</th>
                 </tr>
             </thead>
             <tbody>
                 <?php if (empty($matrixEskul)): ?>
-                    <tr><td colspan="<?= count($bulanAktif) + 2 ?>" class="text-center text-muted">Belum ada data ekstrakurikuler.</td></tr>
+                    <tr><td colspan="<?= count($semuaBulan) + 2 ?>" class="text-center text-muted">Belum ada data ekstrakurikuler.</td></tr>
                 <?php else: ?>
                     <?php foreach ($matrixEskul as $key => $row): ?>
                     <tr>
                         <td class="col-aspek"><?= esc($row['label']) ?></td>
-                        <?php foreach ($bulanAktif as $b): ?><td class="col-angka"><?= esc($row['bulan'][$b] ?? '-') ?></td><?php endforeach; ?>
+                        <?php foreach ($semuaBulan as $b): ?><td class="col-angka"><?= esc($row['bulan'][$b] ?? '-') ?></td><?php endforeach; ?>
                         <td class="col-rata"><strong><?= esc($row['predikat_akhir'] ?? '-') ?></strong></td>
                     </tr>
                     <?php endforeach; ?>
@@ -384,7 +379,7 @@
             <thead>
                 <tr>
                     <th class="col-aspek">Aspek Yaumiyah</th>
-                    <?php foreach ($bulanAktif as $b): ?><th><?= esc($namaBulanIndo[$b] ?? $b) ?></th><?php endforeach; ?>
+                    <?php foreach ($semuaBulan as $b): ?><th><?= esc($namaBulanIndo[$b] ?? $b) ?></th><?php endforeach; ?>
                     <th class="col-rata">Rata-rata</th>
                 </tr>
             </thead>
@@ -409,7 +404,7 @@
                 ?>
                     <tr>
                         <td class="col-aspek" style="padding-left: 25px; font-weight: normal;">- <?= esc($label) ?></td>
-                        <?php foreach ($bulanAktif as $b): 
+                        <?php foreach ($semuaBulan as $b): 
                             $nilaiPersen = isset($matrixYaumiyah[$key][$b]) ? (float)$matrixYaumiyah[$key][$b] : 0;
                             if ($nilaiPersen > 0) {
                                 $totalSatuBaris += $nilaiPersen;
@@ -431,7 +426,7 @@
                 else:
                 ?>
                     <tr>
-                        <td colspan="<?= count($bulanAktif) + 2 ?>" class="text-center text-muted">
+                        <td colspan="<?= count($semuaBulan) + 2 ?>" class="text-center text-muted">
                             Belum ada data rekapitulasi yaumiyah di semester ini.
                         </td>
                     </tr>
@@ -460,7 +455,6 @@ $(document).ready(function() {
         
         if(rombelId !== '') {
             $.ajax({
-                // Menggunakan site_url() untuk keamanan route CodeIgniter 4
                 url: '<?= site_url("admin/rapor-berjalan/get-siswa") ?>', 
                 type: 'POST',
                 data: { rombel_id: rombelId },
@@ -485,12 +479,10 @@ $(document).ready(function() {
         }
     }
 
-    // Trigger saat form dropdown rombel diubah
     $('#rombel_id').change(function() {
         loadSiswa($(this).val());
     });
 
-    // Jalankan otomatis saat halaman dimuat jika admin sudah pernah memilih kelas (rombel)
     if (selectedRombel !== '') {
         loadSiswa(selectedRombel, selectedStudent);
     }
