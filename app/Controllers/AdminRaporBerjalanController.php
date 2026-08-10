@@ -263,13 +263,16 @@ class AdminRaporBerjalanController extends BaseController
             }
             $select .= ", GROUP_CONCAT(NULLIF(keterangan, '') SEPARATOR ' | ') as keterangan";
 
-            $dataRaw = $db->table($tabel)
-                          ->select($select)
-                          ->where('student_id', $student_id)
-                          ->whereIn('LPAD(MONTH(tanggal), 2, "0")', $bulanAktif)
-                          ->where('YEAR(tanggal)', $tahun)
-                          ->groupBy('MONTH(tanggal)')
-                          ->get()->getResultArray();
+            $dataRaw = [];
+            if ($db->tableExists($tabel)) {
+                $dataRaw = $db->table($tabel)
+                              ->select($select)
+                              ->where('student_id', $student_id)
+                              ->whereIn('LPAD(MONTH(tanggal), 2, "0")', $bulanAktif)
+                              ->where('YEAR(tanggal)', $tahun)
+                              ->groupBy('MONTH(tanggal)')
+                              ->get()->getResultArray();
+            }
 
             $getPredikat = function($nilai) {
                 if ($nilai == 0) return 'A';
@@ -299,10 +302,34 @@ class AdminRaporBerjalanController extends BaseController
                             $matrix[$kolom][$b] = $getPredikat($nilai);
                         }
                     }
-                    if (!empty($dr['keterangan'])) {
+                    
+                    if (!empty(trim($dr['keterangan'] ?? ''))) {
                         $keterangan[$b] = $dr['keterangan'];
-                        $catatanArray = array_filter(array_map('trim', explode('|', $dr['keterangan'])));
-                        $teksCatatan = implode(', ', $catatanArray);
+                        
+                        // Memecah teks berdasarkan pemisah '|' maupun koma ',' agar item terurai rapi
+                        $catatanArray = preg_split('/[|,]/', $dr['keterangan']);
+                        $catatanArray = array_filter(array_map('trim', $catatanArray));
+                        
+                        $hitungCatatan = [];
+                        foreach ($catatanArray as $catatan) {
+                            if (empty($catatan)) continue;
+                            $kunci = strtolower(trim($catatan));
+                            if (!isset($hitungCatatan[$kunci])) {
+                                $hitungCatatan[$kunci] = ['teks' => ucfirst($kunci), 'jumlah' => 0];
+                            }
+                            $hitungCatatan[$kunci]['jumlah']++;
+                        }
+                        
+                        $catatanFinal = [];
+                        foreach ($hitungCatatan as $item) {
+                            if ($item['jumlah'] > 1) {
+                                $catatanFinal[] = $item['teks'] . ' (' . $item['jumlah'] . 'x)';
+                            } else {
+                                $catatanFinal[] = $item['teks'];
+                            }
+                        }
+                        
+                        $teksCatatan = implode(', ', $catatanFinal);
                         if (!empty($teksCatatan) && isset($namaBulanLokal[$b])) {
                             $rincianList[] = '<b>' . $namaBulanLokal[$b] . '</b>: ' . esc($teksCatatan);
                         }
@@ -318,11 +345,11 @@ class AdminRaporBerjalanController extends BaseController
             $keteranganRincianString = count($rincianList) > 0 ? implode('<br>', $rincianList) : '-';
 
             return [
-                'matrix'            => $matrix, 
-                'totals_raw'        => $totals, 
-                'totals_predikat'   => $totalsPredikat, 
-                'keterangan'        => $keterangan,
-                'keterangan_rincian'=> $keteranganRincianString
+                'matrix'             => $matrix, 
+                'totals_raw'         => $totals, 
+                'totals_predikat'    => $totalsPredikat, 
+                'keterangan'         => $keterangan,
+                'keterangan_rincian' => $keteranganRincianString
             ];
         };
 
