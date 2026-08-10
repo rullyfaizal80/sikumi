@@ -4,54 +4,37 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use Config\Database;
+use CodeIgniter\Exceptions\PageNotFoundException;
 
-class AdminRaporBerjalanController extends BaseController
+class OrtuRaporController extends BaseController
 {
-    // =================================================================
-    // 1. HALAMAN UTAMA (FILTER + HASIL RAPOR)
-    // =================================================================
-    public function index()
+    // Kunci rahasia untuk enkripsi URL (Bebas diganti sesuai keinginan)
+    private $secretKey = 'RaporSikumiPastiAman2026!'; 
+
+    public function index($student_id, $semester, $tahun, $token)
     {
+        // 1. VALIDASI KEAMANAN LINK (TOKEN)
+        // Sistem menghitung ulang token berdasarkan ID, Semester, dan Tahun
+        $expectedToken = hash('sha256', $student_id . $semester . $tahun . $this->secretKey);
+        $expectedTokenShort = substr($expectedToken, 0, 16); // Ambil 16 karakter saja agar URL tidak terlalu panjang
+
+        // Jika token di URL tidak cocok dengan hitungan sistem, tolak aksesnya!
+        if ($token !== $expectedTokenShort) {
+            throw PageNotFoundException::forPageNotFound('Link rapor tidak valid, telah dimodifikasi, atau kedaluwarsa.');
+        }
+
         $db = Database::connect();
-        $request = \Config\Services::request();
 
-        // 1. Ambil daftar kelas untuk dropdown filter
-        $daftarRombel = [];
-        if ($db->tableExists('class_rombel')) {
-            $daftarRombel = $db->table('class_rombel')->orderBy('rombel_name', 'ASC')->get()->getResultArray();
-        }
-
-        // 2. Ambil parameter GET dari form filter
-        $student_id = $request->getGet('student_id') ?? '';
-        $semester   = $request->getGet('semester') ?? 'ganjil';
-        $tahun      = $request->getGet('tahun') ?? date('Y');
-        $rombel_id  = $request->getGet('rombel_id') ?? ''; 
-
-        // 3. Data awal (jika belum ada pencarian)
-        $data = [
-            'daftarRombel'     => $daftarRombel,
-            'tahun'            => $tahun,
-            'semester'         => $semester,
-            'selected_rombel'  => $rombel_id,
-            'selected_student' => $student_id,
-            'dataSiswa'        => null // Default kosong sebelum difilter
-        ];
-
-        // Jika ID siswa belum dipilih, kembalikan ke view (hanya menampilkan form)
-        if (empty($student_id)) {
-            return view('admin/rapor_berjalan_index', $data);
-        }
-
-        // =========================================================
-        // JIKA FORM DISUBMIT: JALANKAN LOGIKA TARIK DATA RAPOR
-        // =========================================================
-        
         // A. AMBIL DATA PROFIL SISWA & WALI KELAS
         $dataSiswa = $db->table('users u')
                         ->join('student_profiles sp', 'sp.user_id = u.id', 'left')
                         ->select('u.id, u.username as name, sp.nisn, sp.nis, sp.gender')
                         ->where('u.id', $student_id)
                         ->get()->getRowArray();
+
+        if (empty($dataSiswa)) {
+            throw PageNotFoundException::forPageNotFound('Data siswa tidak ditemukan.');
+        }
 
         $kelasSiswa = $db->table('class_rombel_students crs')
                          ->join('class_rombel cr', 'cr.id = crs.rombel_id')
@@ -92,35 +75,22 @@ class AdminRaporBerjalanController extends BaseController
             foreach ($arrayBulanSemester as $b) {
                 $intB = (int)$b;
                 if ($semester === 'ganjil') {
-                    if ($batasBulan >= 7 && $intB <= $batasBulan) {
-                        $bulanAktif[] = $b;
-                    }
+                    if ($batasBulan >= 7 && $intB <= $batasBulan) { $bulanAktif[] = $b; }
                 } else {
-                    if ($batasBulan >= 1 && $batasBulan <= 6 && $intB <= $batasBulan) {
-                        $bulanAktif[] = $b;
-                    }
+                    if ($batasBulan >= 1 && $batasBulan <= 6 && $intB <= $batasBulan) { $bulanAktif[] = $b; }
                 }
             }
         }
 
         if (empty($bulanAktif)) {
-            if ($semester === 'ganjil') {
-                $bulanAktif = ['07', '08', '09', '10', '11', '12'];
-            } else {
-                $bulanAktif = ['01', '02', '03', '04', '05', '06'];
-            }
+            $bulanAktif = ($semester === 'ganjil') ? ['07', '08', '09', '10', '11', '12'] : ['01', '02', '03', '04', '05', '06'];
         }
 
-        // C. TARIK DATA ABSENSI & HITUNG PERSENTASE + MENIT TERLAMBAT
-        $hariEfektifDb = $db->table('hari_efektif')
-                            ->where('tahun', $tahun)
-                            ->whereIn('bulan', $bulanAktif)
-                            ->get()->getResultArray();
-        
+        // C. TARIK DATA ABSENSI
+        $hariEfektifDb = $db->table('hari_efektif')->where('tahun', $tahun)->whereIn('bulan', $bulanAktif)->get()->getResultArray();
         $mapHariEfektif = [];
         foreach ($hariEfektifDb as $he) {
-            $b = str_pad($he['bulan'], 2, '0', STR_PAD_LEFT);
-            $mapHariEfektif[$b] = (int)$he['jumlah_hari'];
+            $mapHariEfektif[str_pad($he['bulan'], 2, '0', STR_PAD_LEFT)] = (int)$he['jumlah_hari'];
         }
 
         $absenRaw = $db->table('absensi a')
@@ -141,15 +111,11 @@ class AdminRaporBerjalanController extends BaseController
                        ->get()->getResultArray();
 
         $mapAbsenRaw = [];
-        foreach ($absenRaw as $ar) {
-            $mapAbsenRaw[$ar['bulan']] = $ar;
-        }
+        foreach ($absenRaw as $ar) { $mapAbsenRaw[$ar['bulan']] = $ar; }
 
         $matrixAbsen = ['H' => [], 'S' => [], 'I' => [], 'A' => [], 'T' => [], 'M' => []];
         foreach ($bulanAktif as $b) {
-            foreach (['H', 'S', 'I', 'A', 'T', 'M'] as $kode) {
-                $matrixAbsen[$kode][$b] = '-';
-            }
+            foreach (['H', 'S', 'I', 'A', 'T', 'M'] as $kode) { $matrixAbsen[$kode][$b] = '-'; }
         }
 
         $totalMentah = ['H' => 0, 'S' => 0, 'I' => 0, 'A' => 0, 'T' => 0, 'M' => 0, 'HariEfektif' => 0];
@@ -166,30 +132,23 @@ class AdminRaporBerjalanController extends BaseController
                 $matrixAbsen['A'][$b] = min(100, round(($ar['total_a'] / $hariEfektif) * 100)) . '%';
                 $matrixAbsen['T'][$b] = min(100, round(($ar['total_t'] / $hariEfektif) * 100)) . '%';
             }
-            if ($ar['total_menit'] > 0) {
-                $matrixAbsen['M'][$b] = $ar['total_menit'] . ' mnt';
-            }
+            if ($ar['total_menit'] > 0) { $matrixAbsen['M'][$b] = $ar['total_menit'] . ' mnt'; }
 
-            $totalMentah['H'] += $ar['total_h'];
-            $totalMentah['S'] += $ar['total_s'];
-            $totalMentah['I'] += $ar['total_i'];
-            $totalMentah['A'] += $ar['total_a'];
-            $totalMentah['T'] += $ar['total_t'];
-            $totalMentah['M'] += $ar['total_menit'];
+            $totalMentah['H'] += $ar['total_h']; $totalMentah['S'] += $ar['total_s'];
+            $totalMentah['I'] += $ar['total_i']; $totalMentah['A'] += $ar['total_a'];
+            $totalMentah['T'] += $ar['total_t']; $totalMentah['M'] += $ar['total_menit'];
         }
 
         $totalAbsen = ['H' => '-', 'S' => '-', 'I' => '-', 'A' => '-', 'T' => '-', 'M' => '-'];
         if ($totalMentah['HariEfektif'] > 0) {
-            $totalHari = $totalMentah['HariEfektif'];
-            $totalAbsen['H'] = min(100, round(($totalMentah['H'] / $totalHari) * 100)) . '%';
-            $totalAbsen['S'] = min(100, round(($totalMentah['S'] / $totalHari) * 100)) . '%';
-            $totalAbsen['I'] = min(100, round(($totalMentah['I'] / $totalHari) * 100)) . '%';
-            $totalAbsen['A'] = min(100, round(($totalMentah['A'] / $totalHari) * 100)) . '%';
-            $totalAbsen['T'] = min(100, round(($totalMentah['T'] / $totalHari) * 100)) . '%';
+            $th = $totalMentah['HariEfektif'];
+            $totalAbsen['H'] = min(100, round(($totalMentah['H'] / $th) * 100)) . '%';
+            $totalAbsen['S'] = min(100, round(($totalMentah['S'] / $th) * 100)) . '%';
+            $totalAbsen['I'] = min(100, round(($totalMentah['I'] / $th) * 100)) . '%';
+            $totalAbsen['A'] = min(100, round(($totalMentah['A'] / $th) * 100)) . '%';
+            $totalAbsen['T'] = min(100, round(($totalMentah['T'] / $th) * 100)) . '%';
         }
-        if ($totalMentah['M'] > 0) {
-            $totalAbsen['M'] = $totalMentah['M'] . ' mnt';
-        }
+        if ($totalMentah['M'] > 0) { $totalAbsen['M'] = $totalMentah['M'] . ' mnt'; }
 
         // D. TARIK DATA KEPATUHAN & KARAKTER
         $currentYear  = (int)date('Y');
@@ -197,16 +156,7 @@ class AdminRaporBerjalanController extends BaseController
         $namaBulanLokal = ['01'=>'Januari','02'=>'Februari','03'=>'Maret','04'=>'April','05'=>'Mei','06'=>'Juni','07'=>'Juli','08'=>'Agustus','09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember'];
 
         $kepatuhanRaw = $db->table('kepatuhan')
-            ->select('
-                LPAD(MONTH(tanggal), 2, "0") as bulan, 
-                SUM(seragam) as seragam, 
-                SUM(atribut) as atribut, 
-                SUM(bersih_diri) as bersih_diri, 
-                SUM(terlambat) as terlambat, 
-                SUM(aturan_kelas) as aturan_kelas, 
-                SUM(masjid) as masjid,
-                GROUP_CONCAT(NULLIF(keterangan, "") SEPARATOR " | ") as gabungan_keterangan
-            ')
+            ->select('LPAD(MONTH(tanggal), 2, "0") as bulan, SUM(seragam) as seragam, SUM(atribut) as atribut, SUM(bersih_diri) as bersih_diri, SUM(terlambat) as terlambat, SUM(aturan_kelas) as aturan_kelas, SUM(masjid) as masjid, GROUP_CONCAT(NULLIF(keterangan, "") SEPARATOR " | ") as gabungan_keterangan')
             ->where('student_id', $student_id)
             ->whereIn('LPAD(MONTH(tanggal), 2, "0")', $bulanAktif)
             ->where('YEAR(tanggal)', $tahun)
@@ -239,28 +189,21 @@ class AdminRaporBerjalanController extends BaseController
                 foreach ($catatanArray as $catatan) {
                     if (empty($catatan)) continue;
                     $kunci = strtolower($catatan);
-                    if (!isset($hitungCatatan[$kunci])) {
-                        $hitungCatatan[$kunci] = ['teks' => ucfirst($kunci), 'jumlah' => 0];
-                    }
+                    if (!isset($hitungCatatan[$kunci])) { $hitungCatatan[$kunci] = ['teks' => ucfirst($kunci), 'jumlah' => 0]; }
                     $hitungCatatan[$kunci]['jumlah']++;
                 }
                 $catatanFinal = [];
                 foreach ($hitungCatatan as $item) {
                     $catatanFinal[] = $item['teks'] . ' (' . $item['jumlah'] . 'x)';
                 }
-                $teksCatatan = implode(' | ', $catatanFinal);
-                if (!empty($teksCatatan)) {
-                    $rincianSemester[] = '<b>' . $namaBulanLokal[$b] . '</b>: ' . esc($teksCatatan);
-                }
+                $rincianSemester[] = '<b>' . ($namaBulanLokal[$b] ?? $b) . '</b>: ' . implode(' | ', $catatanFinal);
             }
         }
         $keteranganPelanggaran = count($rincianSemester) > 0 ? implode('<br>', $rincianSemester) : '-';
 
         $buildMatrix = function($tabel, $kolomArray) use ($db, $student_id, $bulanAktif, $tahun, $currentYear, $currentMonth, $namaBulanLokal) {
             $select = "LPAD(MONTH(tanggal), 2, '0') as bulan";
-            foreach ($kolomArray as $kolom) {
-                $select .= ", SUM($kolom) as $kolom";
-            }
+            foreach ($kolomArray as $kolom) { $select .= ", SUM($kolom) as $kolom"; }
             $select .= ", GROUP_CONCAT(NULLIF(keterangan, '') SEPARATOR ' | ') as keterangan";
 
             $dataRaw = [];
@@ -302,33 +245,21 @@ class AdminRaporBerjalanController extends BaseController
                             $matrix[$kolom][$b] = $getPredikat($nilai);
                         }
                     }
-                    
                     if (!empty(trim($dr['keterangan'] ?? ''))) {
                         $keterangan[$b] = $dr['keterangan'];
-                        
-                        // Memecah teks berdasarkan pemisah '|' maupun koma ',' agar item terurai rapi
                         $catatanArray = preg_split('/[|,]/', $dr['keterangan']);
                         $catatanArray = array_filter(array_map('trim', $catatanArray));
-                        
                         $hitungCatatan = [];
                         foreach ($catatanArray as $catatan) {
                             if (empty($catatan)) continue;
                             $kunci = strtolower(trim($catatan));
-                            if (!isset($hitungCatatan[$kunci])) {
-                                $hitungCatatan[$kunci] = ['teks' => ucfirst($kunci), 'jumlah' => 0];
-                            }
+                            if (!isset($hitungCatatan[$kunci])) { $hitungCatatan[$kunci] = ['teks' => ucfirst($kunci), 'jumlah' => 0]; }
                             $hitungCatatan[$kunci]['jumlah']++;
                         }
-                        
                         $catatanFinal = [];
                         foreach ($hitungCatatan as $item) {
-                            if ($item['jumlah'] > 1) {
-                                $catatanFinal[] = $item['teks'] . ' (' . $item['jumlah'] . 'x)';
-                            } else {
-                                $catatanFinal[] = $item['teks'];
-                            }
+                            $catatanFinal[] = $item['jumlah'] > 1 ? $item['teks'] . ' (' . $item['jumlah'] . 'x)' : $item['teks'];
                         }
-                        
                         $teksCatatan = implode(', ', $catatanFinal);
                         if (!empty($teksCatatan) && isset($namaBulanLokal[$b])) {
                             $rincianList[] = '<b>' . $namaBulanLokal[$b] . '</b>: ' . esc($teksCatatan);
@@ -338,18 +269,14 @@ class AdminRaporBerjalanController extends BaseController
             }
 
             $totalsPredikat = [];
-            foreach ($totals as $kolom => $nilaiTotal) {
-                $totalsPredikat[$kolom] = $getPredikat($nilaiTotal);
-            }
-
-            $keteranganRincianString = count($rincianList) > 0 ? implode('<br>', $rincianList) : '-';
+            foreach ($totals as $kolom => $nilaiTotal) { $totalsPredikat[$kolom] = $getPredikat($nilaiTotal); }
 
             return [
                 'matrix'             => $matrix, 
                 'totals_raw'         => $totals, 
                 'totals_predikat'    => $totalsPredikat, 
                 'keterangan'         => $keterangan,
-                'keterangan_rincian' => $keteranganRincianString
+                'keterangan_rincian' => count($rincianList) > 0 ? implode('<br>', $rincianList) : '-'
             ];
         };
 
@@ -360,25 +287,16 @@ class AdminRaporBerjalanController extends BaseController
         $tabelMapel = $db->tableExists('master_subjects') ? 'master_subjects' : ($db->tableExists('subjects') ? 'subjects' : 'mata_pelajaran');
         $kolomNamaMapel = in_array('subject_name', $db->getFieldNames($tabelMapel)) ? 'subject_name' : (in_array('nama_mapel', $db->getFieldNames($tabelMapel)) ? 'nama_mapel' : 'name');
         
-        $sumatifRaw = $db->table('nilai_sumatif')
-                         ->select("LPAD(bulan, 2, '0') as bulan, mapel_id, nilai_angka")
-                         ->where('student_id', $student_id)
-                         ->whereIn('bulan', $bulanAktif)
-                         ->get()->getResultArray();
+        $sumatifRaw = $db->table('nilai_sumatif')->select("LPAD(bulan, 2, '0') as bulan, mapel_id, nilai_angka")->where('student_id', $student_id)->whereIn('bulan', $bulanAktif)->get()->getResultArray();
 
         $refMapel = [];
         if ($db->tableExists($tabelMapel)) {
             $mapelDb = $db->table($tabelMapel)->select("id, {$kolomNamaMapel} as nama_mapel")->get()->getResultArray();
-            foreach ($mapelDb as $m) {
-                $refMapel['S_' . $m['id']] = $m['nama_mapel']; 
-                $refMapel[$m['id']] = $m['nama_mapel']; 
-            }
+            foreach ($mapelDb as $m) { $refMapel['S_' . $m['id']] = $m['nama_mapel']; $refMapel[$m['id']] = $m['nama_mapel']; }
         }
         if ($db->tableExists('schedule_combined_subjects')) {
             $gabunganDb = $db->table('schedule_combined_subjects')->select('id, combined_name')->get()->getResultArray();
-            foreach ($gabunganDb as $g) {
-                $refMapel['C_' . $g['id']] = $g['combined_name'];
-            }
+            foreach ($gabunganDb as $g) { $refMapel['C_' . $g['id']] = $g['combined_name']; }
         }
 
         $matrixSumatif = [];
@@ -391,9 +309,7 @@ class AdminRaporBerjalanController extends BaseController
                          ->join('master_subjects ms', 'ms.id = scd.master_subject_id', 'left')
                          ->get()->getResultArray();
             foreach ($anakDb as $anak) {
-                if (!empty($anak['subject_name'])) {
-                    $mapelAnakGabungan[] = $anak['subject_name'];
-                }
+                if (!empty($anak['subject_name'])) { $mapelAnakGabungan[] = $anak['subject_name']; }
             }
         }
         
@@ -401,9 +317,7 @@ class AdminRaporBerjalanController extends BaseController
         $namaMapelUnik = []; 
 
         foreach ($refMapel as $key => $namaMapel) {
-            if (stripos($namaMapel, 'Pendidikan Jasmani') !== false && stripos($namaMapel, 'Olahraga') !== false) {
-                $namaMapel = 'PJOK';
-            }
+            if (stripos($namaMapel, 'Pendidikan Jasmani') !== false && stripos($namaMapel, 'Olahraga') !== false) { $namaMapel = 'PJOK'; }
             $isSembunyi = in_array($namaMapel, $semuaMapelDihide);
             $isDouble = in_array($namaMapel, $namaMapelUnik);
 
@@ -415,20 +329,15 @@ class AdminRaporBerjalanController extends BaseController
         }
 
         foreach ($sumatifRaw as $sr) {
-            $mId = $sr['mapel_id'];
-            $bln = $sr['bulan'];
+            $mId = $sr['mapel_id']; $bln = $sr['bulan'];
             $rawName = isset($refMapel[$mId]) ? $refMapel[$mId] : '';
-            if (stripos($rawName, 'Pendidikan Jasmani') !== false && stripos($rawName, 'Olahraga') !== false) {
-                $rawName = 'PJOK';
-            }
+            if (stripos($rawName, 'Pendidikan Jasmani') !== false && stripos($rawName, 'Olahraga') !== false) { $rawName = 'PJOK'; }
             if (in_array($rawName, $semuaMapelDihide)) { continue; }
 
             $targetKey = $mId;
             if (!isset($matrixSumatif[$mId])) {
                  $foundKey = null;
-                 foreach ($matrixSumatif as $k => $v) {
-                     if ($v['nama_mapel'] === $rawName) { $foundKey = $k; break; }
-                 }
+                 foreach ($matrixSumatif as $k => $v) { if ($v['nama_mapel'] === $rawName) { $foundKey = $k; break; } }
                  if ($foundKey) { $targetKey = $foundKey; }
             }
 
@@ -439,24 +348,11 @@ class AdminRaporBerjalanController extends BaseController
             }
         }
 
-        uasort($matrixSumatif, function($a, $b) {
-            return strcmp($a['nama_mapel'], $b['nama_mapel']);
-        });
+        uasort($matrixSumatif, function($a, $b) { return strcmp($a['nama_mapel'], $b['nama_mapel']); });
         
         // F. AMBIL CATATAN ANEKDOT & PRESTASI
-        $anekdot = $db->table('catatan_anekdot')
-                      ->select('tanggal, kejadian')
-                      ->where('student_id', $student_id)
-                      ->whereIn('MONTH(tanggal)', $bulanAktif)
-                      ->where('YEAR(tanggal)', $tahun)
-                      ->orderBy('tanggal', 'ASC')->get()->getResultArray();
-
-        $prestasi = $db->table('catatan_prestasi')
-                       ->select('nama_prestasi, keterangan, created_at')
-                       ->where('student_id', $student_id)
-                       ->whereIn('MONTH(created_at)', $bulanAktif)
-                       ->where('YEAR(created_at)', $tahun)
-                       ->orderBy('created_at', 'ASC')->get()->getResultArray();
+        $anekdot = $db->table('catatan_anekdot')->select('tanggal, kejadian')->where('student_id', $student_id)->whereIn('MONTH(tanggal)', $bulanAktif)->where('YEAR(tanggal)', $tahun)->orderBy('tanggal', 'ASC')->get()->getResultArray();
+        $prestasi = $db->table('catatan_prestasi')->select('nama_prestasi, keterangan, created_at')->where('student_id', $student_id)->whereIn('MONTH(created_at)', $bulanAktif)->where('YEAR(created_at)', $tahun)->orderBy('created_at', 'ASC')->get()->getResultArray();
 
         // G. TARIK DATA NILAI AL-QUR'AN
         $matrixQuran = [
@@ -465,24 +361,15 @@ class AdminRaporBerjalanController extends BaseController
             'Kitabah' => ['nilai' => [], 'total' => 0, 'count' => 0],
         ];
 
-        foreach (['Tahsin', 'Tahfidz', 'Kitabah'] as $aspek) {
-            foreach ($bulanAktif as $b) { $matrixQuran[$aspek]['nilai'][$b] = null; }
-        }
+        foreach (['Tahsin', 'Tahfidz', 'Kitabah'] as $aspek) { foreach ($bulanAktif as $b) { $matrixQuran[$aspek]['nilai'][$b] = null; } }
 
         $quranRaw = [];
         if ($db->tableExists('quran_penilaian')) { 
-            $quranRaw = $db->table('quran_penilaian')
-                           ->select('bulan, tahsin_nilai, tahfidz_nilai, kitabah_nilai')
-                           ->where('student_id', $student_id)
-                           ->whereIn('bulan', $bulanAktif)
-                           ->where('tahun', $tahun)
-                           ->get()->getResultArray();
+            $quranRaw = $db->table('quran_penilaian')->select('bulan, tahsin_nilai, tahfidz_nilai, kitabah_nilai')->where('student_id', $student_id)->whereIn('bulan', $bulanAktif)->where('tahun', $tahun)->get()->getResultArray();
         }
 
         $tempNilai = ['Tahsin' => [], 'Tahfidz' => [], 'Kitabah' => []];
-        foreach ($bulanAktif as $b) {
-            $tempNilai['Tahsin'][$b] = []; $tempNilai['Tahfidz'][$b] = []; $tempNilai['Kitabah'][$b] = [];
-        }
+        foreach ($bulanAktif as $b) { $tempNilai['Tahsin'][$b] = []; $tempNilai['Tahfidz'][$b] = []; $tempNilai['Kitabah'][$b] = []; }
 
         foreach ($quranRaw as $qr) {
             $bln = $qr['bulan'];
@@ -504,7 +391,7 @@ class AdminRaporBerjalanController extends BaseController
         }
 
         // H. TARIK DATA EKSTRAKURIKULER, PRAMUKA & PEMINATAN
-        $rombelName     = $dataSiswa['rombel_name'] ?? $dataSiswa['nama_kelas'] ?? $dataSiswa['kelas'] ?? '';
+        $rombelName = $dataSiswa['rombel_name'] ?? $dataSiswa['nama_kelas'] ?? $dataSiswa['kelas'] ?? '';
         $labelPeminatan = 'Peminatan';
         if (preg_match('/(7|VII)/i', $rombelName)) { $labelPeminatan = 'Peminatan (IT)'; } 
         elseif (preg_match('/(8|VIII)/i', $rombelName)) { $labelPeminatan = 'Peminatan (English)'; } 
@@ -514,18 +401,13 @@ class AdminRaporBerjalanController extends BaseController
             if ($nilai === null || $nilai === '' || $nilai === '-') return '-';
             if (is_numeric($nilai)) {
                 $n = (float) $nilai;
-                if ($n >= 90) return 'A';
-                if ($n >= 80) return 'B';
-                if ($n >= 70) return 'C';
-                return 'D';
+                if ($n >= 90) return 'A'; if ($n >= 80) return 'B'; if ($n >= 70) return 'C'; return 'D';
             }
             return strtoupper(trim($nilai));
         };
 
         $getNumericFromPredikat = function($pred) {
-            switch (strtoupper(trim($pred))) {
-                case 'A': return 95; case 'B': return 85; case 'C': return 75; case 'D': return 65; default: return null;
-            }
+            switch (strtoupper(trim($pred))) { case 'A': return 95; case 'B': return 85; case 'C': return 75; case 'D': return 65; default: return null; }
         };
 
         $assignScore = function(&$matrixRow, &$rawList, $dbBulan, $nilai) use ($bulanAktif, $getPredikatEskul, $getNumericFromPredikat) {
@@ -543,11 +425,7 @@ class AdminRaporBerjalanController extends BaseController
 
         $namaEskulSiswa = '';
         if ($db->tableExists('eskul_grades') && $db->tableExists('eskul_groups')) {
-            $eskulNamaRow = $db->table('eskul_grades eg')
-                              ->join('eskul_groups grp', 'grp.id = eg.group_id', 'left')
-                              ->select('grp.nama_kelompok')
-                              ->where('eg.student_id', $student_id)
-                              ->get()->getRowArray();
+            $eskulNamaRow = $db->table('eskul_grades eg')->join('eskul_groups grp', 'grp.id = eg.group_id', 'left')->select('grp.nama_kelompok')->where('eg.student_id', $student_id)->get()->getRowArray();
             if ($eskulNamaRow && !empty($eskulNamaRow['nama_kelompok'])) { $namaEskulSiswa = trim($eskulNamaRow['nama_kelompok']); }
         }
         $labelEskul = !empty($namaEskulSiswa) ? "Ekstrakurikuler ({$namaEskulSiswa})" : "Ekstrakurikuler";
@@ -559,9 +437,7 @@ class AdminRaporBerjalanController extends BaseController
         ];
         $rawScores = ['Pramuka' => [], 'Ekstrakurikuler' => [], 'Peminatan' => []];
 
-        foreach ($bulanAktif as $b) {
-            $matrixEskul['Pramuka']['bulan'][$b] = '-'; $matrixEskul['Ekstrakurikuler']['bulan'][$b] = '-'; $matrixEskul['Peminatan']['bulan'][$b] = '-';
-        }
+        foreach ($bulanAktif as $b) { $matrixEskul['Pramuka']['bulan'][$b] = '-'; $matrixEskul['Ekstrakurikuler']['bulan'][$b] = '-'; $matrixEskul['Peminatan']['bulan'][$b] = '-'; }
 
         if ($db->tableExists('pramuka_grades')) {
             $pramukaRaw = $db->table('pramuka_grades')->select('bulan, nilai')->where('student_id', $student_id)->whereIn('bulan', $bulanAktif)->get()->getResultArray();
@@ -599,9 +475,7 @@ class AdminRaporBerjalanController extends BaseController
             'p_dzuhur' => [], 'p_ashar' => [], 'p_bakdiah' => [], 'p_duha' => [], 'p_tahajud' => [], 
             'p_tilawah' => [], 'p_infaq' => [], 'p_shaum' => [], 'p_literasi' => []
         ];
-        foreach (array_keys($matrixYaumiyah) as $k) {
-            foreach ($bulanAktif as $b) { $matrixYaumiyah[$k][$b] = 0; }
-        }
+        foreach (array_keys($matrixYaumiyah) as $k) { foreach ($bulanAktif as $b) { $matrixYaumiyah[$k][$b] = 0; } }
 
         $calcP = function($total, $target) {
             if ($target == 0) return 0;
@@ -613,9 +487,7 @@ class AdminRaporBerjalanController extends BaseController
             $b = $yr['bulan'];
             $hEfektif = $hariEfektifBulanan[$b] ?? 20; 
             
-            $targetHarian = $hEfektif;
-            $targetMingguan = ceil($hEfektif / 5);
-            $targetShaum = ($hEfektif <= 15) ? 1 : 2;
+            $targetHarian = $hEfektif; $targetMingguan = ceil($hEfektif / 5); $targetShaum = ($hEfektif <= 15) ? 1 : 2;
 
             $matrixYaumiyah['p_dzuhur'][$b]   = $calcP((int)($yr['t_dz'] ?? 0), $targetHarian);
             $matrixYaumiyah['p_ashar'][$b]    = $calcP((int)($yr['t_as'] ?? 0), $targetHarian);
@@ -629,12 +501,14 @@ class AdminRaporBerjalanController extends BaseController
         }
 
         // =========================================================
-        // GABUNGKAN DATA UNTUK VIEW
+        // KUMPULKAN DATA UNTUK VIEW
         // =========================================================
-        $data = array_merge($data, [
+        $data = [
             'dataSiswa'             => $dataSiswa,
             'bulanAktif'            => $bulanAktif,
-            'namaBulanIndo'         => ['01'=>'Januari','02'=>'Februari','03'=>'Maret','04'=>'April','05'=>'Mei','06'=>'Juni','07'=>'Juli','08'=>'Agustus','09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember'],
+            'semester'              => $semester,
+            'tahun'                 => $tahun,
+            'namaBulanIndo'         => ['01'=>'Jan','02'=>'Feb','03'=>'Mar','04'=>'Apr','05'=>'Mei','06'=>'Jun','07'=>'Jul','08'=>'Agu','09'=>'Sep','10'=>'Okt','11'=>'Nov','12'=>'Des'],
             'matrixAbsen'           => $matrixAbsen,
             'totalAbsen'            => $totalAbsen,
             'kepatuhan'             => $kepatuhan,
@@ -647,99 +521,10 @@ class AdminRaporBerjalanController extends BaseController
             'matrixQuran'           => $matrixQuran,
             'matrixEskul'           => $matrixEskul,
             'matrixYaumiyah'        => $matrixYaumiyah 
-        ]);
+        ];
 
-        return view('admin/rapor_berjalan_index', $data);
-    }
-
-    // =================================================================
-    // 2. AJAX UNTUK MENGAMBIL DAFTAR SISWA BERDASARKAN KELAS
-    // =================================================================
-    public function getSiswa()
-    {
-        $db = Database::connect();
-        $request = \Config\Services::request();
-
-        // Pastikan hanya melayani request AJAX
-        if (!$request->isAJAX()) {
-            return $this->response->setJSON([]);
-        }
-
-        $rombel_id = $request->getPost('rombel_id');
-        $siswa = [];
-
-        if (!empty($rombel_id)) {
-            $siswa = $db->table('class_rombel_students crs')
-                        ->join('users u', 'u.id = crs.student_id')
-                        ->select('u.id, u.username as name')
-                        ->where('crs.rombel_id', $rombel_id)
-                        ->orderBy('u.username', 'ASC')
-                        ->get()->getResultArray();
-        }
-
-        return $this->response->setJSON($siswa);
-    }
-
-    // =================================================================
-    // 3. EXPORT LINK RAPOR ORTU (EXCEL / CSV)
-    // =================================================================
-    public function exportLinksExcel()
-    {
-        $db = Database::connect();
-        $request = \Config\Services::request();
-
-        // Ambil parameter dari URL, jika kosong gunakan default
-        $semester = $request->getGet('semester') ?? 'ganjil';
-        $tahun    = $request->getGet('tahun') ?? date('Y');
-        
-        // Kunci rahasia (HARUS SAMA persis dengan yang ada di OrtuRaporController)
-        $secretKey = 'RaporSikumiPastiAman2026!'; 
-
-        // Query tarik seluruh data siswa yang memiliki kelas
-        $siswaList = $db->table('users u')
-                        ->select('u.id, u.username as name, cr.rombel_name as kelas')
-                        ->join('class_rombel_students crs', 'crs.student_id = u.id')
-                        ->join('class_rombel cr', 'cr.id = crs.rombel_id')
-                        ->orderBy('cr.rombel_name', 'ASC') // Urutkan berdasarkan Kelas
-                        ->orderBy('u.username', 'ASC')     // Lalu urutkan berdasarkan Abjad Nama
-                        ->get()->getResultArray();
-
-        $fileName = "Link_Rapor_Ortu_Semester_" . ucfirst($semester) . "_{$tahun}.csv";
-
-        // Pengaturan Header agar browser men-download sebagai file
-        header("Content-Description: File Transfer");
-        header("Content-Disposition: attachment; filename=\"$fileName\"");
-        header("Content-Type: application/csv; charset=UTF-8");
-
-        $file = fopen('php://output', 'w');
-        
-        // Tambahkan BOM (Byte Order Mark) agar karakter dibaca sempurna oleh MS Excel
-        fputs($file, $bom = ( chr(0xEF) . chr(0xBB) . chr(0xBF) ));
-
-        // Header Kolom di Excel (Pemisah menggunakan titik koma ';' sesuai region Indonesia)
-        fputcsv($file, ['Kelas', 'Nama Siswa', 'Semester', 'Tahun', 'Link Akses Orang Tua'], ';');
-
-        // Looping data siswa untuk di-generate linknya dan dimasukkan ke baris Excel
-        foreach ($siswaList as $row) {
-            $student_id = $row['id'];
-            
-            // Generate Hash Token
-            $tokenOrtu = substr(hash('sha256', $student_id . $semester . $tahun . $secretKey), 0, 16);
-            
-            // Bentuk URL Lengkap
-            $linkOrtu  = base_url("rapor-ortu/view/{$student_id}/{$semester}/{$tahun}/{$tokenOrtu}");
-
-            // Tulis data ke dalam baris Excel
-            fputcsv($file, [
-                $row['kelas'],
-                $row['name'],
-                ucfirst($semester),
-                $tahun,
-                $linkOrtu
-            ], ';');
-        }
-
-        fclose($file);
-        exit;
+        // Gunakan view milik Rapor Siswa yang sebelumnya kita buat,
+        // Karena view tersebut sudah bersih dari form pencarian, hanya butuh disesuaikan navigasi atasnya saja.
+        return view('siswa/rapor_ortu_index', $data);
     }
 }

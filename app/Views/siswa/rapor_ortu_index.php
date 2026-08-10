@@ -3,23 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rapor Berjalan - Panel Admin</title>
+    <title>Rapor Berjalan - Portal Siswa</title>
     
-    <!-- CSS & Fonts -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
     
     <style>
-        /* ======================== CSS FILTER FORM ======================== */
         body { background-color: #f4f7f6; font-family: 'Open Sans', sans-serif; color: #333; }
-        .filter-container { margin-top: 2vh; margin-bottom: 2vh; }
-        .card-custom { border: none; border-radius: 10px; box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05); }
-        .card-header-custom { background: linear-gradient(135deg, #0d47a1 0%, #1976d2 100%); color: white; border-radius: 10px 10px 0 0 !important; padding: 10px 15px; }
-        .form-label { font-weight: 600; color: #2c3e50; font-size: 13px; margin-bottom: 0; }
-        
-        /* ======================== CSS LAPORAN/RAPOR ======================== */
-        .rapor-wrapper { background-color: #e3f2fd; padding: 30px; border-radius: 10px; margin-bottom: 50px; }
+        .top-nav-container { max-width: 900px; margin: 20px auto 0 auto; padding: 0 10px; }
+        .rapor-wrapper { background-color: #e3f2fd; padding: 30px; border-radius: 10px; margin: 20px auto 50px auto; max-width: 960px; }
         .rapor-container { max-width: 900px; margin: 0 auto; background: #ffffff; padding: 45px 50px; box-shadow: 0 10px 25px rgba(25, 118, 210, 0.15); border-top: 8px solid #1976d2; border-radius: 8px; }
         .header-sekolah { text-align: center; border-bottom: 2px solid #1976d2; padding-bottom: 20px; margin-bottom: 30px; }
         .header-sekolah h2 { font-family: 'Merriweather', serif; color: #15202b; margin: 0 0 8px 0; font-size: 26px; text-transform: uppercase; letter-spacing: 1px; }
@@ -29,7 +22,6 @@
         .identitas-table td:first-child { font-weight: 700; width: 130px; color: #15202b; }
         .section-title { font-family: 'Merriweather', serif; font-size: 16px; background-color: #0d47a1; color: #ffffff; padding: 10px 15px; margin: 30px 0 15px 0; font-weight: bold; border-radius: 4px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
         
-        /* PENGATURAN TABEL AGAR LUAS DAN TIDAK VERTIKAL */
         table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
         table.data-table th, table.data-table td { border: 1px solid #222222; padding: 10px 8px; vertical-align: middle; }
         table.data-table th { background-color: #eaf3fa; color: #15202b; text-align: center; font-weight: 700; border-bottom: 3px solid #1976d2; }
@@ -46,107 +38,16 @@
 
         @media print {
             body { background: none; padding: 0; }
-            .filter-container, .rapor-wrapper { background: none; padding: 0; margin: 0; }
-            .filter-container { display: none !important; } 
+            .top-nav-container, .rapor-wrapper { background: none; padding: 0; margin: 0; }
+            .top-nav-container { display: none !important; } 
             .rapor-container { box-shadow: none; border-top: 8px solid #1976d2 !important; padding: 0; }
             .section-title { background-color: #0d47a1 !important; color: #fff !important; }
             table.data-table th, table.data-table td { border: 1px solid #000000 !important; } 
-            table.data-table th { background-color: #eaf3fa !important; border-bottom: 3px solid #1976d2 !important; }
         }
     </style>
 </head>
 <body>
 
-<?php 
-    $namaBulanIndo = [
-        '01' => 'Jan', '02' => 'Feb', '03' => 'Mar', 
-        '04' => 'Apr', '05' => 'Mei', '06' => 'Jun', 
-        '07' => 'Jul', '08' => 'Agu', '09' => 'Sep', 
-        '10' => 'Okt', '11' => 'Nov', '12' => 'Des'
-    ];
-?>
-
-<!-- 1. BAGIAN FORM FILTER PENCARIAN -->
-<div class="container filter-container">
-    <div class="row justify-content-center">
-        <div class="col-lg-10">
-            <?php if (session()->getFlashdata('error')) : ?>
-                <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
-                    <i class="fas fa-exclamation-circle me-2"></i> <?= session()->getFlashdata('error') ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            <?php endif; ?>
-
-            <div class="card card-custom">
-                <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
-                    <div class="d-flex align-items-center">
-                        <i class="fas fa-book-open fs-6 me-2"></i>
-                        <h6 class="mb-0 fw-bold" style="font-size: 14px;">Pencarian Laporan Perkembangan Murid</h6>
-                    </div>
-                    <div class="d-flex gap-2">
-        <!-- TOMBOL EXPORT LINK ORTU KE EXCEL -->
-        <a href="<?= base_url('admin/rapor-berjalan/export-links?semester=' . esc($semester ?? 'ganjil') . '&tahun=' . esc($tahun ?? date('Y'))) ?>" 
-           class="btn btn-warning btn-sm fw-bold px-2 py-0 d-flex align-items-center" style="font-size: 12px; color: #212529;" target="_blank">
-            <i class="fas fa-file-excel me-1"></i> Export Link Ortu
-        </a>
-        
-        <!-- Tombol Kembali Dashboard -->
-        <a href="<?= base_url('/') ?>" class="btn btn-light btn-sm text-secondary fw-semibold px-2 py-0 d-flex align-items-center" style="font-size: 12px;">
-            <i class="fas fa-arrow-left me-1"></i> Dashboard
-        </a>
-    </div>
-                </div>
-                <div class="card-body p-2 px-3">
-                    
-                    <form action="" method="GET" id="filterForm">
-                        <input type="hidden" name="tahun" value="<?= esc($tahun ?? date('Y')) ?>">
-                        <input type="hidden" name="semester" value="<?= esc($semester ?? 'ganjil') ?>">
-
-                        <div class="row align-items-center g-2">
-                            <!-- Pilihan Kelas -->
-                            <div class="col-md-6">
-                                <div class="row align-items-center g-1">
-                                    <div class="col-auto">
-                                        <label for="rombel_id" class="form-label text-nowrap">Kelas (Rombel) :</label>
-                                    </div>
-                                    <div class="col">
-                                        <select id="rombel_id" name="rombel_id" class="form-select form-select-sm" style="max-width: 150px;" required>
-                                            <option value="">-- Pilih Kelas --</option>
-                                            <?php if (!empty($daftarRombel)): ?>
-                                                <?php foreach ($daftarRombel as $rombel): ?>
-                                                    <option value="<?= $rombel['id'] ?>" <?= (($selected_rombel ?? '') == $rombel['id']) ? 'selected' : '' ?>>
-                                                        <?= esc($rombel['rombel_name']) ?>
-                                                    </option>
-                                                <?php endforeach; ?>
-                                            <?php endif; ?>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Pilihan Siswa -->
-                            <div class="col-md-6">
-                                <div class="row align-items-center g-1">
-                                    <div class="col-auto">
-                                        <label for="student_id" class="form-label text-nowrap">Nama Siswa :</label>
-                                    </div>
-                                    <div class="col">
-                                        <select name="student_id" id="student_id" class="form-select form-select-sm" style="max-width: 350px;" required>
-                                            <option value="">-- Pilih Kelas Dulu --</option>
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- 2. BAGIAN HALAMAN RAPOR -->
-<?php if (!empty($dataSiswa)): ?>
 <?php 
     $fmt = function($angka, $b) use ($bulanAktif) { 
         if (!in_array($b, $bulanAktif)) return ''; 
@@ -155,6 +56,17 @@
     
     $semuaBulan = (strtolower($semester) === 'ganjil') ? ['07', '08', '09', '10', '11', '12'] : ['01', '02', '03', '04', '05', '06'];
 ?>
+
+<!-- NAVIGASI ATAS KHUSUS ORTU -->
+<div class="top-nav-container d-flex justify-content-between align-items-center">
+    <h5 class="fw-bold text-primary mb-0"><i class="fas fa-id-card me-2"></i> Portal Informasi Orang Tua</h5>
+    <div>
+        <button onclick="window.print()" class="btn btn-outline-primary btn-sm shadow-sm">
+            <i class="fas fa-print me-1"></i> Cetak / Simpan PDF
+        </button>
+    </div>
+</div>
+
 <div class="rapor-wrapper">
     <div class="rapor-container">
 
@@ -538,62 +450,7 @@
 
     </div>
 </div>
-<?php endif; ?>
 
-<!-- Script -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-$(document).ready(function() {
-    var selectedRombel = "<?= esc($selected_rombel ?? '') ?>";
-    var selectedStudent = "<?= esc($selected_student ?? '') ?>";
-
-    function loadSiswa(rombelId, selectedSiswaId = null) {
-        var studentDropdown = $('#student_id');
-        studentDropdown.html('<option value="">Mencari siswa...</option>');
-        
-        if(rombelId !== '') {
-            $.ajax({
-                url: '<?= site_url("admin/rapor-berjalan/get-siswa") ?>', 
-                type: 'POST',
-                data: { rombel_id: rombelId },
-                dataType: 'json',
-                success: function(response) {
-                    studentDropdown.html('<option value="">-- Pilih Siswa --</option>');
-                    if(response.length > 0) {
-                        $.each(response, function(index, siswa) {
-                            var isSelected = (siswa.id == selectedSiswaId) ? 'selected' : '';
-                            studentDropdown.append('<option value="' + siswa.id + '" ' + isSelected + '>' + siswa.name + '</option>');
-                        });
-                    } else {
-                        studentDropdown.html('<option value="">Siswa tidak ditemukan</option>');
-                    }
-                },
-                error: function() {
-                    studentDropdown.html('<option value="">Gagal memuat data</option>');
-                }
-            });
-        } else {
-            studentDropdown.html('<option value="">-- Pilih Kelas Dulu --</option>');
-        }
-    }
-
-    $('#rombel_id').change(function() {
-        loadSiswa($(this).val());
-        $('#student_id').html('<option value="">-- Pilih Siswa --</option>');
-    });
-
-    $('#student_id').change(function() {
-        if ($(this).val() !== '') {
-            $('#filterForm').submit();
-        }
-    });
-
-    if (selectedRombel !== '') {
-        loadSiswa(selectedRombel, selectedStudent);
-    }
-});
-</script>
-
 </body>
 </html>

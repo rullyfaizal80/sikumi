@@ -378,3 +378,7 @@ $routes->get('admin/restore', '\App\Controllers\RestoreController::index');
 $routes->post('admin/restore-process', '\App\Controllers\RestoreController::process');
 
 $routes->get('siswa/rapor', 'SiswaRaporController::index');
+
+// Rute untuk Rapor Orang Tua (Tanpa Login)
+$routes->get('rapor-ortu/view/(:num)/(:segment)/(:num)/(:segment)', 'OrtuRaporController::index/$1/$2/$3/$4');
+$routes->get('admin/rapor-berjalan/export-links', 'AdminRaporBerjalanController::exportLinksExcel');
