@@ -370,11 +370,11 @@ $routes->post('catatansiswa/hapusAnekdot', 'CatatanSiswaController::hapusAnekdot
 $routes->post('catatansiswa/updatePrestasi', 'CatatanSiswaController::updatePrestasi');
 $routes->post('catatansiswa/hapusPrestasi', 'CatatanSiswaController::hapusPrestasi');
 
-$routes->get('siswa/rapor-berjalan', 'RaporBerjalanController::index'); 
-
 // ====================================================================
 // ROUTE BACKUP & RESTORE (Jalur Absolut Anti-404)
 // ====================================================================
 $routes->get('backup-database', '\App\Controllers\BackupController::index');
 $routes->get('admin/restore', '\App\Controllers\RestoreController::index');
 $routes->post('admin/restore-process', '\App\Controllers\RestoreController::process');
+
+$routes->get('siswa/rapor', 'SiswaRaporController::index');
