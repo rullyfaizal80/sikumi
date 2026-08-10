@@ -7,84 +7,63 @@ use Config\Database;
 
 class AdminRaporBerjalanController extends BaseController
 {
-    // 1. HALAMAN FILTER PENCARIAN
+    // =================================================================
+    // 1. HALAMAN UTAMA (FILTER + HASIL RAPOR)
+    // =================================================================
     public function index()
     {
         $db = Database::connect();
-        
-        // Ambil daftar kelas untuk dropdown
+        $request = \Config\Services::request();
+
+        // 1. Ambil daftar kelas untuk dropdown filter
         $daftarRombel = [];
         if ($db->tableExists('class_rombel')) {
             $daftarRombel = $db->table('class_rombel')->orderBy('rombel_name', 'ASC')->get()->getResultArray();
         }
 
-        $data = [
-            'daftarRombel' => $daftarRombel,
-            'tahun'        => date('Y') // Default tahun saat ini
-        ];
-
-        return view('admin/rapor_berjalan_index', $data);
-    }
-
-    // 2. AJAX UNTUK MENGAMBIL DAFTAR SISWA BERDASARKAN KELAS
-    public function getSiswa()
-    {
-        $db = Database::connect();
-        $rombel_id = $this->request->getPost('rombel_id');
-
-        $siswa = $db->table('class_rombel_students crs')
-                    ->join('users u', 'u.id = crs.student_id')
-                    ->select('u.id, u.username as name')
-                    ->where('crs.rombel_id', $rombel_id)
-                    ->orderBy('u.username', 'ASC')
-                    ->get()->getResultArray();
-
-        return $this->response->setJSON($siswa);
-    }
-
-    // 3. HALAMAN HASIL RAPOR BERJALAN
-    public function lihat()
-    {
-        $db = Database::connect();
-        $request = \Config\Services::request();
-
-        // Ambil parameter dari form filter
-        $student_id = $request->getGet('student_id');
+        // 2. Ambil parameter GET dari form filter
+        $student_id = $request->getGet('student_id') ?? '';
         $semester   = $request->getGet('semester') ?? 'ganjil';
         $tahun      = $request->getGet('tahun') ?? date('Y');
+        $rombel_id  = $request->getGet('rombel_id') ?? ''; 
 
+        // 3. Data awal (jika belum ada pencarian)
+        $data = [
+            'daftarRombel'     => $daftarRombel,
+            'tahun'            => $tahun,
+            'semester'         => $semester,
+            'selected_rombel'  => $rombel_id,
+            'selected_student' => $student_id,
+            'dataSiswa'        => null // Default kosong sebelum difilter
+        ];
+
+        // Jika ID siswa belum dipilih, kembalikan ke view (hanya menampilkan form)
         if (empty($student_id)) {
-            return redirect()->to(base_url('admin/rapor-berjalan'))->with('error', 'Silakan pilih siswa terlebih dahulu.');
+            return view('admin/rapor_berjalan_index', $data);
         }
 
         // =========================================================
-        // LOGIKA DI BAWAH INI SAMA PERSIS DENGAN RAPOR SISWA
+        // JIKA FORM DISUBMIT: JALANKAN LOGIKA TARIK DATA RAPOR
         // =========================================================
         
-        // =========================================================
-        // 1. AMBIL DATA PROFIL SISWA & WALI KELAS
-        // =========================================================
+        // A. AMBIL DATA PROFIL SISWA & WALI KELAS
         $dataSiswa = $db->table('users u')
                         ->join('student_profiles sp', 'sp.user_id = u.id', 'left')
                         ->select('u.id, u.username as name, sp.nisn, sp.nis, sp.gender')
                         ->where('u.id', $student_id)
                         ->get()->getRowArray();
 
-        // Ambil nama kelas siswa saat ini sekaligus nama Wali Kelas (Guru Homeroom)
         $kelasSiswa = $db->table('class_rombel_students crs')
                          ->join('class_rombel cr', 'cr.id = crs.rombel_id')
-                         // Join ke tabel users menggunakan homeroom_teacher_id untuk mengambil nama Wali Kelas
                          ->join('users w', 'w.id = cr.homeroom_teacher_id', 'left') 
                          ->select('cr.rombel_name, w.username as nama_wali_kelas')
                          ->where('crs.student_id', $student_id)
                          ->get()->getRowArray();
                          
         $dataSiswa['kelas'] = $kelasSiswa ? $kelasSiswa['rombel_name'] : '-';
-        
-        // Masukkan nama wali kelas ke dalam array dataSiswa agar mudah dipanggil di view
         $dataSiswa['wali_kelas'] = ($kelasSiswa && $kelasSiswa['nama_wali_kelas']) ? $kelasSiswa['nama_wali_kelas'] : '-';
 
-        // 2. TENTUKAN BULAN YANG SUDAH DILALUI[cite: 5]
+        // B. TENTUKAN BULAN YANG SUDAH DILALUI
         $arrayBulanSemester = ($semester === 'ganjil') ? ['07', '08', '09', '10', '11', '12'] : ['01', '02', '03', '04', '05', '06'];
         $tahunLaporan  = (int) $tahun;
         $tahunSekarang = (int) date('Y');
@@ -124,7 +103,6 @@ class AdminRaporBerjalanController extends BaseController
             }
         }
 
-        // Bypass untuk uji coba tampilan[cite: 5]
         if (empty($bulanAktif)) {
             if ($semester === 'ganjil') {
                 $bulanAktif = ['07', '08', '09', '10', '11', '12'];
@@ -133,25 +111,18 @@ class AdminRaporBerjalanController extends BaseController
             }
         }
 
-        // ==============================================================
-        // 3. TARIK DATA ABSENSI & HITUNG PERSENTASE + MENIT TERLAMBAT
-        // ==============================================================
-        
-        // A. Ambil Data Hari Efektif dari Database
+        // C. TARIK DATA ABSENSI & HITUNG PERSENTASE + MENIT TERLAMBAT
         $hariEfektifDb = $db->table('hari_efektif')
                             ->where('tahun', $tahun)
                             ->whereIn('bulan', $bulanAktif)
                             ->get()->getResultArray();
         
-        // Petakan hari efektif berdasarkan bulan agar mudah dicari
         $mapHariEfektif = [];
         foreach ($hariEfektifDb as $he) {
-            // Pastikan format bulan selaras (2 digit string seperti '07', '08')
             $b = str_pad($he['bulan'], 2, '0', STR_PAD_LEFT);
             $mapHariEfektif[$b] = (int)$he['jumlah_hari'];
         }
 
-        // B. Tarik Data Mentah Absensi Siswa
         $absenRaw = $db->table('absensi a')
                        ->join('absensi_details ad', 'a.id = ad.absensi_id')
                        ->select('
@@ -166,16 +137,14 @@ class AdminRaporBerjalanController extends BaseController
                        ->where('ad.student_id', $student_id)
                        ->whereIn('LPAD(MONTH(a.tanggal), 2, "0")', $bulanAktif)
                        ->where('YEAR(a.tanggal)', $tahun)
-                       ->groupBy('LPAD(MONTH(a.tanggal), 2, "0")') // Pastikan group by-nya konsisten
+                       ->groupBy('LPAD(MONTH(a.tanggal), 2, "0")') 
                        ->get()->getResultArray();
 
-        // Petakan data raw absensi berdasarkan bulan agar mempermudah perhitungan
         $mapAbsenRaw = [];
         foreach ($absenRaw as $ar) {
             $mapAbsenRaw[$ar['bulan']] = $ar;
         }
 
-        // 3a. Siapkan array default dengan tanda '-'
         $matrixAbsen = ['H' => [], 'S' => [], 'I' => [], 'A' => [], 'T' => [], 'M' => []];
         foreach ($bulanAktif as $b) {
             foreach (['H', 'S', 'I', 'A', 'T', 'M'] as $kode) {
@@ -183,37 +152,24 @@ class AdminRaporBerjalanController extends BaseController
             }
         }
 
-        // Variabel untuk melacak total akumulasi mentah selama 1 semester
         $totalMentah = ['H' => 0, 'S' => 0, 'I' => 0, 'A' => 0, 'T' => 0, 'M' => 0, 'HariEfektif' => 0];
 
-        // 3b. Proses konversi data mentah menjadi persentase & angka absolut
         foreach ($bulanAktif as $b) {
-            // Ambil target hari efektif di bulan ini (default 0 jika blm disetting admin)
             $hariEfektif = $mapHariEfektif[$b] ?? 0;
             $totalMentah['HariEfektif'] += $hariEfektif;
+            $ar = $mapAbsenRaw[$b] ?? ['total_h' => 0, 'total_s' => 0, 'total_i' => 0, 'total_a' => 0, 'total_t' => 0, 'total_menit' => 0];
 
-            // Tarik data absen siswa di bulan tsb (jika tidak ada data sama sekali, anggap 0)
-            $ar = $mapAbsenRaw[$b] ?? [
-                'total_h' => 0, 'total_s' => 0, 'total_i' => 0, 
-                'total_a' => 0, 'total_t' => 0, 'total_menit' => 0
-            ];
-
-            // Jika admin sudah set hari efektif > 0, hitung persentasenya
             if ($hariEfektif > 0) {
-                // min(100, ...) digunakan agar persentase tidak tembus > 100% jika ada dobel input absensi
                 $matrixAbsen['H'][$b] = min(100, round(($ar['total_h'] / $hariEfektif) * 100)) . '%';
                 $matrixAbsen['S'][$b] = min(100, round(($ar['total_s'] / $hariEfektif) * 100)) . '%';
                 $matrixAbsen['I'][$b] = min(100, round(($ar['total_i'] / $hariEfektif) * 100)) . '%';
                 $matrixAbsen['A'][$b] = min(100, round(($ar['total_a'] / $hariEfektif) * 100)) . '%';
                 $matrixAbsen['T'][$b] = min(100, round(($ar['total_t'] / $hariEfektif) * 100)) . '%';
             }
-            
-            // Masukkan data menit keterlambatan sebagai nilai absolut
             if ($ar['total_menit'] > 0) {
                 $matrixAbsen['M'][$b] = $ar['total_menit'] . ' mnt';
             }
 
-            // Tambahkan data mentah ke total semester
             $totalMentah['H'] += $ar['total_h'];
             $totalMentah['S'] += $ar['total_s'];
             $totalMentah['I'] += $ar['total_i'];
@@ -222,10 +178,7 @@ class AdminRaporBerjalanController extends BaseController
             $totalMentah['M'] += $ar['total_menit'];
         }
 
-        // 3c. Hitung persentase kolom "Total" di ujung kanan tabel (Rata-rata 1 semester)
         $totalAbsen = ['H' => '-', 'S' => '-', 'I' => '-', 'A' => '-', 'T' => '-', 'M' => '-'];
-        
-        // Kalkulasi persentase grand total terhadap grand total hari efektif
         if ($totalMentah['HariEfektif'] > 0) {
             $totalHari = $totalMentah['HariEfektif'];
             $totalAbsen['H'] = min(100, round(($totalMentah['H'] / $totalHari) * 100)) . '%';
@@ -234,22 +187,15 @@ class AdminRaporBerjalanController extends BaseController
             $totalAbsen['A'] = min(100, round(($totalMentah['A'] / $totalHari) * 100)) . '%';
             $totalAbsen['T'] = min(100, round(($totalMentah['T'] / $totalHari) * 100)) . '%';
         }
-
-        // Total akumulasi menit dalam 1 semester
         if ($totalMentah['M'] > 0) {
             $totalAbsen['M'] = $totalMentah['M'] . ' mnt';
         }
 
-       // ==============================================================
-        // 4. TARIK DATA KEPATUHAN & KARAKTER (SPIRITUAL & SOSIAL)
-        // ==============================================================
+        // D. TARIK DATA KEPATUHAN & KARAKTER
         $currentYear  = (int)date('Y');
         $currentMonth = (int)date('m');
         $namaBulanLokal = ['01'=>'Januari','02'=>'Februari','03'=>'Maret','04'=>'April','05'=>'Mei','06'=>'Juni','07'=>'Juli','08'=>'Agustus','09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember'];
 
-        // --------------------------------------------------------------
-        // A. KEPATUHAN (Menghitung Total Kasus & Kelompokkan Keterangan)
-        // --------------------------------------------------------------
         $kepatuhanRaw = $db->table('kepatuhan')
             ->select('
                 LPAD(MONTH(tanggal), 2, "0") as bulan, 
@@ -273,7 +219,6 @@ class AdminRaporBerjalanController extends BaseController
         foreach ($kepatuhanKolom as $kolom) {
             $kepatuhan['totals'][$kolom] = 0;
             foreach ($bulanAktif as $b) {
-                // LOGIKA BARU: Hanya tampilkan 0 jika bulan tersebut SUDAH LEWAT (< $currentMonth)
                 $isBerjalan = ($tahun < $currentYear) || ($tahun == $currentYear && (int)$b < $currentMonth);
                 $kepatuhan['matrix'][$kolom][$b] = $isBerjalan ? 0 : '-';
             }
@@ -282,53 +227,35 @@ class AdminRaporBerjalanController extends BaseController
         $rincianSemester = [];
         foreach ($kepatuhanRaw as $kr) {
             $b = $kr['bulan'];
-            
-            // 1. Masukkan angka pelanggaran ke dalam matriks
             foreach ($kepatuhanKolom as $kolom) {
                 if ($kr[$kolom] > 0) {
                     $kepatuhan['matrix'][$kolom][$b] = $kr[$kolom];
                     $kepatuhan['totals'][$kolom] += $kr[$kolom];
                 }
             }
-            
-            // 2. Olah catatan "keterangan" asli dari database
             if (!empty(trim($kr['gabungan_keterangan']))) {
                 $catatanArray = array_filter(array_map('trim', explode('|', $kr['gabungan_keterangan'])));
-                
                 $hitungCatatan = [];
                 foreach ($catatanArray as $catatan) {
                     if (empty($catatan)) continue;
-                    
-                    $kunci = strtolower($catatan); // Case-insensitive
-                    
+                    $kunci = strtolower($catatan);
                     if (!isset($hitungCatatan[$kunci])) {
-                        $hitungCatatan[$kunci] = [
-                            'teks'   => ucfirst($kunci),
-                            'jumlah' => 0
-                        ];
+                        $hitungCatatan[$kunci] = ['teks' => ucfirst($kunci), 'jumlah' => 0];
                     }
                     $hitungCatatan[$kunci]['jumlah']++;
                 }
-                
-                // 3. Rangkai kembali menjadi format: Nama Keterangan (Nx)
                 $catatanFinal = [];
                 foreach ($hitungCatatan as $item) {
                     $catatanFinal[] = $item['teks'] . ' (' . $item['jumlah'] . 'x)';
                 }
-                
                 $teksCatatan = implode(' | ', $catatanFinal);
-                
                 if (!empty($teksCatatan)) {
                     $rincianSemester[] = '<b>' . $namaBulanLokal[$b] . '</b>: ' . esc($teksCatatan);
                 }
             }
         }
-
         $keteranganPelanggaran = count($rincianSemester) > 0 ? implode('<br>', $rincianSemester) : '-';
 
-        // --------------------------------------------------------------
-        // B. KARAKTER (Spiritual & Sosial)
-        // --------------------------------------------------------------
         $buildMatrix = function($tabel, $kolomArray) use ($db, $student_id, $bulanAktif, $tahun, $currentYear, $currentMonth) {
             $select = "LPAD(MONTH(tanggal), 2, '0') as bulan";
             foreach ($kolomArray as $kolom) {
@@ -344,7 +271,6 @@ class AdminRaporBerjalanController extends BaseController
                           ->groupBy('MONTH(tanggal)')
                           ->get()->getResultArray();
 
-            // Helper untuk konversi nilai ke predikat
             $getPredikat = function($nilai) {
                 if ($nilai == 0) return 'A';
                 if ($nilai >= 1 && $nilai <= 2) return 'B';
@@ -352,34 +278,19 @@ class AdminRaporBerjalanController extends BaseController
                 return 'D';
             };
 
-            $matrix = []; 
-            $totals = [];
-            $keterangan = [];
-
-            // 1. Set nilai default matriks
+            $matrix = []; $totals = []; $keterangan = [];
             foreach ($kolomArray as $kolom) {
                 $totals[$kolom] = 0;
                 foreach ($bulanAktif as $b) {
-                    // Hanya anggap valid jika bulan SUDAH LEWAT (< $currentMonth)
                     $isSudahLewat = ($tahun < $currentYear) || ($tahun == $currentYear && (int)$b < $currentMonth);
-                    
-                    // Jika bulan sudah lewat -> default 'A', jika bulan berjalan/akan datang -> '-'
                     $matrix[$kolom][$b] = $isSudahLewat ? 'A' : '-'; 
                 }
             }
+            foreach ($bulanAktif as $b) { $keterangan[$b] = '-'; }
 
-            // Set default keterangan '-'
-            foreach ($bulanAktif as $b) {
-                $keterangan[$b] = '-';
-            }
-
-            // 2. Timpa nilai matriks berdasarkan data dari Database
             foreach ($dataRaw as $dr) {
                 $b = $dr['bulan'];
-                
-                // Pastikan HANYA memproses data jika bulan tersebut SUDAH LEWAT
                 $isSudahLewat = ($tahun < $currentYear) || ($tahun == $currentYear && (int)$b < $currentMonth);
-
                 if ($isSudahLewat) {
                     foreach ($kolomArray as $kolom) {
                         if (isset($dr[$kolom])) {
@@ -394,49 +305,35 @@ class AdminRaporBerjalanController extends BaseController
                 }
             }
 
-            // 3. Hitung Predikat akumulasi total semester (Hanya dari bulan yang sudah lewat)
             $totalsPredikat = [];
             foreach ($totals as $kolom => $nilaiTotal) {
                 $totalsPredikat[$kolom] = $getPredikat($nilaiTotal);
             }
 
-            return [
-                'matrix'          => $matrix, 
-                'totals_raw'      => $totals,
-                'totals_predikat' => $totalsPredikat,
-                'keterangan'      => $keterangan
-            ];
+            return ['matrix' => $matrix, 'totals_raw' => $totals, 'totals_predikat' => $totalsPredikat, 'keterangan' => $keterangan];
         };
 
         $spiritual = $buildMatrix('aspek_spiritual', ['berdoa', 'kalimat_thoyibah', 'shalat', 'salam', 'syukur', 'lingkungan', 'toleransi']);
         $sosial    = $buildMatrix('aspek_sosial', ['disiplin', 'jujur', 'percaya_diri', 'santun', 'kerjasama', 'tanggung_jawab', 'adil']);
         
-        // ==============================================================
-        // 5. TARIK NILAI SUMATIF
-        // ==============================================================
-        
-        // A. Tentukan nama tabel & kolom untuk mapel reguler
+        // E. TARIK NILAI SUMATIF
         $tabelMapel = $db->tableExists('master_subjects') ? 'master_subjects' : ($db->tableExists('subjects') ? 'subjects' : 'mata_pelajaran');
         $kolomNamaMapel = in_array('subject_name', $db->getFieldNames($tabelMapel)) ? 'subject_name' : (in_array('nama_mapel', $db->getFieldNames($tabelMapel)) ? 'nama_mapel' : 'name');
         
-        // B. Tarik data nilai mentah
         $sumatifRaw = $db->table('nilai_sumatif')
                          ->select("LPAD(bulan, 2, '0') as bulan, mapel_id, nilai_angka")
                          ->where('student_id', $student_id)
                          ->whereIn('bulan', $bulanAktif)
                          ->get()->getResultArray();
 
-        // C. Buat Kamus/Mapping Nama Mapel Reguler
         $refMapel = [];
         if ($db->tableExists($tabelMapel)) {
             $mapelDb = $db->table($tabelMapel)->select("id, {$kolomNamaMapel} as nama_mapel")->get()->getResultArray();
             foreach ($mapelDb as $m) {
                 $refMapel['S_' . $m['id']] = $m['nama_mapel']; 
-                $refMapel[$m['id']] = $m['nama_mapel']; // Jaga-jaga jika ada data tanpa prefix
+                $refMapel[$m['id']] = $m['nama_mapel']; 
             }
         }
-
-        // D. Buat Kamus/Mapping Nama Mapel Gabungan (Combined Subjects)
         if ($db->tableExists('schedule_combined_subjects')) {
             $gabunganDb = $db->table('schedule_combined_subjects')->select('id, combined_name')->get()->getResultArray();
             foreach ($gabunganDb as $g) {
@@ -444,23 +341,15 @@ class AdminRaporBerjalanController extends BaseController
             }
         }
 
-        // ==============================================================
-        // E. Susun Matriks Nilai (REVISI FINAL - DINAMIS TANPA HARDCODE)
-        // ==============================================================
-        
         $matrixSumatif = [];
-        
-        // 1. Mapel yang disembunyikan mutlak (berdasarkan request Anda sebelumnya)
         $mapelSembunyi = ['Seni dan Budaya', 'Bahasa Sunda', 'Bimbingan Konseling'];
         
-        // 2. Lacak Mapel Anak secara DINAMIS dari database
         $mapelAnakGabungan = [];
         if ($db->tableExists('schedule_combined_details') && $db->tableExists('master_subjects')) {
             $anakDb = $db->table('schedule_combined_details scd')
                          ->select('ms.subject_name')
                          ->join('master_subjects ms', 'ms.id = scd.master_subject_id', 'left')
                          ->get()->getResultArray();
-                         
             foreach ($anakDb as $anak) {
                 if (!empty($anak['subject_name'])) {
                     $mapelAnakGabungan[] = $anak['subject_name'];
@@ -468,70 +357,41 @@ class AdminRaporBerjalanController extends BaseController
             }
         }
         
-        // Gabungkan semua daftar mapel yang tidak boleh tampil
         $semuaMapelDihide = array_merge($mapelSembunyi, $mapelAnakGabungan);
-        
-        $namaMapelUnik = []; // Tracker untuk mencegah mapel gabungan tampil double
+        $namaMapelUnik = []; 
 
-        // 3. Inisialisasi SEMUA mapel dari referensi ke dalam matriks
         foreach ($refMapel as $key => $namaMapel) {
-            // A. Ganti nama PJOK (Mencegat berbagai variasi penulisan)
             if (stripos($namaMapel, 'Pendidikan Jasmani') !== false && stripos($namaMapel, 'Olahraga') !== false) {
                 $namaMapel = 'PJOK';
             }
-
-            // B. Cek apakah mapel ini masuk daftar blacklist atau sudah pernah dicetak
             $isSembunyi = in_array($namaMapel, $semuaMapelDihide);
             $isDouble = in_array($namaMapel, $namaMapelUnik);
 
-            // C. Masukkan ke matriks HANYA jika lolos semua syarat di atas
             if ((strpos($key, 'S_') === 0 || strpos($key, 'C_') === 0) && !$isSembunyi && !$isDouble) {
-                $matrixSumatif[$key] = [
-                    'nama_mapel' => $namaMapel, 
-                    'nilai'      => [], 
-                    'total'      => 0, 
-                    'count'      => 0
-                ];
-                // Isi default semua bulan dengan null
-                foreach ($bulanAktif as $b) { 
-                    $matrixSumatif[$key]['nilai'][$b] = null; 
-                }
-                
-                $namaMapelUnik[] = $namaMapel; // Catat nama untuk mencegah duplikasi
+                $matrixSumatif[$key] = ['nama_mapel' => $namaMapel, 'nilai' => [], 'total' => 0, 'count' => 0];
+                foreach ($bulanAktif as $b) { $matrixSumatif[$key]['nilai'][$b] = null; }
+                $namaMapelUnik[] = $namaMapel; 
             }
         }
 
-        // 4. Timpa dengan nilai asli dari table nilai_sumatif
         foreach ($sumatifRaw as $sr) {
             $mId = $sr['mapel_id'];
             $bln = $sr['bulan'];
-            
-            // Proses standarisasi nama yang sama seperti langkah 3
             $rawName = isset($refMapel[$mId]) ? $refMapel[$mId] : '';
             if (stripos($rawName, 'Pendidikan Jasmani') !== false && stripos($rawName, 'Olahraga') !== false) {
                 $rawName = 'PJOK';
             }
+            if (in_array($rawName, $semuaMapelDihide)) { continue; }
 
-            // Abaikan penarikan nilai jika ini milik mapel yang disembunyikan
-            if (in_array($rawName, $semuaMapelDihide)) {
-                continue;
-            }
-
-            // Jika mapelnya gabungan (beda ID tapi namanya sama), satukan nilainya ke row yang ada
             $targetKey = $mId;
             if (!isset($matrixSumatif[$mId])) {
                  $foundKey = null;
                  foreach ($matrixSumatif as $k => $v) {
-                     if ($v['nama_mapel'] === $rawName) {
-                         $foundKey = $k; break;
-                     }
+                     if ($v['nama_mapel'] === $rawName) { $foundKey = $k; break; }
                  }
-                 if ($foundKey) {
-                     $targetKey = $foundKey;
-                 }
+                 if ($foundKey) { $targetKey = $foundKey; }
             }
 
-            // Inject nilainya ke bulan yang tepat
             if (isset($matrixSumatif[$targetKey]) && is_numeric($sr['nilai_angka'])) {
                 $matrixSumatif[$targetKey]['nilai'][$bln] = (float)$sr['nilai_angka'];
                 $matrixSumatif[$targetKey]['total'] += (float)$sr['nilai_angka'];
@@ -539,12 +399,11 @@ class AdminRaporBerjalanController extends BaseController
             }
         }
 
-        // F. Urutkan matriks berdasarkan nama mapel secara Alfabet
         uasort($matrixSumatif, function($a, $b) {
             return strcmp($a['nama_mapel'], $b['nama_mapel']);
         });
         
-        // 6. AMBIL CATATAN ANEKDOT & PRESTASI[cite: 5]
+        // F. AMBIL CATATAN ANEKDOT & PRESTASI
         $anekdot = $db->table('catatan_anekdot')
                       ->select('tanggal, kejadian')
                       ->where('student_id', $student_id)
@@ -559,25 +418,19 @@ class AdminRaporBerjalanController extends BaseController
                        ->where('YEAR(created_at)', $tahun)
                        ->orderBy('created_at', 'ASC')->get()->getResultArray();
 
-        // ==============================================================
-        // 7. TARIK DATA NILAI AL-QUR'AN
-        // ==============================================================
-        // Siapkan kerangka matriks untuk 3 Aspek Utama
+        // G. TARIK DATA NILAI AL-QUR'AN
         $matrixQuran = [
             'Tahsin'  => ['nilai' => [], 'total' => 0, 'count' => 0],
             'Tahfidz' => ['nilai' => [], 'total' => 0, 'count' => 0],
             'Kitabah' => ['nilai' => [], 'total' => 0, 'count' => 0],
         ];
 
-        // Inisialisasi setiap bulan dengan nilai null (kosong)
         foreach (['Tahsin', 'Tahfidz', 'Kitabah'] as $aspek) {
-            foreach ($bulanAktif as $b) {
-                $matrixQuran[$aspek]['nilai'][$b] = null;
-            }
+            foreach ($bulanAktif as $b) { $matrixQuran[$aspek]['nilai'][$b] = null; }
         }
 
         $quranRaw = [];
-        if ($db->tableExists('quran_penilaian')) { // Menggunakan tabel yang benar
+        if ($db->tableExists('quran_penilaian')) { 
             $quranRaw = $db->table('quran_penilaian')
                            ->select('bulan, tahsin_nilai, tahfidz_nilai, kitabah_nilai')
                            ->where('student_id', $student_id)
@@ -586,64 +439,37 @@ class AdminRaporBerjalanController extends BaseController
                            ->get()->getResultArray();
         }
 
-        // Siapkan array sementara karena 1 bulan bisa memiliki lebih dari 1 pekan
         $tempNilai = ['Tahsin' => [], 'Tahfidz' => [], 'Kitabah' => []];
         foreach ($bulanAktif as $b) {
-            $tempNilai['Tahsin'][$b]  = [];
-            $tempNilai['Tahfidz'][$b] = [];
-            $tempNilai['Kitabah'][$b] = [];
+            $tempNilai['Tahsin'][$b] = []; $tempNilai['Tahfidz'][$b] = []; $tempNilai['Kitabah'][$b] = [];
         }
 
-        // Kelompokkan nilai mentah ke dalam bulan yang sesuai
         foreach ($quranRaw as $qr) {
             $bln = $qr['bulan'];
-            
-            // Konversi koma ke titik (jika guru input desimal pakai koma) dan jadikan tipe angka
-            if (!empty(trim($qr['tahsin_nilai']))) {
-                $tempNilai['Tahsin'][$bln][] = (float)str_replace(',', '.', $qr['tahsin_nilai']);
-            }
-            if (!empty(trim($qr['tahfidz_nilai']))) {
-                $tempNilai['Tahfidz'][$bln][] = (float)str_replace(',', '.', $qr['tahfidz_nilai']);
-            }
-            if (!empty(trim($qr['kitabah_nilai']))) {
-                $tempNilai['Kitabah'][$bln][] = (float)str_replace(',', '.', $qr['kitabah_nilai']);
-            }
+            if (!empty(trim($qr['tahsin_nilai']))) { $tempNilai['Tahsin'][$bln][] = (float)str_replace(',', '.', $qr['tahsin_nilai']); }
+            if (!empty(trim($qr['tahfidz_nilai']))) { $tempNilai['Tahfidz'][$bln][] = (float)str_replace(',', '.', $qr['tahfidz_nilai']); }
+            if (!empty(trim($qr['kitabah_nilai']))) { $tempNilai['Kitabah'][$bln][] = (float)str_replace(',', '.', $qr['kitabah_nilai']); }
         }
 
-        // Hitung rata-rata per bulan untuk dimasukkan ke Rapor
         foreach (['Tahsin', 'Tahfidz', 'Kitabah'] as $aspek) {
             foreach ($bulanAktif as $b) {
                 $kumpulanNilai = $tempNilai[$aspek][$b];
-                
                 if (count($kumpulanNilai) > 0) {
-                    // Rata-rata bulan tersebut (Total nilai pekan / jumlah pekan yang diinput)
                     $rataBulan = array_sum($kumpulanNilai) / count($kumpulanNilai);
                     $matrixQuran[$aspek]['nilai'][$b] = round($rataBulan, 1); 
-                    
-                    // Tambahkan ke kalkulasi total 1 semester untuk kolom 'Rata-Rata/Total'
                     $matrixQuran[$aspek]['total'] += $rataBulan;
                     $matrixQuran[$aspek]['count']++;
                 }
             }
         }
 
-        // ==============================================================
-        // 8. TARIK DATA EKSTRAKURIKULER, PRAMUKA & PEMINATAN
-        // ==============================================================
-
-        // A. Deteksi Kelas Siswa untuk Penamaan Peminatan
+        // H. TARIK DATA EKSTRAKURIKULER, PRAMUKA & PEMINATAN
         $rombelName     = $dataSiswa['rombel_name'] ?? $dataSiswa['nama_kelas'] ?? $dataSiswa['kelas'] ?? '';
         $labelPeminatan = 'Peminatan';
+        if (preg_match('/(7|VII)/i', $rombelName)) { $labelPeminatan = 'Peminatan (IT)'; } 
+        elseif (preg_match('/(8|VIII)/i', $rombelName)) { $labelPeminatan = 'Peminatan (English)'; } 
+        elseif (preg_match('/(9|IX)/i', $rombelName)) { $labelPeminatan = 'Peminatan (TKA)'; }
 
-        if (preg_match('/(7|VII)/i', $rombelName)) {
-            $labelPeminatan = 'Peminatan (IT)';
-        } elseif (preg_match('/(8|VIII)/i', $rombelName)) {
-            $labelPeminatan = 'Peminatan (English)';
-        } elseif (preg_match('/(9|IX)/i', $rombelName)) {
-            $labelPeminatan = 'Peminatan (TKA)';
-        }
-
-        // B. Helper Konversi & Pencatatan Nilai
         $getPredikatEskul = function($nilai) {
             if ($nilai === null || $nilai === '' || $nilai === '-') return '-';
             if (is_numeric($nilai)) {
@@ -658,33 +484,23 @@ class AdminRaporBerjalanController extends BaseController
 
         $getNumericFromPredikat = function($pred) {
             switch (strtoupper(trim($pred))) {
-                case 'A': return 95;
-                case 'B': return 85;
-                case 'C': return 75;
-                case 'D': return 65;
-                default: return null;
+                case 'A': return 95; case 'B': return 85; case 'C': return 75; case 'D': return 65; default: return null;
             }
         };
 
-        // Helper untuk memasukkan nilai ke matriks sesuai format key bulanAktif
         $assignScore = function(&$matrixRow, &$rawList, $dbBulan, $nilai) use ($bulanAktif, $getPredikatEskul, $getNumericFromPredikat) {
             $pred = $getPredikatEskul($nilai);
             if ($pred === '-') return;
-
             foreach ($bulanAktif as $b) {
                 if ((int)$b === (int)$dbBulan) {
                     $matrixRow['bulan'][$b] = $pred;
-                    
                     $num = is_numeric($nilai) ? (float)$nilai : $getNumericFromPredikat($pred);
-                    if ($num !== null) {
-                        $rawList[] = $num;
-                    }
+                    if ($num !== null) { $rawList[] = $num; }
                     break;
                 }
             }
         };
 
-        // C. Cari Nama Eskul yang Diikuti Siswa
         $namaEskulSiswa = '';
         if ($db->tableExists('eskul_grades') && $db->tableExists('eskul_groups')) {
             $eskulNamaRow = $db->table('eskul_grades eg')
@@ -692,13 +508,10 @@ class AdminRaporBerjalanController extends BaseController
                               ->select('grp.nama_kelompok')
                               ->where('eg.student_id', $student_id)
                               ->get()->getRowArray();
-            if ($eskulNamaRow && !empty($eskulNamaRow['nama_kelompok'])) {
-                $namaEskulSiswa = trim($eskulNamaRow['nama_kelompok']);
-            }
+            if ($eskulNamaRow && !empty($eskulNamaRow['nama_kelompok'])) { $namaEskulSiswa = trim($eskulNamaRow['nama_kelompok']); }
         }
         $labelEskul = !empty($namaEskulSiswa) ? "Ekstrakurikuler ({$namaEskulSiswa})" : "Ekstrakurikuler";
 
-        // D. Inisialisasi Matriks untuk View
         $matrixEskul = [
             'Pramuka'         => ['label' => 'Pramuka', 'bulan' => [], 'predikat_akhir' => '-'],
             'Ekstrakurikuler' => ['label' => $labelEskul, 'bulan' => [], 'predikat_akhir' => '-'],
@@ -707,51 +520,21 @@ class AdminRaporBerjalanController extends BaseController
         $rawScores = ['Pramuka' => [], 'Ekstrakurikuler' => [], 'Peminatan' => []];
 
         foreach ($bulanAktif as $b) {
-            $matrixEskul['Pramuka']['bulan'][$b]         = '-';
-            $matrixEskul['Ekstrakurikuler']['bulan'][$b] = '-';
-            $matrixEskul['Peminatan']['bulan'][$b]       = '-';
+            $matrixEskul['Pramuka']['bulan'][$b] = '-'; $matrixEskul['Ekstrakurikuler']['bulan'][$b] = '-'; $matrixEskul['Peminatan']['bulan'][$b] = '-';
         }
 
-        // E. Ambil Nilai Pramuka dari pramuka_grades
         if ($db->tableExists('pramuka_grades')) {
-            $pramukaRaw = $db->table('pramuka_grades')
-                             ->select('bulan, nilai')
-                             ->where('student_id', $student_id)
-                             ->whereIn('bulan', $bulanAktif)
-                             ->get()->getResultArray();
-                             
-            foreach ($pramukaRaw as $pr) {
-                $assignScore($matrixEskul['Pramuka'], $rawScores['Pramuka'], $pr['bulan'], $pr['nilai']);
-            }
+            $pramukaRaw = $db->table('pramuka_grades')->select('bulan, nilai')->where('student_id', $student_id)->whereIn('bulan', $bulanAktif)->get()->getResultArray();
+            foreach ($pramukaRaw as $pr) { $assignScore($matrixEskul['Pramuka'], $rawScores['Pramuka'], $pr['bulan'], $pr['nilai']); }
         }
-
-        // F. Ambil Nilai Peminatan dari peminatan_grades
         if ($db->tableExists('peminatan_grades')) {
-            $peminatanRaw = $db->table('peminatan_grades')
-                               ->select('bulan, nilai')
-                               ->where('student_id', $student_id)
-                               ->whereIn('bulan', $bulanAktif)
-                               ->get()->getResultArray();
-                               
-            foreach ($peminatanRaw as $pm) {
-                $assignScore($matrixEskul['Peminatan'], $rawScores['Peminatan'], $pm['bulan'], $pm['nilai']);
-            }
+            $peminatanRaw = $db->table('peminatan_grades')->select('bulan, nilai')->where('student_id', $student_id)->whereIn('bulan', $bulanAktif)->get()->getResultArray();
+            foreach ($peminatanRaw as $pm) { $assignScore($matrixEskul['Peminatan'], $rawScores['Peminatan'], $pm['bulan'], $pm['nilai']); }
         }
-
-        // G. Ambil Nilai Eskul dari eskul_grades
         if ($db->tableExists('eskul_grades')) {
-            $eskulRaw = $db->table('eskul_grades')
-                             ->select('bulan, nilai')
-                             ->where('student_id', $student_id)
-                             ->whereIn('bulan', $bulanAktif)
-                             ->get()->getResultArray();
-                             
-            foreach ($eskulRaw as $er) {
-                $assignScore($matrixEskul['Ekstrakurikuler'], $rawScores['Ekstrakurikuler'], $er['bulan'], $er['nilai']);
-            }
+            $eskulRaw = $db->table('eskul_grades')->select('bulan, nilai')->where('student_id', $student_id)->whereIn('bulan', $bulanAktif)->get()->getResultArray();
+            foreach ($eskulRaw as $er) { $assignScore($matrixEskul['Ekstrakurikuler'], $rawScores['Ekstrakurikuler'], $er['bulan'], $er['nilai']); }
         }
-
-        // H. Hitung Predikat Akhir (Rata-rata Semester)
         foreach (['Pramuka', 'Ekstrakurikuler', 'Peminatan'] as $key) {
             if (!empty($rawScores[$key])) {
                 $avg = array_sum($rawScores[$key]) / count($rawScores[$key]);
@@ -759,48 +542,25 @@ class AdminRaporBerjalanController extends BaseController
             }
         }
 
-        // =========================================================
-        // 9. TARIK DATA YAUMIYAH (GROUP BY BULAN)
-        // =========================================================
-        // A. Ambil Target Hari Efektif per Bulan di Semester/Tahun Tersebut
+        // I. TARIK DATA YAUMIYAH
         $hariEfektifBulanan = [];
-        $cekHari = $db->table('hari_efektif')
-                      ->where('tahun', $tahun)
-                      ->whereIn('LPAD(bulan, 2, "0")', $bulanAktif)
-                      ->get()->getResultArray();
-                      
-        foreach ($cekHari as $ch) {
-            $hariEfektifBulanan[str_pad($ch['bulan'], 2, '0', STR_PAD_LEFT)] = (int)$ch['jumlah_hari'];
-        }
+        $cekHari = $db->table('hari_efektif')->where('tahun', $tahun)->whereIn('LPAD(bulan, 2, "0")', $bulanAktif)->get()->getResultArray();
+        foreach ($cekHari as $ch) { $hariEfektifBulanan[str_pad($ch['bulan'], 2, '0', STR_PAD_LEFT)] = (int)$ch['jumlah_hari']; }
 
-        // B. Tarik Data Jurnal Yaumiyah Siswa
         $yaumiyahRaw = $db->table('yaumiyah')
-                        ->select('
-                            LPAD(MONTH(tanggal), 2, "0") as bulan,
-                            SUM(dzuhur) as t_dz, SUM(ashar) as t_as, SUM(bakdiah_dzuhur) as t_bd,
-                            SUM(duha) as t_dh, SUM(tahajud) as t_th, SUM(tilawah) as t_tl,
-                            SUM(infaq) as t_if, SUM(shaum) as t_sh, SUM(literasi) as t_lt
-                        ')
+                        ->select('LPAD(MONTH(tanggal), 2, "0") as bulan, SUM(dzuhur) as t_dz, SUM(ashar) as t_as, SUM(bakdiah_dzuhur) as t_bd, SUM(duha) as t_dh, SUM(tahajud) as t_th, SUM(tilawah) as t_tl, SUM(infaq) as t_if, SUM(shaum) as t_sh, SUM(literasi) as t_lt')
                         ->where('student_id', $student_id)
                         ->whereIn('LPAD(MONTH(tanggal), 2, "0")', $bulanAktif)
                         ->where('YEAR(tanggal)', $tahun)
-                        ->where('DAYOFWEEK(tanggal) !=', 1)
-                        ->where('DAYOFWEEK(tanggal) !=', 7) // Abaikan Sabtu & Minggu
-                        ->groupBy('MONTH(tanggal)')
-                        ->get()->getResultArray();
+                        ->where('DAYOFWEEK(tanggal) !=', 1)->where('DAYOFWEEK(tanggal) !=', 7) 
+                        ->groupBy('MONTH(tanggal)')->get()->getResultArray();
 
-        // C. Siapkan Matriks & Fungsi Kalkulasi
         $matrixYaumiyah = [
-            'p_dzuhur'   => [], 'p_ashar'    => [], 'p_bakdiah'  => [],
-            'p_duha'     => [], 'p_tahajud'  => [], 'p_tilawah'  => [],
-            'p_infaq'    => [], 'p_shaum'    => [], 'p_literasi' => []
+            'p_dzuhur' => [], 'p_ashar' => [], 'p_bakdiah' => [], 'p_duha' => [], 'p_tahajud' => [], 
+            'p_tilawah' => [], 'p_infaq' => [], 'p_shaum' => [], 'p_literasi' => []
         ];
-
-        // Inisialisasi default 0% untuk semua bulan aktif
         foreach (array_keys($matrixYaumiyah) as $k) {
-            foreach ($bulanAktif as $b) {
-                $matrixYaumiyah[$k][$b] = 0;
-            }
+            foreach ($bulanAktif as $b) { $matrixYaumiyah[$k][$b] = 0; }
         }
 
         $calcP = function($total, $target) {
@@ -809,10 +569,8 @@ class AdminRaporBerjalanController extends BaseController
             return $p > 100 ? 100 : $p;
         };
 
-        // D. Hitung Persentase per Bulan
         foreach ($yaumiyahRaw as $yr) {
             $b = $yr['bulan'];
-            // Jika hari efektif belum diset di database, asumsikan default 20 hari
             $hEfektif = $hariEfektifBulanan[$b] ?? 20; 
             
             $targetHarian = $hEfektif;
@@ -830,11 +588,11 @@ class AdminRaporBerjalanController extends BaseController
             $matrixYaumiyah['p_literasi'][$b] = $calcP((int)($yr['t_lt'] ?? 0), $targetHarian);
         }
 
-        // F. Passing Data ke View
-        $data = [
+        // =========================================================
+        // GABUNGKAN DATA UNTUK VIEW
+        // =========================================================
+        $data = array_merge($data, [
             'dataSiswa'             => $dataSiswa,
-            'semester'              => ucfirst($semester),
-            'tahun'                 => $tahun,
             'bulanAktif'            => $bulanAktif,
             'namaBulanIndo'         => ['01'=>'Januari','02'=>'Februari','03'=>'Maret','04'=>'April','05'=>'Mei','06'=>'Juni','07'=>'Juli','08'=>'Agustus','09'=>'September','10'=>'Oktober','11'=>'November','12'=>'Desember'],
             'matrixAbsen'           => $matrixAbsen,
@@ -848,9 +606,37 @@ class AdminRaporBerjalanController extends BaseController
             'prestasi'              => $prestasi,
             'matrixQuran'           => $matrixQuran,
             'matrixEskul'           => $matrixEskul,
-            'matrixYaumiyah'=> $matrixYaumiyah // <--- TAMBAHAN UNTUK YAUMIYAH
-        ];
+            'matrixYaumiyah'        => $matrixYaumiyah 
+        ]);
 
-        return view('admin/rapor_berjalan_cetak', $data);
+        return view('admin/rapor_berjalan_index', $data);
+    }
+
+    // =================================================================
+    // 2. AJAX UNTUK MENGAMBIL DAFTAR SISWA BERDASARKAN KELAS
+    // =================================================================
+    public function getSiswa()
+    {
+        $db = Database::connect();
+        $request = \Config\Services::request();
+
+        // Pastikan hanya melayani request AJAX
+        if (!$request->isAJAX()) {
+            return $this->response->setJSON([]);
+        }
+
+        $rombel_id = $request->getPost('rombel_id');
+        $siswa = [];
+
+        if (!empty($rombel_id)) {
+            $siswa = $db->table('class_rombel_students crs')
+                        ->join('users u', 'u.id = crs.student_id')
+                        ->select('u.id, u.username as name')
+                        ->where('crs.rombel_id', $rombel_id)
+                        ->orderBy('u.username', 'ASC')
+                        ->get()->getResultArray();
+        }
+
+        return $this->response->setJSON($siswa);
     }
 }
