@@ -256,7 +256,7 @@ class AdminRaporBerjalanController extends BaseController
         }
         $keteranganPelanggaran = count($rincianSemester) > 0 ? implode('<br>', $rincianSemester) : '-';
 
-        $buildMatrix = function($tabel, $kolomArray) use ($db, $student_id, $bulanAktif, $tahun, $currentYear, $currentMonth) {
+        $buildMatrix = function($tabel, $kolomArray) use ($db, $student_id, $bulanAktif, $tahun, $currentYear, $currentMonth, $namaBulanLokal) {
             $select = "LPAD(MONTH(tanggal), 2, '0') as bulan";
             foreach ($kolomArray as $kolom) {
                 $select .= ", SUM($kolom) as $kolom";
@@ -278,7 +278,7 @@ class AdminRaporBerjalanController extends BaseController
                 return 'D';
             };
 
-            $matrix = []; $totals = []; $keterangan = [];
+            $matrix = []; $totals = []; $keterangan = []; $rincianList = [];
             foreach ($kolomArray as $kolom) {
                 $totals[$kolom] = 0;
                 foreach ($bulanAktif as $b) {
@@ -301,6 +301,11 @@ class AdminRaporBerjalanController extends BaseController
                     }
                     if (!empty($dr['keterangan'])) {
                         $keterangan[$b] = $dr['keterangan'];
+                        $catatanArray = array_filter(array_map('trim', explode('|', $dr['keterangan'])));
+                        $teksCatatan = implode(', ', $catatanArray);
+                        if (!empty($teksCatatan) && isset($namaBulanLokal[$b])) {
+                            $rincianList[] = '<b>' . $namaBulanLokal[$b] . '</b>: ' . esc($teksCatatan);
+                        }
                     }
                 }
             }
@@ -310,7 +315,15 @@ class AdminRaporBerjalanController extends BaseController
                 $totalsPredikat[$kolom] = $getPredikat($nilaiTotal);
             }
 
-            return ['matrix' => $matrix, 'totals_raw' => $totals, 'totals_predikat' => $totalsPredikat, 'keterangan' => $keterangan];
+            $keteranganRincianString = count($rincianList) > 0 ? implode('<br>', $rincianList) : '-';
+
+            return [
+                'matrix'            => $matrix, 
+                'totals_raw'        => $totals, 
+                'totals_predikat'   => $totalsPredikat, 
+                'keterangan'        => $keterangan,
+                'keterangan_rincian'=> $keteranganRincianString
+            ];
         };
 
         $spiritual = $buildMatrix('aspek_spiritual', ['berdoa', 'kalimat_thoyibah', 'shalat', 'salam', 'syukur', 'lingkungan', 'toleransi']);
