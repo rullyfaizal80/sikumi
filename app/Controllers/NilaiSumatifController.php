@@ -248,8 +248,6 @@ if ($selectedRombelId && $db->tableExists('class_rombel_students')) {
         return $this->response->setJSON(['status' => 'error', 'message' => 'Data tidak lengkap.']);
     }
     
-    // TIDAK PERLU LAGI MENGHAPUS PREFIX, GUNAKAN LANGSUNG $mapelIdRaw
-
     $db->transStart();
 
     foreach ($dataNilai as $studentId => $bulanNilai) {
@@ -279,7 +277,7 @@ if ($selectedRombelId && $db->tableExists('class_rombel_students')) {
                 $db->table('nilai_sumatif')->insert([
                     'student_id'       => $studentId,
                     'rombel_id'        => $rombelId,
-                    'mapel_id'         -> $mapelIdRaw, 
+                    'mapel_id'         => $mapelIdRaw, // PERBAIKAN: Menggunakan =>
                     'bulan'            => $bulan,
                     'academic_year_id' => $academicYearId,
                     'nilai_angka'      => $nilaiAngka,
