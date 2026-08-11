@@ -2,7 +2,8 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Mengubah viewport agar tampil seperti PDF di HP dan bisa di-zoom -->
+    <meta name="viewport" content="width=960, user-scalable=yes">
     <title>Rapor Berjalan - Portal Siswa</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -10,10 +11,22 @@
     <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
     
     <style>
-        body { background-color: #f4f7f6; font-family: 'Open Sans', sans-serif; color: #333; }
-        .top-nav-container { max-width: 900px; margin: 20px auto 0 auto; padding: 0 10px; }
-        .rapor-wrapper { background-color: #e3f2fd; padding: 30px; border-radius: 10px; margin: 20px auto 50px auto; max-width: 960px; }
-        .rapor-container { max-width: 900px; margin: 0 auto; background: #ffffff; padding: 45px 50px; box-shadow: 0 10px 25px rgba(25, 118, 210, 0.15); border-top: 8px solid #1976d2; border-radius: 8px; }
+        /* Mengunci ukuran agar tidak menyusut dan hancur di HP */
+        body { background-color: #f4f7f6; font-family: 'Open Sans', sans-serif; color: #333; min-width: 960px; overflow-x: auto; }
+        .top-nav-container { width: 900px; margin: 20px auto 0 auto; padding: 0 10px; }
+        .rapor-wrapper { background-color: #e3f2fd; padding: 30px; border-radius: 10px; margin: 20px auto 50px auto; width: 960px; }
+        
+        /* REVISI: Watermark dihapus, background kembali jadi putih polos (#ffffff) */
+        .rapor-container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            background: #ffffff; 
+            padding: 45px 50px; 
+            box-shadow: 0 10px 25px rgba(25, 118, 210, 0.15); 
+            border-top: 8px solid #1976d2; 
+            border-radius: 8px; 
+        }
+        
         .header-sekolah { text-align: center; border-bottom: 2px solid #1976d2; padding-bottom: 20px; margin-bottom: 30px; }
         .header-sekolah h2 { font-family: 'Merriweather', serif; color: #15202b; margin: 0 0 8px 0; font-size: 26px; text-transform: uppercase; letter-spacing: 1px; }
         .header-sekolah p { margin: 0; font-size: 15px; color: #535c5d; }
@@ -22,7 +35,7 @@
         .identitas-table td:first-child { font-weight: 700; width: 130px; color: #15202b; }
         .section-title { font-family: 'Merriweather', serif; font-size: 16px; background-color: #0d47a1; color: #ffffff; padding: 10px 15px; margin: 30px 0 15px 0; font-weight: bold; border-radius: 4px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
         
-        table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; }
+        table.data-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px; background-color: #ffffff; }
         table.data-table th, table.data-table td { border: 1px solid #222222; padding: 10px 8px; vertical-align: middle; }
         table.data-table th { background-color: #eaf3fa; color: #15202b; text-align: center; font-weight: 700; border-bottom: 3px solid #1976d2; }
         
@@ -40,7 +53,11 @@
             body { background: none; padding: 0; }
             .top-nav-container, .rapor-wrapper { background: none; padding: 0; margin: 0; }
             .top-nav-container { display: none !important; } 
-            .rapor-container { box-shadow: none; border-top: 8px solid #1976d2 !important; padding: 0; }
+            .rapor-container { 
+                box-shadow: none; 
+                border-top: 8px solid #1976d2 !important; 
+                padding: 0;
+            }
             .section-title { background-color: #0d47a1 !important; color: #fff !important; }
             table.data-table th, table.data-table td { border: 1px solid #000000 !important; } 
         }

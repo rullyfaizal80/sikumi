@@ -2,7 +2,8 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- REVISI: Mengubah viewport agar tampil utuh (seperti PDF) dan bisa di-zoom di HP -->
+    <meta name="viewport" content="width=960, user-scalable=yes">
     <title>Rapor Berjalan - Panel Admin</title>
     
     <!-- CSS & Fonts -->
@@ -11,16 +12,21 @@
     <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
     
     <style>
+        /* REVISI: Mengunci ukuran body agar tidak menyusut dan tata letak tidak hancur di HP */
+        body { background-color: #f4f7f6; font-family: 'Open Sans', sans-serif; color: #333; min-width: 960px; overflow-x: auto; }
+        
         /* ======================== CSS FILTER FORM ======================== */
-        body { background-color: #f4f7f6; font-family: 'Open Sans', sans-serif; color: #333; }
-        .filter-container { margin-top: 2vh; margin-bottom: 2vh; }
+        /* REVISI: Lebar dikunci ke 900px dan ditengahkan agar sejajar persis dengan rapor */
+        .filter-container { width: 900px; margin: 2vh auto; }
         .card-custom { border: none; border-radius: 10px; box-shadow: 0 5px 20px rgba(0, 0, 0, 0.05); }
         .card-header-custom { background: linear-gradient(135deg, #0d47a1 0%, #1976d2 100%); color: white; border-radius: 10px 10px 0 0 !important; padding: 10px 15px; }
         .form-label { font-weight: 600; color: #2c3e50; font-size: 13px; margin-bottom: 0; }
         
         /* ======================== CSS LAPORAN/RAPOR ======================== */
-        .rapor-wrapper { background-color: #e3f2fd; padding: 30px; border-radius: 10px; margin-bottom: 50px; }
+        /* REVISI: Rapor wrapper dikunci ke 960px agar sejajar dengan layar */
+        .rapor-wrapper { background-color: #e3f2fd; padding: 30px; border-radius: 10px; width: 960px; margin: 0 auto 50px auto; }
         .rapor-container { max-width: 900px; margin: 0 auto; background: #ffffff; padding: 45px 50px; box-shadow: 0 10px 25px rgba(25, 118, 210, 0.15); border-top: 8px solid #1976d2; border-radius: 8px; }
+        
         .header-sekolah { text-align: center; border-bottom: 2px solid #1976d2; padding-bottom: 20px; margin-bottom: 30px; }
         .header-sekolah h2 { font-family: 'Merriweather', serif; color: #15202b; margin: 0 0 8px 0; font-size: 26px; text-transform: uppercase; letter-spacing: 1px; }
         .header-sekolah p { margin: 0; font-size: 15px; color: #535c5d; }
