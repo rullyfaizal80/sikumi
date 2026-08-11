@@ -70,9 +70,23 @@
 <div class="rapor-wrapper">
     <div class="rapor-container">
 
-        <div class="header-sekolah">
-            <h2>Laporan Perkembangan Murid</h2>
-        </div>
+        <div class="header-sekolah d-flex align-items-center justify-content-center gap-5">
+    <!-- Logo Kiri -->
+    <div>
+        <img src="<?= base_url('assets/img/logo_kaldik1.png') ?>" alt="Logo Yayasan" style="height: 85px; width: auto; object-fit: contain;">
+    </div>
+    
+    <!-- Judul di Tengah -->
+    <div class="text-center px-2">
+        <h4 class="mb-0 fw-bold">LAPORAN PERKEMBANGAN MURID</h4>
+        <h5 class="mb-0 fw-bold">MIMHA TSANAWIYAH INFORMATIKA</h5>
+    </div>
+    
+    <!-- Logo Kanan -->
+    <div>
+        <img src="<?= base_url('assets/img/logo_kaldik2.png') ?>" alt="Logo MTs" style="height: 85px; width: auto; object-fit: contain;">
+    </div>
+</div>
 
         <div class="identitas-box">
             <table class="identitas-table">
