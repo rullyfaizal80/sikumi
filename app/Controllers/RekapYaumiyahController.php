@@ -167,11 +167,20 @@ class RekapYaumiyahController extends BaseController
                                    ->get()->getResultArray();
         }
 
-        // 4. Mapping Data Yaumiyah ke dalam Array berdasar Tanggal & Aspek
+        // 4. Mapping Data Yaumiyah & Hitung Total per Siswa
         $yaumiyahData = [];
+        $totalPerSiswa = [];
+        
+        // Inisialisasi nilai total 0 untuk semua siswa
+        foreach ($daftarSiswa as $siswa) {
+            $totalPerSiswa[$siswa['student_id']] = array_fill(1, 9, 0);
+        }
+
         foreach ($yaumiyahBulanIni as $row) {
             $tgl = (int)date('j', strtotime($row['tanggal']));
-            $yaumiyahData[$row['student_id']][$tgl] = [
+            $sId = $row['student_id'];
+            
+            $yaumiyahData[$sId][$tgl] = [
                 1 => $row['dzuhur'],
                 2 => $row['ashar'],
                 3 => $row['bakdiah_dzuhur'],
@@ -182,16 +191,30 @@ class RekapYaumiyahController extends BaseController
                 8 => $row['shaum'],
                 9 => $row['literasi']
             ];
+
+            // Akumulasi total tiap aspek HANYA jika masuk dalam hari aktif
+            if (in_array($tgl, $hariAktif) && isset($totalPerSiswa[$sId])) {
+                $totalPerSiswa[$sId][1] += $row['dzuhur'] == 1 ? 1 : 0;
+                $totalPerSiswa[$sId][2] += $row['ashar'] == 1 ? 1 : 0;
+                $totalPerSiswa[$sId][3] += $row['bakdiah_dzuhur'] == 1 ? 1 : 0;
+                $totalPerSiswa[$sId][4] += $row['duha'] == 1 ? 1 : 0;
+                $totalPerSiswa[$sId][5] += $row['tahajud'] == 1 ? 1 : 0;
+                $totalPerSiswa[$sId][6] += $row['tilawah'] == 1 ? 1 : 0;
+                $totalPerSiswa[$sId][7] += $row['infaq'] == 1 ? 1 : 0;
+                $totalPerSiswa[$sId][8] += $row['shaum'] == 1 ? 1 : 0;
+                $totalPerSiswa[$sId][9] += $row['literasi'] == 1 ? 1 : 0;
+            }
         }
 
         $data = [
-            'title'        => 'Monitoring Yaumiyah - Kelas ' . $rombel['rombel_name'],
-            'rombel'       => $rombel,
-            'bulan'        => $bulan,
-            'tahun'        => $tahun,
-            'hariAktif'    => $hariAktif,
-            'daftarSiswa'  => $daftarSiswa,
-            'yaumiyahData' => $yaumiyahData
+            'title'         => 'Monitoring Yaumiyah - Kelas ' . $rombel['rombel_name'],
+            'rombel'        => $rombel,
+            'bulan'         => $bulan,
+            'tahun'         => $tahun,
+            'hariAktif'     => $hariAktif,
+            'daftarSiswa'   => $daftarSiswa,
+            'yaumiyahData'  => $yaumiyahData,
+            'totalPerSiswa' => $totalPerSiswa // Variabel baru yang dilempar ke View
         ];
 
         return view('guru/yaumiyah/monitoring', $data);

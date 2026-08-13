@@ -129,6 +129,8 @@
                             <?php foreach ($hariAktif as $tgl): ?>
                                 <th colspan="9" class="border-date-left bg-dark text-warning">Tgl <?= $tgl ?></th>
                             <?php endforeach; ?>
+                            <!-- TAMBAHAN: Header Total -->
+                            <th colspan="9" class="border-date-left bg-info text-dark" style="position: sticky; top: 0; z-index: 3;">Total Capaian</th>
                         </tr>
                         <!-- Baris 2 Header (Legenda 1-9) -->
                         <tr>
@@ -137,6 +139,10 @@
                                     <th class="<?= $i==1 ? 'border-date-left' : '' ?> p-1" style="min-width:25px;" title="Tgl <?= $tgl ?> - Aspek <?= $i ?>"><?= $i ?></th>
                                 <?php endfor; ?>
                             <?php endforeach; ?>
+                            <!-- TAMBAHAN: Sub-Header Total -->
+                            <?php for ($i=1; $i<=9; $i++): ?>
+                                <th class="<?= $i==1 ? 'border-date-left' : '' ?> p-1 bg-info text-dark" style="min-width:25px; position: sticky; top: 0; z-index: 3;" title="Total Aspek <?= $i ?>"><?= $i ?></th>
+                            <?php endfor; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -149,31 +155,34 @@
                                 <?php for ($i=1; $i<=9; $i++): ?>
                                     <?php 
                                         $sId = $siswa['student_id'];
-                                        // Cek apakah siswa punya data (sudah submit form) di tanggal tersebut
                                         $sudahMengisiForm = isset($yaumiyahData[$sId][$tgl]);
-                                        // Cek apakah aspek tertentu diceklis (bernilai 1)
                                         $aspekTerisi = $sudahMengisiForm && $yaumiyahData[$sId][$tgl][$i] == 1;
                                     ?>
                                     <td class="p-1 <?= $i==1 ? 'border-date-left' : '' ?>">
                                         <?php if ($aspekTerisi): ?>
-                                            <!-- Sudah mengisi form & mengerjakan amalan -->
                                             <i class="fas fa-check text-success"></i>
                                         <?php elseif ($sudahMengisiForm): ?>
-                                            <!-- Sudah mengisi form TAPI tidak mengerjakan amalan -->
                                             <i class="fas fa-times text-danger"></i>
                                         <?php else: ?>
-                                            <!-- Belum mengisi form sama sekali di hari tersebut -->
                                             <span class="text-black-50 font-weight-bold">-</span>
                                         <?php endif; ?>
                                     </td>
                                 <?php endfor; ?>
                             <?php endforeach; ?>
+                            
+                            <!-- TAMBAHAN: Tampilkan Angka Total -->
+                            <?php for ($i=1; $i<=9; $i++): ?>
+                                <td class="p-1 font-weight-bold bg-light <?= $i==1 ? 'border-date-left' : '' ?>" style="color: #0c5460;">
+                                    <?= $totalPerSiswa[$siswa['student_id']][$i] ?? 0 ?>
+                                </td>
+                            <?php endfor; ?>
 
                         </tr>
                         <?php endforeach; ?>
                         
                         <?php if(empty($daftarSiswa)): ?>
-                            <tr><td colspan="<?= (count($hariAktif) * 9) + 2 ?>" class="py-4">Belum ada data siswa.</td></tr>
+                            <!-- Penyesuaian colspan karena ada tambahan 9 kolom -->
+                            <tr><td colspan="<?= (count($hariAktif) * 9) + 2 + 9 ?>" class="py-4">Belum ada data siswa.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
