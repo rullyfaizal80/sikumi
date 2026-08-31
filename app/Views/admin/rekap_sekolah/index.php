@@ -70,7 +70,7 @@
         <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
                 <h4 class="mb-0 fw-bold" style="color: #2c3e50;">
-                    <i class="fas fa-chart-line me-2" style="color: #FF9F00;"></i> Rekapitulasi Sekolah Terpadu
+                    <i class="fas fa-chart-line me-2" style="color: #FF9F00;"></i> Laporan Dashboard Bulanan
                 </h4>
             </div>
             <div class="d-flex gap-2">
@@ -196,7 +196,7 @@
                     <img src="<?= base_url('assets/img/logo_kaldik1.png') ?>" alt="Logo Yayasan" style="height: 85px; width: auto; object-fit: contain;">
                 </div>
                 <div class="text-center px-2">
-                    <h4 class="mb-0 fw-bold">REKAPITULASI SEKOLAH TERPADU</h4>
+                    <h4 class="mb-0 fw-bold">LAPORAN DASHBOARD BULANAN</h4>
                     <h5 class="mb-0 fw-bold">MIMHA TSANAWIYAH INFORMATIKA</h5>
                     <p class="mt-1 fw-bold text-secondary" style="font-size: 13px;">
                         Periode: <?= $tipe_filter == 'semester' ? "Semester " . ucfirst($semester) : "Bulan " . $namaBulan[$bulan] ?> Tahun <?= $tahun ?>
