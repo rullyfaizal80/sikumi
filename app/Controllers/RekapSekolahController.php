@@ -176,7 +176,7 @@ class RekapSekolahController extends BaseController
         $grand_total_kasus = $total_sekolah_seragam + $total_sekolah_atribut + $total_sekolah_bersih + $total_sekolah_lambat + $total_sekolah_aturan + $total_sekolah_masjid;
 
         // =========================================================
-        // 3B. LOGIKA REKAP YAUMIYAH (Rata-rata Persentase Kelas)
+        // 3B. LOGIKA REKAP YAUMIYAH (Siswa -> % -> Rata Kelas -> Rata Sekolah)
         // =========================================================
         $rekapYaumiyah = [];
 
@@ -191,77 +191,117 @@ class RekapSekolahController extends BaseController
             $targetShaum = 1;
         }
 
-        $tot_dz = 0; $tot_as = 0; $tot_bd = 0; $tot_dh = 0; $tot_th = 0; 
-        $tot_tl = 0; $tot_if = 0; $tot_sh = 0; $tot_lt = 0;
-        
-        $tgt_harian_sek = 0; $tgt_mingguan_sek = 0; $tgt_shaum_sek = 0;
+        // Variabel penampung untuk menghitung rata-rata sekolah dari rata-rata kelas
+        $sum_kelas_p = [
+            'dzuhur' => 0, 'ashar' => 0, 'bakdiah' => 0, 'duha' => 0, 
+            'tahajud' => 0, 'tilawah' => 0, 'infaq' => 0, 'shaum' => 0, 'literasi' => 0
+        ];
+        $jumlahKelasAktif = 0;
+
+        // Helper fungsi konversi nilai ke persentase (Maksimal 100%)
+        $calcP = function($total, $target) {
+            if ($target == 0) return 0;
+            $p = ($total / $target) * 100;
+            return $p > 100 ? 100 : $p;
+        };
 
         foreach ($daftarRombel as $rombel) {
             $rombel_id = $rombel['id'];
+            
+            // Ambil jumlah seluruh siswa yang terdaftar di kelas ini
             $jumlahSiswa = $db->table('class_rombel_students')->where('rombel_id', $rombel_id)->countAllResults();
             
-            // Target per kelas
-            $tgtHarianKls = $jumlahSiswa * $targetHarian;
-            $tgtMingguanKls = $jumlahSiswa * $targetMingguan;
-            $tgtShaumKls = $jumlahSiswa * $targetShaum;
+            // Inisialisasi total akumulasi persentase siswa dalam 1 kelas
+            $sum_siswa_p = [
+                'dz' => 0, 'as' => 0, 'bd' => 0, 'dh' => 0, 
+                'th' => 0, 'tl' => 0, 'if' => 0, 'sh' => 0, 'lt' => 0
+            ];
 
-            $tgt_harian_sek += $tgtHarianKls;
-            $tgt_mingguan_sek += $tgtMingguanKls;
-            $tgt_shaum_sek += $tgtShaumKls;
+            if ($jumlahSiswa > 0) {
+                // TAHAP 1: Ambil data yaumiyah dan kelompokkan (GROUP BY) PER SISWA
+                $yDataSiswa = $db->table('yaumiyah y')
+                            ->join('class_rombel_students crs', 'crs.student_id = y.student_id')
+                            ->select('
+                                y.student_id,
+                                SUM(y.dzuhur) as t_dz, SUM(y.ashar) as t_as, SUM(y.bakdiah_dzuhur) as t_bd,
+                                SUM(y.duha) as t_dh, SUM(y.tahajud) as t_th, SUM(y.tilawah) as t_tl,
+                                SUM(y.infaq) as t_if, SUM(y.shaum) as t_sh, SUM(y.literasi) as t_lt
+                            ')
+                            ->where('crs.rombel_id', $rombel_id)
+                            ->whereIn('MONTH(y.tanggal)', $bulan_array)
+                            ->where('YEAR(y.tanggal)', $tahun)
+                            ->where('DAYOFWEEK(y.tanggal) !=', 1) // Abaikan Minggu
+                            ->where('DAYOFWEEK(y.tanggal) !=', 7) // Abaikan Sabtu
+                            ->groupBy('y.student_id')
+                            ->get()->getResultArray();
 
-            // Ambil total amalan kelas ini (kecuali Sabtu & Minggu)
-            $yData = $db->table('yaumiyah y')
-                        ->join('class_rombel_students crs', 'crs.student_id = y.student_id')
-                        ->select('
-                            SUM(y.dzuhur) as t_dz, SUM(y.ashar) as t_as, SUM(y.bakdiah_dzuhur) as t_bd,
-                            SUM(y.duha) as t_dh, SUM(y.tahajud) as t_th, SUM(y.tilawah) as t_tl,
-                            SUM(y.infaq) as t_if, SUM(y.shaum) as t_sh, SUM(y.literasi) as t_lt
-                        ')
-                        ->where('crs.rombel_id', $rombel_id)
-                        ->whereIn('MONTH(y.tanggal)', $bulan_array)
-                        ->where('YEAR(y.tanggal)', $tahun)
-                        ->where('DAYOFWEEK(y.tanggal) !=', 1)
-                        ->where('DAYOFWEEK(y.tanggal) !=', 7)
-                        ->get()->getRowArray();
+                // TAHAP 2: Ubah ke persentase (dilimit 100) masing-masing siswa, lalu jumlahkan ke variabel kelas
+                foreach ($yDataSiswa as $siswa) {
+                    $sum_siswa_p['dz'] += $calcP((int)($siswa['t_dz'] ?? 0), $targetHarian);
+                    $sum_siswa_p['as'] += $calcP((int)($siswa['t_as'] ?? 0), $targetHarian);
+                    $sum_siswa_p['bd'] += $calcP((int)($siswa['t_bd'] ?? 0), $targetHarian);
+                    $sum_siswa_p['dh'] += $calcP((int)($siswa['t_dh'] ?? 0), $targetHarian);
+                    $sum_siswa_p['th'] += $calcP((int)($siswa['t_th'] ?? 0), $targetMingguan);
+                    $sum_siswa_p['tl'] += $calcP((int)($siswa['t_tl'] ?? 0), $targetHarian);
+                    $sum_siswa_p['if'] += $calcP((int)($siswa['t_if'] ?? 0), $targetMingguan);
+                    $sum_siswa_p['sh'] += $calcP((int)($siswa['t_sh'] ?? 0), $targetShaum);
+                    $sum_siswa_p['lt'] += $calcP((int)($siswa['t_lt'] ?? 0), $targetHarian);
+                }
 
-            $dz = (int)($yData['t_dz'] ?? 0); $as = (int)($yData['t_as'] ?? 0); $bd = (int)($yData['t_bd'] ?? 0);
-            $dh = (int)($yData['t_dh'] ?? 0); $th = (int)($yData['t_th'] ?? 0); $tl = (int)($yData['t_tl'] ?? 0);
-            $if = (int)($yData['t_if'] ?? 0); $sh = (int)($yData['t_sh'] ?? 0); $lt = (int)($yData['t_lt'] ?? 0);
+                $jumlahKelasAktif++;
+            }
 
-            // Akumulasi total sekolah
-            $tot_dz += $dz; $tot_as += $as; $tot_bd += $bd; $tot_dh += $dh; $tot_th += $th; 
-            $tot_tl += $tl; $tot_if += $if; $tot_sh += $sh; $tot_lt += $lt;
+            // TAHAP 3: Hitung Rata-rata Kelas (Total Persentase Siswa dibagi Jumlah Total Siswa di kelas)
+            // Siswa yang tidak mengisi sama sekali otomatis nilainya 0 dan akan menurunkan rata-rata.
+            $rata_kls_dz = $jumlahSiswa > 0 ? ($sum_siswa_p['dz'] / $jumlahSiswa) : 0;
+            $rata_kls_as = $jumlahSiswa > 0 ? ($sum_siswa_p['as'] / $jumlahSiswa) : 0;
+            $rata_kls_bd = $jumlahSiswa > 0 ? ($sum_siswa_p['bd'] / $jumlahSiswa) : 0;
+            $rata_kls_dh = $jumlahSiswa > 0 ? ($sum_siswa_p['dh'] / $jumlahSiswa) : 0;
+            $rata_kls_th = $jumlahSiswa > 0 ? ($sum_siswa_p['th'] / $jumlahSiswa) : 0;
+            $rata_kls_tl = $jumlahSiswa > 0 ? ($sum_siswa_p['tl'] / $jumlahSiswa) : 0;
+            $rata_kls_if = $jumlahSiswa > 0 ? ($sum_siswa_p['if'] / $jumlahSiswa) : 0;
+            $rata_kls_sh = $jumlahSiswa > 0 ? ($sum_siswa_p['sh'] / $jumlahSiswa) : 0;
+            $rata_kls_lt = $jumlahSiswa > 0 ? ($sum_siswa_p['lt'] / $jumlahSiswa) : 0;
 
-            $calcP = function($total, $target) {
-                if ($target == 0) return 0;
-                $p = ($total / $target) * 100;
-                return $p > 100 ? 100 : $p;
-            };
-
+            // Masukkan data untuk baris tabel per kelas
             $rekapYaumiyah[] = [
                 'rombel_name' => $rombel['rombel_name'],
-                'p_dzuhur'    => $calcP($dz, $tgtHarianKls),
-                'p_ashar'     => $calcP($as, $tgtHarianKls),
-                'p_bakdiah'   => $calcP($bd, $tgtHarianKls),
-                'p_duha'      => $calcP($dh, $tgtHarianKls),
-                'p_tahajud'   => $calcP($th, $tgtMingguanKls),
-                'p_tilawah'   => $calcP($tl, $tgtHarianKls),
-                'p_infaq'     => $calcP($if, $tgtMingguanKls),
-                'p_shaum'     => $calcP($sh, $tgtShaumKls),
-                'p_literasi'  => $calcP($lt, $tgtHarianKls),
+                'p_dzuhur'    => $rata_kls_dz,
+                'p_ashar'     => $rata_kls_as,
+                'p_bakdiah'   => $rata_kls_bd,
+                'p_duha'      => $rata_kls_dh,
+                'p_tahajud'   => $rata_kls_th,
+                'p_tilawah'   => $rata_kls_tl,
+                'p_infaq'     => $rata_kls_if,
+                'p_shaum'     => $rata_kls_sh,
+                'p_literasi'  => $rata_kls_lt,
             ];
+
+            // Akumulasikan persentase rata-rata kelas untuk dihitung tingkat sekolah
+            if ($jumlahSiswa > 0) {
+                $sum_kelas_p['dzuhur']   += $rata_kls_dz;
+                $sum_kelas_p['ashar']    += $rata_kls_as;
+                $sum_kelas_p['bakdiah']  += $rata_kls_bd;
+                $sum_kelas_p['duha']     += $rata_kls_dh;
+                $sum_kelas_p['tahajud']  += $rata_kls_th;
+                $sum_kelas_p['tilawah']  += $rata_kls_tl;
+                $sum_kelas_p['infaq']    += $rata_kls_if;
+                $sum_kelas_p['shaum']    += $rata_kls_sh;
+                $sum_kelas_p['literasi'] += $rata_kls_lt;
+            }
         }
 
+        // TAHAP 4: Hitung Rata-rata Sekolah (Total Rata-rata Kelas dibagi Jumlah Kelas)
         $rata_yaumiyah = [
-            'dzuhur'   => $tgt_harian_sek > 0 ? min(100, ($tot_dz / $tgt_harian_sek) * 100) : 0,
-            'ashar'    => $tgt_harian_sek > 0 ? min(100, ($tot_as / $tgt_harian_sek) * 100) : 0,
-            'bakdiah'  => $tgt_harian_sek > 0 ? min(100, ($tot_bd / $tgt_harian_sek) * 100) : 0,
-            'duha'     => $tgt_harian_sek > 0 ? min(100, ($tot_dh / $tgt_harian_sek) * 100) : 0,
-            'tahajud'  => $tgt_mingguan_sek > 0 ? min(100, ($tot_th / $tgt_mingguan_sek) * 100) : 0,
-            'tilawah'  => $tgt_harian_sek > 0 ? min(100, ($tot_tl / $tgt_harian_sek) * 100) : 0,
-            'infaq'    => $tgt_mingguan_sek > 0 ? min(100, ($tot_if / $tgt_mingguan_sek) * 100) : 0,
-            'shaum'    => $tgt_shaum_sek > 0 ? min(100, ($tot_sh / $tgt_shaum_sek) * 100) : 0,
-            'literasi' => $tgt_harian_sek > 0 ? min(100, ($tot_lt / $tgt_harian_sek) * 100) : 0,
+            'dzuhur'   => $jumlahKelasAktif > 0 ? ($sum_kelas_p['dzuhur'] / $jumlahKelasAktif) : 0,
+            'ashar'    => $jumlahKelasAktif > 0 ? ($sum_kelas_p['ashar'] / $jumlahKelasAktif) : 0,
+            'bakdiah'  => $jumlahKelasAktif > 0 ? ($sum_kelas_p['bakdiah'] / $jumlahKelasAktif) : 0,
+            'duha'     => $jumlahKelasAktif > 0 ? ($sum_kelas_p['duha'] / $jumlahKelasAktif) : 0,
+            'tahajud'  => $jumlahKelasAktif > 0 ? ($sum_kelas_p['tahajud'] / $jumlahKelasAktif) : 0,
+            'tilawah'  => $jumlahKelasAktif > 0 ? ($sum_kelas_p['tilawah'] / $jumlahKelasAktif) : 0,
+            'infaq'    => $jumlahKelasAktif > 0 ? ($sum_kelas_p['infaq'] / $jumlahKelasAktif) : 0,
+            'shaum'    => $jumlahKelasAktif > 0 ? ($sum_kelas_p['shaum'] / $jumlahKelasAktif) : 0,
+            'literasi' => $jumlahKelasAktif > 0 ? ($sum_kelas_p['literasi'] / $jumlahKelasAktif) : 0,
         ];
 
         // =========================================================
