@@ -235,5 +235,42 @@ class AbsensiController extends BaseController
     return view('admin/absensi/rekap', $data);
 }
 
+public function delete($rombel_id, $tanggal)
+    {
+        $db = \Config\Database::connect();
+        
+        // 1. Cek apakah data absensi ada pada tanggal dan rombel tersebut
+        $cekAbsensi = $db->table('absensi')
+                         ->where('rombel_id', $rombel_id)
+                         ->where('tanggal', $tanggal)
+                         ->get()->getRowArray();
+
+        if ($cekAbsensi) {
+            try {
+                $db->transStart();
+                
+                // 2. Hapus detail absensi (tabel anak)
+                $db->table('absensi_details')->where('absensi_id', $cekAbsensi['id'])->delete();
+                
+                // 3. Hapus data utama (tabel induk)
+                $db->table('absensi')->where('id', $cekAbsensi['id'])->delete();
+                
+                $db->transComplete();
+
+                if ($db->transStatus() === FALSE) {
+                    return redirect()->back()->with('error', 'Gagal menghapus data absensi (Rollback).');
+                }
+
+                return redirect()->to(base_url("admin/absensi/input/{$rombel_id}?tanggal={$tanggal}"))
+                                 ->with('sukses', 'Data absensi harian berhasil dihapus.');
+                                 
+            } catch (\Exception $e) {
+                return redirect()->back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+            }
+        }
+
+        return redirect()->back()->with('error', 'Data absensi tidak ditemukan atau sudah dihapus.');
+    }
+
 }
 

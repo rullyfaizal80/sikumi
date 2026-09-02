@@ -162,6 +162,16 @@
                 </div>
                 
                 <div class="card-footer bg-white text-end py-3">
+                    <!-- Tombol Hapus: Hanya muncul jika data absensi sudah ada -->
+                    <?php if (!empty($absensiDetails)): ?>
+                        <a href="<?= base_url('admin/absensi/delete/' . esc($rombel['id']) . '/' . esc($tanggal)) ?>" 
+                           class="btn btn-danger font-weight-bold" 
+                           style="margin-right: 10px;"
+                           onclick="return confirm('⚠️ PERINGATAN!\n\nApakah Anda yakin ingin menghapus SELURUH data absensi kelas ini pada tanggal <?= esc($tanggal) ?>?\n\nData yang dihapus tidak dapat dikembalikan.');">
+                            🗑️ Hapus Data Absensi
+                        </a>
+                    <?php endif; ?>
+                    
                     <button type="submit" class="btn btn-warning text-white font-weight-bold" <?= empty($siswaKelas) ? 'disabled' : '' ?>>
                         💾 Simpan Data Absensi
                     </button>

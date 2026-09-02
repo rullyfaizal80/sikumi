@@ -238,11 +238,18 @@ $routes->post('admin/users/role-store', 'AdminController::storeRole');
 $routes->group('admin/absensi', static function($routes) {
     // Halaman Index (Daftar Rombel)
     $routes->get('/', 'AbsensiController::index');
+    
     // Halaman Input Absensi per Rombel
     $routes->get('input/(:num)', 'AbsensiController::input/$1');   
+    
     // Proses Simpan Data
     $routes->post('store', 'AbsensiController::store');
+    
+    // Halaman Rekap Absensi
     $routes->get('rekap', 'AbsensiController::rekap');
+    
+    // [BARU] Proses Hapus Data Absensi per Hari
+    $routes->get('delete/(:num)/(:segment)', 'AbsensiController::delete/$1/$2');
 });
 
 $routes->group('admin/kepatuhan', static function($routes) {
