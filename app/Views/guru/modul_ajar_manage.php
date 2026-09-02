@@ -10,8 +10,11 @@
         body { background-color: #f4f6f9; font-family: 'Source Sans Pro', sans-serif; }
         .card-tp { transition: transform 0.2s, box-shadow 0.2s; border-radius: 10px; border-top: 4px solid #002060; }
         .card-tp:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
-        .card-tp.done { border-top-color: #28a745; }
-        .card-tp.pending { border-top-color: #ffc107; }
+        
+        /* Pewarnaan border atas Card berdasarkan Status */
+        .card-tp.done { border-top-color: #28a745; }    /* Hijau: 100% Selesai */
+        .card-tp.draft { border-top-color: #17a2b8; }   /* Biru: Draft (Belum 100%) */
+        .card-tp.pending { border-top-color: #ffc107; } /* Kuning: Belum Dibuat sama sekali */
         
         .checkbox-gabung { transform: scale(1.3); cursor: pointer; }
         .modul-badge { font-size: 11px; padding: 5px 8px; border-radius: 20px; font-weight: 600; }
@@ -29,13 +32,12 @@ if ($currentRombel) {
         ->select('cr.id, cr.rombel_name, mc.class_name')
         ->join('master_classes mc', 'mc.id = cr.master_class_id')
         ->where('cr.master_class_id', $currentRombel['master_class_id'])
-        ->where('cr.id !=', $selectedRombelId) // Blokir rombel sendiri agar tidak muncul pilihan
+        ->where('cr.id !=', $selectedRombelId)
         ->where('cr.academic_year_id', $currentRombel['academic_year_id'])
         ->orderBy('cr.rombel_name', 'ASC')
         ->get()->getResultArray();
 }
 ?>
-
 
     <div class="wrapper p-4">
         
@@ -84,12 +86,10 @@ if ($currentRombel) {
 
                     <div class="col-md-4 text-end">
                         <div class="d-inline-block bg-light rounded p-2 border border-info text-center me-2 min-w-100">
-                            <!-- PERBAIKAN: Teks diubah, memanggil JP Modul -->
                             <span class="d-block small text-muted font-weight-bold">Total JP Modul Ajar</span>
                             <span class="h5 font-weight-bold text-info mb-0"><?= $totalJpModul ?> JP</span>
                         </div>
                         
-                        <!-- PERBAIKAN: Kotak ini akan otomatis hijau HANYA JIKA JP Modul sudah memenuhi seluruh JP ATP -->
                         <?php $isLengkap = ($totalJpAtp == $totalJpModul && $totalJpAtp > 0); ?>
                         <div class="d-inline-block bg-light rounded p-2 border <?= $isLengkap ? 'border-success' : 'border-warning' ?> text-center min-w-100">
                             <span class="d-block small text-muted font-weight-bold">Total JP ATP</span>
@@ -123,9 +123,6 @@ if ($currentRombel) {
                 <?php else: ?>
                 
                 <?php 
-                // ==================================================
-                // SIHIR KELOMPOK: Menyatukan TP yang Digabung
-                // ==================================================
                 $groupedAtp = [];
                 foreach($dataAtpTersimpan as $item) { 
                     if (!empty($item['modul_id'])) {
@@ -133,8 +130,8 @@ if ($currentRombel) {
                         if (!isset($groupedAtp[$key])) {
                             $groupedAtp[$key] = $item;
                             $groupedAtp[$key]['atp_ids_array'] = [$item['atp_id'] ?? $item['cp_detail_id']];
-                            $groupedAtp[$key]['nomor_atp_array'] = [$item['nomor_atp']]; // Simpan Label TP
-                            $groupedAtp[$key]['tanggal_array'] = [$item['tanggal']];     // Simpan Tanggal
+                            $groupedAtp[$key]['nomor_atp_array'] = [$item['nomor_atp']];
+                            $groupedAtp[$key]['tanggal_array'] = [$item['tanggal']];    
                             $groupedAtp[$key]['tujuan_pembelajaran'] = "• " . $item['tp'];
                         } else {
                             $groupedAtp[$key]['tujuan_pembelajaran'] .= "<br>• " . $item['tp'];
@@ -152,7 +149,6 @@ if ($currentRombel) {
                     }
                 }
 
-                // Logika Penentuan is_merged yang lebih presisi
                 foreach($groupedAtp as &$g) {
                     $g['is_merged'] = (count($g['atp_ids_array']) > 1);
                     $g['label_gabungan'] = implode(', ', $g['nomor_atp_array']);
@@ -162,17 +158,66 @@ if ($currentRombel) {
                 ?>
 
                 <?php foreach($groupedAtp as $tp): ?>
-                    <?php $isDone = !empty($tp['status_modul']) && $tp['status_modul'] == 1; ?>
+                    <?php 
+                        $isDone = !empty($tp['status_modul']) && $tp['status_modul'] == 1; 
+                        
+                        // 🌟 LOGIKA PENDETEKSI DRAFT & KELENGKAPAN MODUL
+                        $isDraft = false;
+                        $persentase = 0;
+
+                        if ($isDone && !empty($tp['modul_id'])) {
+                            $cekModul = $db->table('kurikulum_modul_ajar')->where('id', $tp['modul_id'])->get()->getRowArray();
+                            
+                            if ($cekModul) {
+                                // Daftar 18 field teks yang dicek
+                                $fieldsToCheck = [
+                                    'pertemuan_ke', 'kesiapan_murid', 'insersi_kbc', 'capaian_pembelajaran', 
+                                    'lintas_disiplin', 'topik_pembelajaran', 'praktik_pedagogis', 
+                                    'kemitraan_pembelajaran', 'lingkungan_pembelajaran', 'pemanfaatan_digital', 
+                                    'asesmen_awal', 'asesmen_proses', 'asesmen_akhir', 
+                                    'lampiran_materi', 'lampiran_lkm', 'lampiran_rubrik', 'sumber_belajar', 'contoh_produk'
+                                ];
+                                
+                                $terisi = 0;
+                                foreach($fieldsToCheck as $f) {
+                                    if (!empty(trim($cekModul[$f] ?? ''))) $terisi++;
+                                }
+
+                                // Cek kegiatan (JSON) -> 4 form tambahan
+                                $kegiatan = json_decode($cekModul['kegiatan_pembelajaran'] ?? '{}', true);
+                                if (!empty(trim($kegiatan['awal']['isi'] ?? ''))) $terisi++;
+                                if (!empty(trim($kegiatan['inti']['memahami'] ?? ''))) $terisi++;
+                                if (!empty(trim($kegiatan['inti']['mengaplikasikan'] ?? ''))) $terisi++;
+                                if (!empty(trim($kegiatan['inti']['merefleksi'] ?? ''))) $terisi++;
+                                if (!empty(trim($kegiatan['penutup']['isi'] ?? ''))) $terisi++;
+                                
+                                $totalField = count($fieldsToCheck) + 5; // 18 text + 5 kegiatan JSON = 23 field form
+                                $persentase = round(($terisi / $totalField) * 100);
+                                
+                                if ($persentase < 100) {
+                                    $isDraft = true;
+                                }
+                            }
+                        }
+                        
+                        // Penentuan Class CSS untuk warna card
+                        $cardClass = 'pending';
+                        if ($isDone) {
+                            $cardClass = $isDraft ? 'draft' : 'done';
+                        }
+                    ?>
                     
                     <div class="col-md-6 col-lg-4 mb-4">
-                        <div class="card card-tp shadow-sm h-100 <?= $isDone ? 'done' : 'pending' ?>">
+                        <div class="card card-tp shadow-sm h-100 <?= $cardClass ?>">
                             
                             <div class="card-header bg-white d-flex justify-content-between align-items-center py-2 border-bottom-0">
                                 <div>
                                     <span class="badge bg-dark">TP <?= esc($tp['nomor_atp']) ?> <?= $tp['is_merged'] ? ' dkk' : '' ?></span>
                                     
-                                    <?php if($isDone): ?>
-                                        <span class="modul-badge bg-success text-white ms-1"><i class="bi bi-check-circle"></i> Sudah Dibuat</span>
+                                    <?php if($isDone && !$isDraft): ?>
+                                        <span class="modul-badge bg-success text-white ms-1" title="Semua kolom form sudah terisi."><i class="bi bi-check-circle"></i> Lengkap (100%)</span>
+                                    <?php elseif($isDone && $isDraft): ?>
+                                        <span class="modul-badge bg-info text-white ms-1" title="Sebagian kolom masih kosong. Lanjutkan pengisian."><i class="bi bi-pencil-square"></i> Draft (<?= $persentase ?>%)</span>
                                     <?php else: ?>
                                         <span class="modul-badge bg-warning text-dark ms-1"><i class="bi bi-clock-history"></i> Belum Dibuat</span>
                                     <?php endif; ?>
@@ -213,7 +258,7 @@ if ($currentRombel) {
                                 <?php if($isDone): ?>
                                     <?php $urlEdit = base_url("guru/modul-ajar/create?atp_ids={$idLemparan}&rombel_id={$selectedRombelId}&mapel_id={$selectedMapelId}&tgl={$tglLemparan}"); ?>
                                     <a href="<?= $urlEdit ?>" class="btn btn-outline-success btn-sm font-weight-bold w-100">
-                                        👁️ Lihat / Edit Modul
+                                        <?= $isDraft ? '✏️ Lanjutkan Pengisian Modul' : '👁️ Lihat / Edit Modul' ?>
                                     </a>
                                 <?php else: ?>
                                     <?php $urlCreate = base_url("guru/modul-ajar/create?atp_ids={$idLemparan}&rombel_id={$selectedRombelId}&mapel_id={$selectedMapelId}&tgl={$tglLemparan}"); ?>
@@ -293,7 +338,7 @@ if ($currentRombel) {
                     selectedIds.push(chk.value);
                     let tgl = chk.getAttribute('data-tgl');
                     if(tgl && !selectedTgls.includes(tgl)) {
-                        selectedTgls.push(tgl); // Menampung tanggal yang unik
+                        selectedTgls.push(tgl); 
                     }
                 });
                 
@@ -302,7 +347,7 @@ if ($currentRombel) {
                     urlParams.append('atp_ids', selectedIds.join(','));
                     urlParams.append('rombel_id', '<?= $selectedRombelId ?>');
                     urlParams.append('mapel_id', '<?= $selectedMapelId ?>');
-                    urlParams.append('tgl', selectedTgls.join('; ')); // Lempar tanggal
+                    urlParams.append('tgl', selectedTgls.join('; ')); 
                     
                     window.location.href = "<?= base_url('guru/modul-ajar/create') ?>?" + urlParams.toString();
                 };
@@ -316,61 +361,58 @@ if ($currentRombel) {
         });
 
         async function eksekusiCopyModulMasal(btn) {
-    const toRombelId = document.getElementById('target_rombel_copy').value;
-    const fromRombelId = "<?= $selectedRombelId ?>";
-    const mapelId = "<?= $selectedMapelId ?>";
+            const toRombelId = document.getElementById('target_rombel_copy').value;
+            const fromRombelId = "<?= $selectedRombelId ?>";
+            const mapelId = "<?= $selectedMapelId ?>";
 
-    if (!toRombelId) {
-        alert("⚠️ Silakan pilih Rombel tujuan terlebih dahulu!");
-        return;
-    }
-
-    if (!confirm("Apakah Anda yakin ingin menyalin SELURUH Modul Ajar ke rombel tersebut?\nProses ini tidak dapat dibatalkan.")) {
-        return;
-    }
-
-    // Kunci Tombol & Tampilkan Efek Loading
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sedang Menyalin...';
-    btn.disabled = true;
-
-    const formData = new FormData();
-    formData.append('from_rombel_id', fromRombelId);
-    formData.append('to_rombel_id', toRombelId);
-    formData.append('mapel_id', mapelId);
-
-    try {
-        const response = await fetch("<?= base_url('guru/modul-ajar/copy-all') ?>", {
-            method: 'POST',
-            body: formData,
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        });
-
-        const result = await response.json();
-
-        if (result.status === 'success') {
-            alert("✅ " + result.message);
-            
-            // CARA MENUTUP MODAL DI BOOTSTRAP 5
-            const modalEl = document.getElementById('modalCopyMasal');
-            const modalInstance = bootstrap.Modal.getInstance(modalEl);
-            if (modalInstance) {
-                modalInstance.hide();
+            if (!toRombelId) {
+                alert("⚠️ Silakan pilih Rombel tujuan terlebih dahulu!");
+                return;
             }
-            
-            // Refresh halaman agar data terbaru termuat
-            window.location.reload();
-        } else {
-            alert("⚠️ " + result.message);
+
+            if (!confirm("Apakah Anda yakin ingin menyalin SELURUH Modul Ajar ke rombel tersebut?\nProses ini tidak dapat dibatalkan.")) {
+                return;
+            }
+
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sedang Menyalin...';
+            btn.disabled = true;
+
+            const formData = new FormData();
+            formData.append('from_rombel_id', fromRombelId);
+            formData.append('to_rombel_id', toRombelId);
+            formData.append('mapel_id', mapelId);
+
+            try {
+                const response = await fetch("<?= base_url('guru/modul-ajar/copy-all') ?>", {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    alert("✅ " + result.message);
+                    
+                    const modalEl = document.getElementById('modalCopyMasal');
+                    const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                    if (modalInstance) {
+                        modalInstance.hide();
+                    }
+                    
+                    window.location.reload();
+                } else {
+                    alert("⚠️ " + result.message);
+                }
+            } catch (error) {
+                console.error(error);
+                alert("❌ Terjadi kesalahan jaringan atau kendala server.");
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         }
-    } catch (error) {
-        console.error(error);
-        alert("❌ Terjadi kesalahan jaringan atau kendala server.");
-    } finally {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    }
-}
     </script>
     
     <?php if(session()->getFlashdata('success')): ?>
