@@ -409,9 +409,9 @@
         });
 
         // ==========================================
-        // FUNGSI PROSES AI (FULL CONTEXT)
+        // FUNGSI PROSES AI (AUTO-CHUNKING / ANTREAN PINTAR)
         // ==========================================
-        function prosesAi() {
+        async function prosesAi() {
             let btn = document.getElementById('btnProsesAi');
             let instruksi = document.getElementById('ai_instruksi').value;
             
@@ -419,15 +419,12 @@
             let rombel = document.getElementById('input_rombel').value;
             let materi = document.getElementById('input_materi').value;
             
-            // Tangkap ID ATP untuk Query Pencarian CP Asli di DB
             let atpIds = document.querySelector('input[name="atp_ids"]').value;
 
-            // Kumpulkan Teks TP
             let tpElements = document.querySelectorAll('.box-tp');
             let tp = "";
             tpElements.forEach(el => tp += el.innerText + "\n");
 
-            // Kumpulkan Profil Lulusan & Panca Cinta yang Tercentang
             let dplElements = document.querySelectorAll('input[id^="DPL"]:checked');
             let dpl = Array.from(dplElements).map(el => el.nextElementSibling.innerText).join(', ');
 
@@ -436,7 +433,6 @@
 
             let targetUrl = btn.getAttribute('data-url');
 
-            // Deteksi Kolom Kosong
             const formFields = [
                 'kesiapan_murid', 'insersi_kbc', 'capaian_pembelajaran', 'lintas_disiplin',
                 'topik_pembelajaran', 'praktik_pedagogis', 'kemitraan_pembelajaran',
@@ -463,79 +459,105 @@
                 return;
             }
 
-            // Memulai Fetch ke Controller
-            btn.innerHTML = '⏳ Sedang Merumuskan RPP...';
+            // 🌟 LOGIKA AUTO-CHUNKING: Pecah array emptyFields menjadi kelompok (maksimal 5 kolom)
+            const chunkSize = 5;
+            let fieldChunks = [];
+            for (let i = 0; i < emptyFields.length; i += chunkSize) {
+                fieldChunks.push(emptyFields.slice(i, i + chunkSize));
+            }
+
             btn.disabled = true;
+            let totalChunks = fieldChunks.length;
+            let totalBerhasil = 0;
+            let isErrorOccurred = false;
 
-            let formData = new FormData();
-            formData.append('mapel', mapel);
-            formData.append('rombel', rombel);
-            formData.append('materi', materi);
-            formData.append('tp', tp);
-            formData.append('instruksi', instruksi);
-            formData.append('dpl', dpl);                 // <- Data DPL masuk
-            formData.append('panca_cinta', pancaCinta);   // <- Data Panca Cinta masuk
-            formData.append('atp_ids', atpIds);           // <- ID ATP untuk narik CP Asli masuk
-            formData.append('empty_fields', JSON.stringify(emptyFields));
+            // 🌟 PROSES ANTREAN SECARA BERURUTAN (SEQUENTIAL)
+            for (let i = 0; i < totalChunks; i++) {
+                if (isErrorOccurred) break; // Hentikan antrean jika terjadi error fatal (misal API kehabisan limit)
 
-            fetch(targetUrl, {
-                method: 'POST',
-                headers: { 'X-Requested-With': 'XMLHttpRequest' },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(res => {
-                if(res.status === 'success') {
-                    let d = res.data;
-                    
-                    const fillData = (name, jsonKey) => {
-                        let el = document.querySelector(`[name="${name}"]`);
-                        if(el && el.value.trim() === '' && d[jsonKey]) {
-                            
-                            let val = d[jsonKey];
-                            
-                            if (typeof val === 'object' && val !== null) {
-                                val = Object.values(val).join('\n\n');
-                            }
-                            
-                            el.value = val;
-                            autoResizeTextarea(el);
-                            
-                            el.style.backgroundColor = '#e8f4fd'; 
-                            setTimeout(() => { el.style.backgroundColor = ''; }, 2000);
-                        }
-                    };
+                btn.innerHTML = `⏳ Memproses Bagian ${i + 1} dari ${totalChunks}...`;
 
-                    const keyMapping = {
-                        'kegiatan[awal][isi]' : 'kegiatan_awal',
-                        'kegiatan[inti][memahami]' : 'kegiatan_inti_memahami',
-                        'kegiatan[inti][mengaplikasikan]' : 'kegiatan_inti_mengaplikasikan',
-                        'kegiatan[inti][merefleksi]' : 'kegiatan_inti_merefleksi',
-                        'kegiatan[penutup][isi]' : 'kegiatan_penutup'
-                    };
+                let formData = new FormData();
+                formData.append('mapel', mapel);
+                formData.append('rombel', rombel);
+                formData.append('materi', materi);
+                formData.append('tp', tp);
+                formData.append('instruksi', instruksi);
+                formData.append('dpl', dpl);
+                formData.append('panca_cinta', pancaCinta);
+                formData.append('atp_ids', atpIds);
+                // Hanya kirim 5 kolom pada antrean saat ini
+                formData.append('empty_fields', JSON.stringify(fieldChunks[i]));
 
-                    emptyFields.forEach(f => {
-                        let jKey = keyMapping[f] || f;
-                        fillData(f, jKey);
+                try {
+                    let response = await fetch(targetUrl, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: formData
                     });
 
-                    var myModalEl = document.getElementById('modalAi');
-                    var modal = bootstrap.Modal.getInstance(myModalEl);
-                    if(modal) modal.hide();
-                    
-                    alert('🪄 Sempurna! SiKuMi AI telah mengisi ' + emptyFields.length + ' kolom yang kosong (termasuk memotong kalimat CP Asli secara cerdas). Silakan periksa!');
-                } else {
-                    alert('❌ Gagal: ' + res.message);
+                    let res = await response.json();
+
+                    if (res.status === 'success') {
+                        let d = res.data;
+                        
+                        const fillData = (name, jsonKey) => {
+                            let el = document.querySelector(`[name="${name}"]`);
+                            if(el && el.value.trim() === '' && d[jsonKey]) {
+                                let val = d[jsonKey];
+                                if (typeof val === 'object' && val !== null) {
+                                    val = Object.values(val).join('\n\n');
+                                }
+                                el.value = val;
+                                autoResizeTextarea(el);
+                                el.style.backgroundColor = '#e8f4fd'; 
+                                setTimeout(() => { el.style.backgroundColor = ''; }, 2000);
+                            }
+                        };
+
+                        const keyMapping = {
+                            'kegiatan[awal][isi]' : 'kegiatan_awal',
+                            'kegiatan[inti][memahami]' : 'kegiatan_inti_memahami',
+                            'kegiatan[inti][mengaplikasikan]' : 'kegiatan_inti_mengaplikasikan',
+                            'kegiatan[inti][merefleksi]' : 'kegiatan_inti_merefleksi',
+                            'kegiatan[penutup][isi]' : 'kegiatan_penutup'
+                        };
+
+                        // Isi form khusus untuk chunk saat ini
+                        fieldChunks[i].forEach(f => {
+                            let jKey = keyMapping[f] || f;
+                            fillData(f, jKey);
+                            totalBerhasil++;
+                        });
+
+                    } else {
+                        // Jika server menolak (misal Limit 429 atau token habis)
+                        alert(`⚠️ Proses terhenti pada bagian ${i + 1}:\n${res.message}\n\nSebagian kolom sudah berhasil diisi. Silakan tunggu 1 menit, lalu klik Generate lagi untuk melanjutkan sisanya.`);
+                        isErrorOccurred = true;
+                    }
+                } catch (error) {
+                    alert('Terjadi kesalahan jaringan saat memanggil AI.');
+                    console.error(error);
+                    isErrorOccurred = true;
                 }
-            })
-            .catch(error => {
-                alert('Terjadi kesalahan jaringan saat memanggil AI.');
-                console.error(error);
-            })
-            .finally(() => {
-                btn.innerHTML = '🚀 Mulai Generate';
-                btn.disabled = false;
-            });
+
+                // Jeda 2 Detik antar request agar server Groq tidak mendeteksi spam (Rate Limit)
+                if (i < totalChunks - 1 && !isErrorOccurred) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
+
+            // Selesai memproses seluruh antrean
+            btn.innerHTML = '🚀 Mulai Generate';
+            btn.disabled = false;
+
+            if (!isErrorOccurred && totalBerhasil > 0) {
+                var myModalEl = document.getElementById('modalAi');
+                var modal = bootstrap.Modal.getInstance(myModalEl);
+                if(modal) modal.hide();
+                
+                alert(`🪄 Sempurna! SiKuMi AI telah berhasil merumuskan seluruh bagian secara otomatis.`);
+            }
         }
 
     // ==========================================

@@ -418,7 +418,7 @@ class ModulAjarController extends BaseController
     }
 
     // ==============================================================
-    // FUNGSI SIKUMI AI GENERATOR (OPTIMIZED FOR GPT-OSS-120B)
+    // FUNGSI SIKUMI AI GENERATOR (100% OPTIMIZED FOR GROQ JSON)
     // ==============================================================
     public function generateAi()
     {
@@ -489,14 +489,18 @@ class ModulAjarController extends BaseController
             ]);
         }
 
-        // Endpoint diutamakan dari setting, Fallback diarahkan ke ekosistem OpenRouter (umum untuk OSS-120B)
-        $apiUrl = 'https://openrouter.ai/api/v1/chat/completions'; 
+        // 🌟 PERBAIKAN 1: BERSENJATA ANTI-DUPLIKASI BEARER
+        $cleanApiKey = preg_replace('/^Bearer\s+/i', '', trim($apiKey));
+
+        // 🌟 PERBAIKAN 2: PASTIKAN ENDPOINT MENGARAH KE GROQ & CEGAH HTTP REDIRECT
+        $apiUrl = 'https://api.groq.com/openai/v1/chat/completions'; 
         if ($db->tableExists('settings')) {
             $providerSetting = $db->table('settings')->where('key', 'ai_provider')->get()->getRowArray();
             if ($providerSetting && !empty(trim($providerSetting['value']))) {
                 $apiUrl = trim($providerSetting['value']);
             }
         }
+        $apiUrl = str_replace('http://', 'https://', $apiUrl); // Cegah strip header
 
         // Mapping Kolom Form ke JSON Keys
         $keyMapping = [
@@ -524,7 +528,7 @@ class ModulAjarController extends BaseController
             'asesmen_akhir' => 'asesmen_akhir'            
         ];
 
-        // OPTIMASI: Peta Instruksi Spesifik (Hanya dikirim jika kolom diminta)
+        // OPTIMASI: Peta Instruksi Spesifik (Memaksa Nomor Urut & Kalimat Deskriptif)
         $instructionMap = [
             'insersi_kbc' => "Tulis strategi menanamkan nilai KBC ke materi utama secara konkret.",
             'kesiapan_murid' => "Tulis kondisi murid (Pengetahuan, Fisik, Mental) & strategi asesmen awal.",
@@ -535,11 +539,14 @@ class ModulAjarController extends BaseController
             'kemitraan_pembelajaran' => "Rencana kolaborasi internal/eksternal yang mendukung proses belajar.",
             'lingkungan_pembelajaran' => "Pengaturan fisik/virtual dan budaya kelas yang aman & inklusif.",
             'pemanfaatan_digital' => "Platform digital spesifik dan cara pemanfaatannya.",
-            'kegiatan_awal' => "Langkah 1-5 berurutan di baris baru: 1. Salam, 2. Doa, 3. Presensi, 4. Pemantik, 5. Tujuan.",
-            'kegiatan_inti_memahami' => "Langkah 6-8 di baris baru: Sajian masalah, Eksplorasi, Bagi LKPD.",
-            'kegiatan_inti_mengaplikasikan' => "Langkah 9-11 di baris baru: Diskusi kelompok, Susun karya, Presentasi.",
-            'kegiatan_inti_merefleksi' => "Langkah 12-14 di baris baru: Apresiasi, Penguatan materi, Kesimpulan.",
-            'kegiatan_penutup' => "Langkah 15-17 di baris baru: Refleksi perasaan, Kisi-kisi besok, Doa & Salam.",
+            
+            // 🌟 REVISI: PENAMBAHAN INSTRUKSI MUTLAK UNTUK ANGKA URUTAN
+            'kegiatan_awal' => "Tulis 5 kalimat deskriptif. WAJIB CANTUMKAN ANGKA (1 sampai 5) di awal tiap baris! 1. Guru salam, 2. Doa, 3. Presensi, 4. Pertanyaan pemantik spesifik, 5. Tujuan belajar.",
+            'kegiatan_inti_memahami' => "Tulis 3 kalimat deskriptif aktivitas murid. WAJIB CANTUMKAN ANGKA (6 sampai 8) di awal tiap baris! 6. Murid mengamati sajian masalah, 7. Murid bereksplorasi konsep, 8. Murid menerima LKPD.",
+            'kegiatan_inti_mengaplikasikan' => "Tulis 3 kalimat deskriptif aktivitas murid. WAJIB CANTUMKAN ANGKA (9 sampai 11) di awal tiap baris! 9. Murid diskusi pecahkan LKPD, 10. Berkolaborasi menyusun karya, 11. Presentasi.",
+            'kegiatan_inti_merefleksi' => "Tulis 3 kalimat deskriptif. WAJIB CANTUMKAN ANGKA (12 sampai 14) di awal tiap baris! 12. Guru apresiasi, 13. Penguatan miskonsepsi, 14. Murid menyimpulkan materi.",
+            'kegiatan_penutup' => "Tulis 3 kalimat deskriptif. WAJIB CANTUMKAN ANGKA (15 sampai 17) di awal tiap baris! 15. Refleksi perasaan murid, 16. Kisi-kisi materi besok, 17. Doa penutup.",
+            
             'asesmen_awal' => "Teknik, instrumen diagnostik, dan 1-2 pertanyaan pemantik.",
             'asesmen_proses' => "Sebutkan teknik & rubrik singkat utk: a. Sikap, b. Pengetahuan, c. Keterampilan.",
             'asesmen_akhir' => "Mekanisme tes sumatif, instrumen, dan fokus evaluasi.",
@@ -603,7 +610,7 @@ class ModulAjarController extends BaseController
             $userPrompt .= "[INSTRUKSI GURU]\n$instruksi\n";
         }
 
-        // OPTIMASI API: Hapus response_format agar tidak ditolak model Open-Source 120b
+        // KONFIGURASI API (Model openai/gpt-oss-120b)
         $data = [
             'model' => 'openai/gpt-oss-120b', 
             'messages' => [
@@ -611,21 +618,33 @@ class ModulAjarController extends BaseController
                 ['role' => 'user', 'content' => $userPrompt]
             ],
             'temperature' => 0.65, 
-            'max_tokens' => 6000
+            // Turunkan max_tokens agar AI memberikan jawaban padat dan tidak menabrak limit TPM
+            'max_tokens' => 2000 
         ];
 
-        $headers = [ 'Authorization: Bearer ' . $apiKey, 'Content-Type: application/json' ];
+        // 🌟 PERBAIKAN 4: HEADER YANG BERSIH 
+        $headers = [ 
+            'Authorization: Bearer ' . $cleanApiKey, 
+            'Content-Type: application/json'
+        ];
 
         $ch = curl_init($apiUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); 
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true); // Pastikan ikuti redirect jika ada
 
         $responseRaw = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlError = curl_error($ch);
         curl_close($ch);
+
+        // Proteksi tambahan jika cURL mati/timeout
+        if ($responseRaw === false) {
+             return $this->response->setJSON(['status' => 'error', 'message' => 'Koneksi ke server AI gagal: ' . $curlError]);
+        }
 
         $responseData = json_decode($responseRaw, true);
 
@@ -635,24 +654,61 @@ class ModulAjarController extends BaseController
 
         if ($httpCode >= 200 && $httpCode < 300) {
             if (isset($responseData['choices'][0]['message']['content'])) {
+                
+                // 🌟 SENSOR DETEKSI LIMIT TOKEN TERPOTONG (Berdasarkan Log Groq)
+                $finishReason = $responseData['choices'][0]['finish_reason'] ?? '';
+                $outputTokens = $responseData['usage']['completion_tokens'] ?? 0;
+                
+                // Jika AI berhenti karena kehabisan token (length) atau menyentuh angka 3000
+                if ($finishReason === 'length' || $outputTokens >= 3000) {
+                    return $this->response->setJSON([
+                        'status' => 'error', 
+                        'message' => 'Gagal: Respons AI terpotong karena mencapai batas maksimal 3000 Token. Solusi: Harap isi manual beberapa kolom, lalu Generate sisanya secara bertahap (misal 5 kolom saja per klik).'
+                    ]);
+                }
+
                 $aiText = $responseData['choices'][0]['message']['content'];
                 
-                // SANITIZER: Bersihkan Markdown JSON block
-                $aiText = preg_replace('/```(?:json)?\s*([\s\S]*?)\s*```/', '$1', $aiText);
+                // SANITIZER 1: Bersihkan blok markdown JSON (```json ... ```)
+                $aiText = preg_replace('/```(?:json)?\s*([\s\S]*?)\s*```/i', '$1', $aiText);
                 
+                // SANITIZER 2: Ambil hanya string di dalam kurung kurawal
                 if (preg_match('/\{[\s\S]*\}/', $aiText, $matches)) {
                     $aiText = $matches[0];
                 }
                 
-                // SANITIZER: Ganti raw newline tersembunyi yang sering merusak parsing
-                $aiText = str_replace(["\r\n", "\r", "\n", "\t"], ["\\n", "\\n", "\\n", " "], trim($aiText));
+                // SANITIZER 3: Sapu bersih SEMUA enter/tab asli (raw newline) menjadi spasi
+                // (Mencegah "Control character error")
+                $aiText = str_replace(["\r\n", "\r", "\n", "\t"], " ", $aiText);
+                
+                // SANITIZER 4: Hapus sisa control character yang tidak kasat mata
+                $aiText = preg_replace('/[\x00-\x1F\x7F]/', '', $aiText);
                 
                 $jsonOutput = json_decode($aiText, true);
 
                 if($jsonOutput !== null) {
+                    // 🌟 PERBAIKAN: Ubah teks literal '\n' dari AI menjadi Enter sungguhan
+                    array_walk_recursive($jsonOutput, function(&$item) {
+                        if (is_string($item)) {
+                            $item = str_replace('\n', "\n", $item); // Konversi ke Line Break
+                        }
+                    });
+
                     return $this->response->setJSON(['status' => 'success', 'data' => $jsonOutput]);
                 } else {
                     $jsonError = json_last_error_msg();
+                    
+                    // SENSOR DETEKSI LIMIT TOKEN TERPOTONG (Berdasarkan Log Groq)
+                    $finishReason = $responseData['choices'][0]['finish_reason'] ?? '';
+                    $outputTokens = $responseData['usage']['completion_tokens'] ?? 0;
+                    
+                    if ($finishReason === 'length' || $outputTokens >= 3000) {
+                        return $this->response->setJSON([
+                            'status' => 'error', 
+                            'message' => 'Gagal: Respons AI terpotong karena mencapai batas maksimal 3000 Token. Solusi: Harap isi manual beberapa kolom, lalu Generate sisanya secara bertahap (misal 5 kolom saja per klik).'
+                        ]);
+                    }
+
                     return $this->response->setJSON(['status' => 'error', 'message' => "Kesalahan format AI: $jsonError. Silakan klik Generate lagi."]);
                 }
             }
