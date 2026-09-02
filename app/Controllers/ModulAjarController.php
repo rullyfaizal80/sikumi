@@ -46,12 +46,10 @@ class ModulAjarController extends BaseController
                 $rombelName = $r['rombel_name'] ?? '';
                 $namaRombelAktif = $className . ($rombelName ? ' - ' . $rombelName : '');
                 
-                // 🌟 TANGKAP MASTER CLASS ID SECARA DINAMIS DARI DATABASE
                 if (!empty($r['master_class_id'])) {
                     $masterClassId = $r['master_class_id'];
                 }
                 
-                // Deteksi Angka atau Romawi
                 $angkaTingkat = preg_replace('/[^0-9]/', '', $className); 
                 
                 if (!empty($angkaTingkat)) {
@@ -115,9 +113,6 @@ class ModulAjarController extends BaseController
 
         $selectedMapelId = $this->request->getGet('mapel_id') ?? (!empty($daftarMapel) ? $daftarMapel[0]['id'] : null);
 
-        // ==============================================================
-        // 4. LOAD DATA ATP TERSIMPAN (LANGSUNG DARI TABEL ATP)
-        // ==============================================================
         $dataAtpTersimpan = [];
         $totalJpAtp = 0;
         $totalJpModul = 0; 
@@ -130,7 +125,6 @@ class ModulAjarController extends BaseController
                 $dbMapelId = (strpos($selectedMapelId, 'S_') === 0) ? $selectedMapelId : 'S_' . $selectedMapelId;
             }
 
-            // 🌟 KODE PERBAIKAN: Beri alias a.cp_detail_id menjadi id
             $builder = $db->table('kurikulum_atp a')
                           ->select('a.id as atp_id, a.cp_detail_id as id, a.urutan, a.modul_id, a.alokasi_tanggal')
                           ->select('d.tujuan_pembelajaran as tp, d.lingkup_materi, d.estimasi_jp')
@@ -144,17 +138,11 @@ class ModulAjarController extends BaseController
             $dataAtpTersimpan = $builder->get()->getResultArray();
 
             foreach($dataAtpTersimpan as $idx => &$row) {
-                // Penomoran ATP
                 $urutan = (!empty($row['urutan'])) ? $row['urutan'] : ($idx + 1);
                 $row['nomor_atp'] = $angkaTingkat . '.' . $urutan; 
-                
-                // Status Modul Ajar
                 $row['status_modul'] = !empty($row['modul_id']) ? 1 : 0;
-                
-                // 🌟 KUNCI PERBAIKAN: Langsung panggil tanggal dari kolom alokasi_tanggal
                 $row['tanggal'] = !empty($row['alokasi_tanggal']) ? $row['alokasi_tanggal'] : 'Belum Diatur';
                 
-                // Perhitungan JP
                 $estimasi = (int)($row['estimasi_jp'] ?? 0);
                 $totalJpAtp += $estimasi;
                 
@@ -172,7 +160,7 @@ class ModulAjarController extends BaseController
             'selectedMapelId'  => $selectedMapelId,
             'namaRombelAktif'  => $namaRombelAktif,
             'dataAtpTersimpan' => $dataAtpTersimpan,
-            'totalJpModul'     => $totalJpModul, // PERBAIKAN: Ganti nama variabel
+            'totalJpModul'     => $totalJpModul,
             'totalJpAtp'       => $totalJpAtp
         ];
 
@@ -188,7 +176,6 @@ class ModulAjarController extends BaseController
         $rombelId = $request->getGet('rombel_id');
         $mapelId = $request->getGet('mapel_id');
         
-        // PERBAIKAN: Menangkap parameter tanggal dari URL
         $tglStr = $request->getGet('tgl');
         $tanggalPelaksanaan = $tglStr ? str_replace(';', ',', urldecode($tglStr)) : '';
 
@@ -268,31 +255,24 @@ class ModulAjarController extends BaseController
                 $kegiatan = json_decode($modulData['kegiatan_pembelajaran'], true);
             }
             
-            // Menggunakan Tanggal dari DB jika modul pernah disimpan
             if (!empty($modulData['tanggal_pelaksanaan'])) {
                 $tanggalPelaksanaan = $modulData['tanggal_pelaksanaan'];
             }
         }
 
-        // =========================================================================
-        // 🌟 PERBAIKAN: FORMULA DEFAULT PROPORSIONAL KELIPATAN 5 MENIT
-        // =========================================================================
         $menitPerJp = (int)($modulData['menit_per_jp'] ?? 30);
         $totalWaktu = $totalJp * $menitPerJp;
 
-        // Hitung jatah awal & penutup sebesar 15% dari total waktu, dibulatkan ke kelipatan 5 terdekat
         $defaultAwal = round(($totalWaktu * 0.15) / 5) * 5;
-        if ($defaultAwal == 0 && $totalWaktu > 0) $defaultAwal = 5; // Batas minimal 5 menit jika waktu sangat kecil
+        if ($defaultAwal == 0 && $totalWaktu > 0) $defaultAwal = 5;
 
-        $defaultPenutup = $defaultAwal; // Akhir disamakan persentasenya dengan awal
+        $defaultPenutup = $defaultAwal;
         $defaultInti    = $totalWaktu - $defaultAwal - $defaultPenutup;
         if ($defaultInti < 0) $defaultInti = 0;
 
-        // Terapkan nilai ke variabel view (Gunakan data tersimpan jika ada, jika tidak pakai nilai default proporsional)
         $menitAwal    = $kegiatan['awal']['menit'] ?? $defaultAwal;
         $menitInti    = $kegiatan['inti']['menit'] ?? $defaultInti;
         $menitPenutup = $kegiatan['penutup']['menit'] ?? $defaultPenutup;
-        // =========================================================================
 
         $data = [
             'rombelId'        => $rombelId,
@@ -363,7 +343,7 @@ class ModulAjarController extends BaseController
             'rombel_id'              => $rombelId,
             'teacher_id'             => $userId,
             'pertemuan_ke'           => $request->getPost('pertemuan_ke'),
-            'tanggal_pelaksanaan'    => $request->getPost('tanggal_pelaksanaan'), // Disimpan ke database
+            'tanggal_pelaksanaan'    => $request->getPost('tanggal_pelaksanaan'),
             'alokasi_jp'             => $request->getPost('alokasi_jp'),
             'menit_per_jp'           => $request->getPost('menit_per_jp'),
             'kesiapan_murid'         => $request->getPost('kesiapan_murid'),
@@ -437,8 +417,8 @@ class ModulAjarController extends BaseController
                          ->with('success', 'Modul Ajar berhasil direset / dihapus.');
     }
 
-   // ==============================================================
-    // FUNGSI SIKUMI AI GENERATOR (GROQ LLaMA - STRICT & DYNAMIC CP)
+    // ==============================================================
+    // FUNGSI SIKUMI AI GENERATOR (OPTIMIZED FOR GPT-OSS-120B)
     // ==============================================================
     public function generateAi()
     {
@@ -447,7 +427,6 @@ class ModulAjarController extends BaseController
             return $this->response->setJSON(['status' => 'error', 'message' => 'Akses tidak sah.']);
         }
 
-        // 1. Tangkap Konteks dari Form
         $mapel = $request->getPost('mapel');
         $rombel = $request->getPost('rombel');
         $materi = $request->getPost('materi');
@@ -456,7 +435,6 @@ class ModulAjarController extends BaseController
         $dpl = $request->getPost('dpl');
         $pancaCinta = $request->getPost('panca_cinta');
         
-        // Tangkap Array Kolom Kosong
         $emptyFieldsJson = $request->getPost('empty_fields');
         $emptyFields = json_decode($emptyFieldsJson, true);
 
@@ -466,40 +444,30 @@ class ModulAjarController extends BaseController
 
         $db = \Config\Database::connect();
 
-        // 2. Mengambil Teks CP Asli dari Database berdasarkan ATP yang dipilih
         $cpAsli = "Tidak ada referensi CP Asli.";
         $atpIdsPost = $request->getPost('atp_ids'); 
         
         if (!empty($atpIdsPost)) {
             $atpIdsArray = explode(',', $atpIdsPost);
-            
-            $builder = $db->table('kurikulum_atp a');
-            $builder->select('h.teks_cp_asli');
-            $builder->join('kurikulum_cp_details d', 'd.id = a.cp_detail_id', 'left');
-            $builder->join('kurikulum_cp_headers h', 'h.id = d.header_id', 'left');
-            $builder->whereIn('a.id', $atpIdsArray);
-            $builder->where('h.teks_cp_asli IS NOT NULL');
-            $builder->groupBy('h.id');
+            $builder = $db->table('kurikulum_atp a')
+                          ->select('h.teks_cp_asli')
+                          ->join('kurikulum_cp_details d', 'd.id = a.cp_detail_id', 'left')
+                          ->join('kurikulum_cp_headers h', 'h.id = d.header_id', 'left')
+                          ->whereIn('a.id', $atpIdsArray)
+                          ->where('h.teks_cp_asli IS NOT NULL')
+                          ->groupBy('h.id');
             
             $queryCp = $builder->get()->getResultArray();
-            
             if (!empty($queryCp)) {
-                $cpTexts = [];
-                foreach($queryCp as $row) {
-                    $cpTexts[] = $row['teks_cp_asli'];
-                }
+                $cpTexts = array_column($queryCp, 'teks_cp_asli');
                 $cpAsli = implode("\n", $cpTexts);
             }
         }
 
-       // ==============================================================================
-        // 📥 FIX AKSES: SKEMA MULTI-FALLBACK API KEY (USER PROFILE -> GLOBAL SETTINGS)
-        // ==============================================================================
         $session = session();
         $userId = $session->get('id') ?? $session->get('user_id') ?? (function_exists('user_id') ? user_id() : 0);
         $apiKey = '';
 
-        // Jalur Utama: Ambil dari profil guru masing-masing
         if ($userId && $db->tableExists('users')) {
             $userRow = $db->table('users')->select('api_key_ai')->where('id', $userId)->get()->getRowArray();
             if ($userRow && !empty(trim($userRow['api_key_ai']))) {
@@ -507,7 +475,6 @@ class ModulAjarController extends BaseController
             }
         }
 
-        // Jalur Cadangan: Jika di profil kosong, ambil dari global settings
         if (empty($apiKey) && $db->tableExists('settings')) {
             $apiKeySetting = $db->table('settings')->where('key', 'ai_api_key')->get()->getRowArray();
             if ($apiKeySetting && !empty(trim($apiKeySetting['value']))) {
@@ -515,7 +482,6 @@ class ModulAjarController extends BaseController
             }
         }
 
-        // Proteksi jika kunci tidak ditemukan di kedua tempat
         if (empty($apiKey)) {
             return $this->response->setJSON([
                 'status' => 'error', 
@@ -523,19 +489,18 @@ class ModulAjarController extends BaseController
             ]);
         }
 
-        // Ambil URL Provider Endpoint
-        $apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+        // Endpoint diutamakan dari setting, Fallback diarahkan ke ekosistem OpenRouter (umum untuk OSS-120B)
+        $apiUrl = 'https://openrouter.ai/api/v1/chat/completions'; 
         if ($db->tableExists('settings')) {
             $providerSetting = $db->table('settings')->where('key', 'ai_provider')->get()->getRowArray();
             if ($providerSetting && !empty(trim($providerSetting['value']))) {
                 $apiUrl = trim($providerSetting['value']);
             }
         }
-        // ==============================================================================
 
-        // 4. Mapping Nama HTML ke Format JSON AI
+        // Mapping Kolom Form ke JSON Keys
         $keyMapping = [
-            'capaian_pembelajaran' => 'capaian_pembelajaran', // Tambahan untuk rangkuman CP
+            'capaian_pembelajaran' => 'capaian_pembelajaran',
             'insersi_kbc' => 'insersi_kbc',
             'kesiapan_murid' => 'kesiapan_murid',
             'lintas_disiplin' => 'lintas_disiplin', 
@@ -559,9 +524,41 @@ class ModulAjarController extends BaseController
             'asesmen_akhir' => 'asesmen_akhir'            
         ];
 
+        // OPTIMASI: Peta Instruksi Spesifik (Hanya dikirim jika kolom diminta)
+        $instructionMap = [
+            'insersi_kbc' => "Tulis strategi menanamkan nilai KBC ke materi utama secara konkret.",
+            'kesiapan_murid' => "Tulis kondisi murid (Pengetahuan, Fisik, Mental) & strategi asesmen awal.",
+            'capaian_pembelajaran' => "Rangkum CP asli pemerintah agar relevan dengan TP hari ini.",
+            'lintas_disiplin' => "Jelaskan irisan materi ini dengan mapel SMP lainnya secara fungsional.",
+            'topik_pembelajaran' => "Deskripsi mendalam esensi topik, ruang lingkup, dan relevansi dunia nyata.",
+            'praktik_pedagogis' => "Sebutkan metode belajar (PBL/PjBL dll) dan penerapannya (student-centered).",
+            'kemitraan_pembelajaran' => "Rencana kolaborasi internal/eksternal yang mendukung proses belajar.",
+            'lingkungan_pembelajaran' => "Pengaturan fisik/virtual dan budaya kelas yang aman & inklusif.",
+            'pemanfaatan_digital' => "Platform digital spesifik dan cara pemanfaatannya.",
+            'kegiatan_awal' => "Langkah 1-5 berurutan di baris baru: 1. Salam, 2. Doa, 3. Presensi, 4. Pemantik, 5. Tujuan.",
+            'kegiatan_inti_memahami' => "Langkah 6-8 di baris baru: Sajian masalah, Eksplorasi, Bagi LKPD.",
+            'kegiatan_inti_mengaplikasikan' => "Langkah 9-11 di baris baru: Diskusi kelompok, Susun karya, Presentasi.",
+            'kegiatan_inti_merefleksi' => "Langkah 12-14 di baris baru: Apresiasi, Penguatan materi, Kesimpulan.",
+            'kegiatan_penutup' => "Langkah 15-17 di baris baru: Refleksi perasaan, Kisi-kisi besok, Doa & Salam.",
+            'asesmen_awal' => "Teknik, instrumen diagnostik, dan 1-2 pertanyaan pemantik.",
+            'asesmen_proses' => "Sebutkan teknik & rubrik singkat utk: a. Sikap, b. Pengetahuan, c. Keterampilan.",
+            'asesmen_akhir' => "Mekanisme tes sumatif, instrumen, dan fokus evaluasi.",
+            'lampiran_materi' => "Ringkasan bahan ajar. Akhiri dengan: '🔗 Tautan Dokumen Materi: [Link]'",
+            'lampiran_lkm' => "Kisi-kisi LKPD. Akhiri dengan: '🔗 Tautan LKPD: [Link]'",
+            'lampiran_rubrik' => "Kriteria pedoman skor. Akhiri dengan: '🔗 Tautan Rubrik: [Link]'",
+            'sumber_belajar' => "Referensi tambahan. Akhiri dengan: '🔗 Tautan Sumber: [Link]'",
+            'contoh_produk' => "Contoh hasil karya ideal. Akhiri dengan: '🔗 Tautan Contoh Produk: [Link]'"
+        ];
+
         $jsonKeysRequested = [];
+        $dynamicInstructions = "";
+        
         foreach($emptyFields as $field) {
-            $jsonKeysRequested[] = $keyMapping[$field] ?? $field;
+            $key = $keyMapping[$field] ?? $field;
+            $jsonKeysRequested[] = $key;
+            if (isset($instructionMap[$key])) {
+                $dynamicInstructions .= "- Untuk key '" . $key . "': " . $instructionMap[$key] . "\n";
+            }
         }
         
         $jsonStructureString = "{";
@@ -572,171 +569,53 @@ class ModulAjarController extends BaseController
         }
         $jsonStructureString .= "}";
 
-        // KNOWLEDGE BASE: BUKU PANDUAN PANCA CINTA KBC
-        $panduanKbcMateri = "
-        1. Topik: Cinta Allah Swt. dan Rasul-Nya
-           - Tujuan: Menumbuhkan pemahaman mengenai sifat Allah yang Maha Cinta serta Rasulullah sebagai sosok teladan penuh cinta; Mengenal sifat jamaliyah dan jalaliyah secara seimbang menggantikan citra Allah maha penghukum; Memahami welas asih (rahmah) Allah lebih dominan daripada murka-Nya sehingga tumbuh rasa cinta dalam beribadah.
-           - Materi Pokok: Keimanan & ketakwaan; Meneladani Asmaul Husna (ar-Rahman, ar-Rahim, al-'Adl, al-Latif, ar-Rauf); Ibadah khusyu (salat, doa, zikir, Al-Qur'an); Mensyukuri nikmat; Sirah Nabawiyah tentang kasih sayang; Sifat Rasulullah (cerdas, jujur, amanah, lemah lembut, dermawan); Hadis cinta dan akhlak mulia.
-        
-        2. Topik: Cinta Ilmu
-           - Tujuan: Menumbuhkan pemahaman bahwa dengan ilmu manusia mampu membuka tabir keagungan penciptaan dan merasakan getaran cinta Ilahi yang universal melalui alam, sejarah, dan ajaran agama.
-           - Materi Pokok: Pilar sukses mencari ilmu (niat, tekun, tawakal, wara', yakin, syukur); Alat transformasi sosial; Literasi sumber ilmu; Pembelajar sepanjang hayat; Adab kepada guru; Pemanfaatan teknologi; Inovasi & penalaran kritis; Keseimbangan hidup; Keberagaman sejarah/budaya; Sumber ilmu qauliyah & kauniyah.
-        
-        3. Topik: Cinta Lingkungan
-           - Tujuan: Memahami alam semesta sebagai manifestasi cinta Allah; Membangun relasi non-transaksional dilandasi cinta/kepedulian pada alam; Menghayati sunnatullah sebagai sistem keseimbangan ciptaan demi keberlanjutan.
-           - Materi Pokok: Islam Rahmatan lil 'alamin; Adab pada alam/lingkungan; Menghindari fasad/kerusakan (QS. Al-A'raf: 56, QS. Ar-Rum: 41); Praktik thaharah (kebersihan) & hemat energi (larangan ishraf).
-        
-        4. Topik: Cinta Diri dan Sesama Manusia
-           - Tujuan: Mengenal Allah melalui pengenalan diri sebagai tajalli cinta-Nya; Penerapan self-compassion (welas asih diri fisik, emosi, spiritual); Keterampilan SES (Social Emotional Skill) untuk kesejahteraan mental; Memahami kesatuan manusia yang setara; Menerima keragaman sebagai fitrah; Menerapkan prinsip persaudaraan (tasamuh, tawasuth, syura).
-           - Materi Pokok: Akhlak terpuji diri (tawakal, ikhtiar, syukur, sabar, qanaah, kreatif, produktif, inovatif); Hindari akhlak tercela diri (ananiah, putus asa, ghadab, tamak); Menjaga kebersihan/kesehatan tubuh; Ukhuwah Islamiyah & Insaniyah; Adab kepada orang tua, saudara, tetangga, teman, sesama/antar umat beragama; Akhlak terpuji sesama (ta'awun, tafahum, tasamuh, tawadhu, husnuzhan); Hindari akhlak tercela sesama (ananiah, rafast, gadhab, su'uzhan, ghibah, fitnah, namimah).
-        
-        5. Topik: Cinta Tanah Air
-           - Tujuan: Menumbuhkan semangat cinta tanah air sebagai bagian dari iman.
-           - Materi Pokok: Ukhuwah wathaniyah (persaudaraan kebangsaan); Hubbul Wathan minal Iman; Menghormati perbedaan suku, budaya, agama (QS. Al-Hujurat: 13); Berkontribusi menjaga kedaulatan/keamanan negara.
-        ";
+        // OPTIMASI: Kompresi Knowledge Base
+        $panduanKbcMateri = "Ringkasan KBC:
+        1. Cinta Allah & Rasul: Keimanan, welas asih, teladan sifat Rasulullah.
+        2. Cinta Ilmu: Adab belajar, penalaran kritis, inovasi, pembelajar hayat.
+        3. Cinta Lingkungan: Rahmatan lil 'alamin, jaga alam, thaharah, cegah kerusakan.
+        4. Cinta Diri & Sesama: Self-compassion, akhlak terpuji, toleransi, empati, ukhuwah.
+        5. Cinta Tanah Air: Ukhuwah wathaniyah, persatuan, kontribusi kebangsaan.";
 
-       // 5. PROMPT DENGAN ATURAN LOGIKA KBC & CP UTAMA (REVISI TAMBAHAN CP)
-        $systemInstruction = "Anda adalah Master Trainer Kurikulum Merdeka & Kurikulum Berbasis Cinta (KBC) MIMHa. "
-                           . "Tugas Anda mengisi kolom Modul Ajar yang kosong dengan standar pedagogis tinggi.\n\n"
-                           . "ATURAN KHUSUS UNTUK KEY TERTENTU:\n"
-                           . "1. Jika meminta key 'insersi_kbc':\n"
-                           . "   - Pahami TOPIK, TUJUAN, dan MATERI POKOK yang sesuai dari [DOKUMEN PANDUAN PANCA CINTA KBC].\n"
-                           . "   - Tuliskan HANYA KESIMPULAN STRATEGI INTEGRASI-nya saja (1-2 paragraf singkat) yang langsung menarasikan BAGAIMANA cara guru menanamkan nilai KBC tersebut ke dalam Materi Utama ($materi) dan Tujuan Pembelajaran secara konkret.\n"
-                           . "   - Contoh gaya bahasa awal kalimat: 'Menanamkan integrasi nilai ini dengan memberikan contoh...'\n\n"
-                           . "2. Jika meminta key 'kesiapan_murid':\n"
-                           . "   - Tuliskan kondisi murid meliputi aspek Pengetahuan, Fisik, Mental, Sosial, dan Spiritual.\n"
-                           . "   - Berikan strategi instrumen Asesmen Awal (Diagnostik) untuk mengukur pengetahuan awal serta rencana tindak lanjutnya nyata bagi murid.\n\n"
-                           . "3. Jika meminta key 'capaian_pembelajaran':\n" // 🌟 TAMBAHKAN ATURAN INI
-                           . "   - Analisis [TEKS CP ASLI PEMERINTAH] yang disediakan dan sesuaikan dengan [TUJUAN PEMBELAJARAN (TP)].\n"
-                           . "   - Ambil atau rangkum HANYA potongan kalimat inti dari CP asli tersebut yang paling relevan dan mendasari TP pada modul ajar ini.\n"
-                           . "   - Jangan mengarang kalimat kompetensi baru, fokuslah memotong/merangkum kalimat dari dokumen CP utama secara cerdas agar pas dengan batasan ruang lingkup materi pada pertemuan ini.\n\n"
-                           // 🌟 TAMBAHAN 6 KATEGORI BARU 🌟
-                           . "4. Jika meminta key 'lintas_disiplin':\n"
-                           . "   - JANGAN hanya menyebutkan nama mata pelajaran lain secara singkat.\n"
-                           . "   - Tuliskan penjelasan deskriptif mengenai bagaimana materi pembelajaran utama ini beririsan secara fungsional dengan mata pelajaran tingkat SMP lainnya (misalnya dikaitkan dengan konsep IPA Terpadu, IPS Terpadu, Informatika, Matematika, Prakarya, Bahasa, atau Seni Budaya SMP) untuk membangun pemahaman yang utuh dan holistik bagi murid.\n\n"
-                           . "5. Jika meminta key 'topik_pembelajaran':\n"
-                           . "   - JANGAN hanya menuliskan ulang judul bab atau ringkasan materi materi utama.\n"
-                           . "   - Tuliskan deskripsi mendalam yang menjelaskan esensi dari tema besar/topik yang dipelajari pada pertemuan ini, batasan ruang lingkup bahasannya, serta relevansi mengapa topik ini sangat krusial dan bermakna untuk dipelajari dalam kehidupan nyata murid.\n\n"
-                           . "6. Jika meminta key 'praktik_pedagogis':\n"
-                           . "   - Tuliskan Model/Strategi/Metode pembelajaran yang dipilih (seperti Pembelajaran Berbasis Masalah/PBL, Berbasis Proyek/PjBL, Inkuiri, atau Kontekstual).\n"
-                           . "   - Berikan penjelasan singkat bagaimana metode tersebut dijalankan secara taktis di kelas untuk memicu keterlibatan aktif murid (student-centered).\n\n"
-                           . "7. Jika meminta key 'kemitraan_pembelajaran':\n"
-                           . "   - Tuliskan rencana kolaborasi nyata baik internal sekolah (antar guru mapel, antar kelas) maupun eksternal (orang tua, komunitas, tokoh masyarakat, dunia usaha/industri, atau praktisi profesional).\n"
-                           . "   - Jelaskan bagaimana peran kemitraan tersebut dilibatkan dalam mendukung proses atau pembuktian hasil belajar murid.\n\n"
-                           . "8. Jika meminta key 'lingkungan_pembelajaran':\n"
-                           . "   - Deskripsikan pengaturan lingkungan belajar yang aman, nyaman, dan saling memuliakan sesuai spirit KBC.\n"
-                           . "   - Paparkan bentuk budaya belajar kelas (seperti memberikan ruang aman untuk berpendapat), pengelolaan ruang fisik kelas, dan/atau pemanfaatan ruang virtual secara kondusif.\n\n"
-                           . "9. Jika meminta key 'pemanfaatan_digital':\n"
-                           . "   - Tuliskan perangkat atau platform digital secara konkret (seperti video interaktif, LMS, perpustakaan digital, forum diskusi daring, atau aplikasi penilaian/kuiz).\n"
-                           . "   - Jelaskan pemanfaatannya demi menciptakan interaksi belajar yang lebih kolaboratif, interaktif, dan kontekstual.\n\n"
-                           . "ATURAN FORMATTING BARIS (ENTER) WAJIB:\n"
-                           . "- Setiap kali Anda membuat daftar berangka (1, 2, 3) atau huruf (a, b, c), Anda WAJIB menempatkan setiap poin di BARIS BARU (gunakan karakter newline / \\n).\n"
-                           . "- JANGAN PERNAH menyambungkan langkah-langkah atau poin menjadi satu paragraf!\n\n"
-
-                           . "10. Jika meminta key 'kegiatan_awal':\n"
-                           . "    - Tuliskan langkah pembuka berurutan (angka 1 sampai 5). Pastikan setiap angka turun ke baris baru.\n"
-                           . "    - Alur wajib:\n"
-                           . "      1. Guru membuka pelajaran dengan salam, menyapa murid, dan menanyakan kabar.\n"
-                           . "      2. Guru mengajak murid berdoa bersama sebelum belajar.\n"
-                           . "      3. Guru mengecek kehadiran murid.\n"
-                           . "      4. Guru melakukan apersepsi dan memberikan contoh kalimat PERTANYAAN PEMANTIK spesifik sesuai materi.\n"
-                           . "      5. Guru menyampaikan Tujuan Pembelajaran.\n\n"
-
-                           . "11. Jika meminta key 'kegiatan_inti_memahami':\n"
-                           . "    - Tuliskan langkah eksplorasi (lanjutkan penomoran: 6, 7, dan 8). Tiap angka WAJIB di baris baru.\n"
-                           . "    - Alur wajib:\n"
-                           . "      6. Guru menyajikan masalah/gambar/video terkait topik utama.\n"
-                           . "      7. Murid mengamati dan memahami sajian masalah tersebut.\n"
-                           . "      8. Guru membagi murid ke dalam kelompok dan membagikan Lembar Kerja (LKPD).\n\n"
-
-                           . "12. Jika meminta key 'kegiatan_inti_mengaplikasikan':\n"
-                           . "    - Tuliskan langkah kolaborasi (lanjutkan penomoran: 9, 10, dan 11). Tiap angka WAJIB di baris baru.\n"
-                           . "    - Alur wajib:\n"
-                           . "      9. Murid berdiskusi memecahkan masalah pada LKPD.\n"
-                           . "      10. Murid menyusun hasil diskusi kelompok menjadi karya/jawaban.\n"
-                           . "      11. Perwakilan kelompok mempresentasikan hasil di depan kelas.\n\n"
-
-                           . "13. Jika meminta key 'kegiatan_inti_merefleksi':\n"
-                           . "    - Tuliskan langkah pemaknaan (lanjutkan penomoran: 12, 13, dan 14). Tiap angka WAJIB di baris baru.\n"
-                           . "    - Alur wajib:\n"
-                           . "      12. Guru memberikan apresiasi dan umpan balik atas presentasi.\n"
-                           . "      13. Guru memberikan penguatan materi atau meluruskan miskonsepsi.\n"
-                           . "      14. Murid bersama guru menyimpulkan solusi materi hari ini.\n\n"
-
-                           . "14. Jika meminta key 'kegiatan_penutup':\n"
-                           . "    - Tuliskan langkah penutup (lanjutkan penomoran: 15, 16, dan 17). Tiap angka WAJIB di baris baru.\n"
-                           . "    - Alur wajib:\n"
-                           . "      15. Guru bersama murid melakukan refleksi manfaat pembelajaran dan menanyakan perasaan mereka.\n"
-                           . "      16. Guru memberikan kisi-kisi materi pertemuan berikutnya.\n"
-                           . "      17. Guru menutup pembelajaran dengan doa dan salam.\n\n"
-                           . "15. Jika meminta key 'asesmen_awal':\n"
-                           . "    - Tuliskan rencana asesmen awal pembelajaran (diagnostik) kognitif maupun non-kognitif.\n"
-                           . "    - JANGAN HANYA menyebutkan jenis asesmennya. JELASKAN secara singkat BAGAIMANA asesmen ini dilakukan di kelas (misal: melalui permainan interaktif, tanya jawab klasikal, atau kuisioner singkat).\n"
-                           . "    - Sebutkan Teknik, Instrumennya, dan WAJIB berikan 1-2 contoh pertanyaan pemantik asesmen awal yang relevan dengan materi hari ini.\n\n"
-                           . "16. Jika meminta key 'asesmen_proses':\n"
-                           . "    - Tuliskan rencana asesmen formatif. WAJIB dibagi menjadi 3 aspek dengan format huruf (a, b, c). JANGAN HANYA menyebutkan tekniknya, tapi berikan PENJELASAN:\n"
-                           . "      a. Penilaian Sikap: Sebutkan tekniknya (observasi) dan JELASKAN indikator spesifik yang diamati (misal: kekhusyukan saat berdoa, tingkat kepedulian, atau kolaborasi saat diskusi).\n"
-                           . "      b. Penilaian Pengetahuan: Sebutkan tekniknya (misal: LKPD/Tanya jawab) dan JELASKAN bagaimana proses penilaian dilakukan selama aktivitas kelas berlangsung.\n"
-                           . "      c. Penilaian Keterampilan: Sebutkan tekniknya (misal: presentasi/unjuk kerja) dan JELASKAN rubrik atau aspek apa saja yang dinilai dari keterampilan murid tersebut.\n\n"
-                           . "17. Jika meminta key 'asesmen_akhir':\n"
-                           . "    - Tuliskan rencana asesmen sumatif di akhir proses pembelajaran.\n"
-                           . "    - JANGAN HANYA menyebutkan bentuk tesnya. JELASKAN mekanisme pelaksanaannya dan indikator keberhasilannya secara singkat.\n"
-                           . "    - Sebutkan Teknik (misal: Tes tertulis, Proyek akhir, atau Portofolio), Instrumennya (Soal PG/Esai/Rubrik), dan jelaskan fokus materi yang ditekankan dalam evaluasi ini.\n\n"
-                           . "18. Jika meminta key 'lampiran_materi':\n"
-                           . "    - Tuliskan rekomendasi dan penjelasan ringkas mengenai isi bahan ajar utama yang harus dipelajari murid hari ini (misal: ringkasan teori, infografis, atau poin presentasi slides).\n"
-                           . "    - Di akhir teks, wajib berikan ruang kosong profesional bagi guru untuk menaruh link, contoh format: '🔗 Tautan Dokumen Materi: [Masukkan Link File Materi di Sini]'.\n\n"
-                           . "19. Jika meminta key 'lampiran_lkm':\n"
-                           . "    - Tuliskan rekomendasi deskripsi atau kisi-kisi Lembar Kerja Murid / LKPD yang digunakan kelompok saat kegiatan diskusi inti agar sesuai topik materi hari ini.\n"
-                           . "    - Di akhir teks, wajib berikan ruang kosong untuk link, contoh format: '🔗 Tautan LKPD Kelompok: [Masukkan Link File LKM/LKPD di Sini]'.\n\n"
-                           . "20. Jika meminta key 'lampiran_rubrik':\n"
-                           . "    - Tuliskan rekomendasi kriteria pedoman penilaian atau rubrik skor (misal: rubrik penilaian sikap gotong royong, rubrik penilaian unjuk kerja presentasi, atau rubrik penilaian pengetahuan).\n"
-                           . "    - Di akhir teks, wajib berikan ruang kosong untuk link, contoh format: '🔗 Tautan Rubrik Penilaian: [Masukkan Link Rubrik di Sini]'.\n\n"
-                           . "21. Jika meminta key 'sumber_belajar':\n"
-                           . "    - Tuliskan rekomendasi referensi belajar digital tambahan yang relevan dengan topik (misal: artikel web terpercaya, buku paket cetak halaman tertentu, atau video edukasi YouTube).\n"
-                           . "    - Di akhir teks, wajib berikan ruang kosong untuk link, contoh format: '🔗 Tautan Video / Sumber Belajar Tambahan: [Masukkan Link Referensi di Sini]'.\n\n"
-                           . "22. Jika meminta key 'contoh_produk':\n"
-                           . "    - Tuliskan penjelasan atau contoh konkrit hasil produk/karya nyata murid yang ideal dan diharapkan setelah pembelajaran hari ini selesai (misal: bentuk resume, poster, mind mapping, atau laporan praktikum).\n"
-                           . "    - Di akhir teks, wajib berikan ruang kosong untuk link, contoh format: '🔗 Tautan Contoh Hasil Karya Terbaik Murid: [Masukkan Link Portofolio Produk di Sini]'.\n\n"                         
-                           . "PANDUAN PEDAGOGIS KELAS:\n"
-                           . "- KEGIATAN AWAL: Apersepsi kreatif, kesiapan emosional (Mind), pertanyaan pemantik.\n"
-                           . "- KEGIATAN INTI: Berorientasi pada murid (student-centered), aktif, mendalam (Meaning).\n"
-                           . "- KEGIATAN PENUTUP: Refleksi perasaan (Joy), penarikan kesimpulan oleh murid, internalisasi nilai.\n\n"
+        $systemInstruction = "Anda adalah Master Trainer Kurikulum Merdeka & KBC. "
+                           . "Tugas Anda mengisi kolom JSON Modul Ajar yang kosong dengan standar pedagogis tinggi.\n\n"
+                           . "ATURAN KONTEN SPESIFIK:\n"
+                           . $dynamicInstructions . "\n"
                            . "ATURAN FORMAT JSON (MUTLAK):\n"
-                           . "- Tipe data value wajib STRING. Dilarang membuat Array/Object bersarang di dalam value.\n"
-                           . "- Gunakan literal '\\n' untuk baris baru. Dilarang enter asli.\n"
-                           . "- Gunakan kutip tunggal (') untuk teks di dalam nilai JSON, dilarang menggunakan kutip ganda (\").\n\n"
-                           . "HANYA HASILKAN KEY JSON BERIKUT:\n"
+                           . "- Tipe data value wajib STRING. Dilarang membuat Object/Array bersarang di dalam value.\n"
+                           . "- Gunakan literal '\\n' untuk baris baru. Dilarang menggunakan enter asli (raw newline) di dalam string.\n"
+                           . "- Setiap angka/poin list WAJIB turun ke baris baru menggunakan '\\n'.\n"
+                           . "- WAJIB menggunakan KUTIP GANDA (\") untuk membungkus Key dan Value. Jika butuh kutip dalam teks, gunakan pelarian (\\\").\n\n"
+                           . "Hasilkan HANYA format JSON valid berikut ini:\n"
                            . $jsonStructureString;
 
-        $userPrompt = "Lengkapi rancangan Modul Ajar dengan data spesifik berikut:\n"
-                    . "- Mata Pelajaran: $mapel\n"
-                    . "- Target Kelas/Rombel: $rombel\n"
-                    . "- Materi Pembelajaran Utama: $materi\n"
-                    . "- Dimensi Profil Lulusan (DPL): " . (!empty($dpl) ? $dpl : 'Sesuaikan materi') . "\n"
-                    . "- Nilai Panca Cinta (KBC) Terpilih: " . (!empty($pancaCinta) ? $pancaCinta : 'Sesuaikan materi') . "\n\n"
-                    . "[DOKUMEN PANDUAN PANCA CINTA KBC - REFERENSI UTAMA]\n" . $panduanKbcMateri . "\n\n"
+        $userPrompt = "Lengkapi Modul Ajar:\n"
+                    . "- Mapel: $mapel\n"
+                    . "- Rombel: $rombel\n"
+                    . "- Materi Utama: $materi\n"
+                    . "- DPL: " . (!empty($dpl) ? $dpl : 'Sesuaikan') . "\n"
+                    . "- Nilai KBC: " . (!empty($pancaCinta) ? $pancaCinta : 'Sesuaikan') . "\n\n"
+                    . "[PANDUAN KBC]\n$panduanKbcMateri\n\n"
                     . "[TUJUAN PEMBELAJARAN (TP)]\n$tp\n\n"
-                    . "[TEKS CP ASLI PEMERINTAH]\n$cpAsli\n\n";
+                    . "[TEKS CP ASLI]\n$cpAsli\n\n";
         
         if (!empty($instruksi)) {
-            $userPrompt .= "[INSTRUKSI KHUSUS GURU]\n$instruksi\n";
+            $userPrompt .= "[INSTRUKSI GURU]\n$instruksi\n";
         }
 
-        // 6. Konfigurasi Paket Kiriman API
+        // OPTIMASI API: Hapus response_format agar tidak ditolak model Open-Source 120b
         $data = [
-            'model' => 'llama-3.3-70b-versatile', 
+            'model' => 'openai/gpt-oss-120b', 
             'messages' => [
                 ['role' => 'system', 'content' => $systemInstruction],
                 ['role' => 'user', 'content' => $userPrompt]
             ],
             'temperature' => 0.65, 
-            'max_tokens' => 6000,
-            'response_format' => ['type' => 'json_object'] 
+            'max_tokens' => 6000
         ];
 
         $headers = [ 'Authorization: Bearer ' . $apiKey, 'Content-Type: application/json' ];
 
-        // 7. Eksekusi cURL
         $ch = curl_init($apiUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
@@ -751,18 +630,24 @@ class ModulAjarController extends BaseController
         $responseData = json_decode($responseRaw, true);
 
         if ($httpCode == 429) {
-            return $this->response->setJSON(['status' => 'error', 'message' => 'Kuota SiKuMi habis (Limit API). Silakan tunggu beberapa saat.']);
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Kuota AI habis (Limit API). Silakan tunggu beberapa saat.']);
         }
 
         if ($httpCode >= 200 && $httpCode < 300) {
             if (isset($responseData['choices'][0]['message']['content'])) {
                 $aiText = $responseData['choices'][0]['message']['content'];
                 
+                // SANITIZER: Bersihkan Markdown JSON block
+                $aiText = preg_replace('/```(?:json)?\s*([\s\S]*?)\s*```/', '$1', $aiText);
+                
                 if (preg_match('/\{[\s\S]*\}/', $aiText, $matches)) {
                     $aiText = $matches[0];
                 }
                 
-                $jsonOutput = json_decode(trim($aiText), true);
+                // SANITIZER: Ganti raw newline tersembunyi yang sering merusak parsing
+                $aiText = str_replace(["\r\n", "\r", "\n", "\t"], ["\\n", "\\n", "\\n", " "], trim($aiText));
+                
+                $jsonOutput = json_decode($aiText, true);
 
                 if($jsonOutput !== null) {
                     return $this->response->setJSON(['status' => 'success', 'data' => $jsonOutput]);
@@ -777,24 +662,18 @@ class ModulAjarController extends BaseController
         return $this->response->setJSON(['status' => 'error', 'message' => $errorMessage]);
     }
 
-    // ==============================================================
-    // FUNGSI CETAK (PRINT) MODUL AJAR (FULL DINAMIS & LAYOUT TABEL)
-    // ==============================================================
     public function printModul($modulId)
     {
         $db = \Config\Database::connect();
 
-        // 1. Ambil Data Modul Utama
         $modulData = $db->table('kurikulum_modul_ajar')->where('id', $modulId)->get()->getRowArray();
         if (!$modulData) {
             return redirect()->back()->with('error', 'Data modul tidak ditemukan.');
         }
 
-        // 2. Ambil Nama Rombel
         $rombel = $db->tableExists('class_rombel') ? $db->table('class_rombel')->where('id', $modulData['rombel_id'])->get()->getRowArray() : null;
         $namaRombel = $rombel ? $rombel['rombel_name'] : '-';
 
-        // 3. Menerjemahkan Kode Mapel (S_x atau C_x)
         $rawMapelId = $modulData['mapel_id'];
         $namaMapelAktif = $rawMapelId; 
 
@@ -808,7 +687,6 @@ class ModulAjarController extends BaseController
             if ($mapelRow) $namaMapelAktif = $mapelRow['combined_name'] ?? $rawMapelId;
         }
 
-        // 4. Ambil Teks Tujuan Pembelajaran, DPL, dan Panca Cinta
         $atpList = $db->table('kurikulum_atp a')
                       ->select('d.tujuan_pembelajaran, a.dpl_terpilih, a.panca_cinta_terpilih') 
                       ->join('kurikulum_cp_details d', 'd.id = a.cp_detail_id', 'left')
@@ -837,13 +715,9 @@ class ModulAjarController extends BaseController
         $dplArray = array_unique(array_filter($dplArray));
         $pancaCintaArray = array_unique(array_filter($pancaCintaArray));
 
-        // 5. INFO HEADER & TAHUN AKTIF
         $tahunAktif = $db->tableExists('academic_years') ? $db->table('academic_years')->where('is_active', 1)->get()->getRowArray() : null;
         $userId = session()->get('user_id') ?? session()->get('id') ?? (function_exists('user_id') ? user_id() : 0);
 
-        // ==============================================================
-        // 📥 SINKRONISASI PENGATURAN MADRASAH & TTD (SESUAI ACUAN)
-        // ==============================================================
         $namaMadrasahRow = $db->tableExists('settings') ? $db->table('settings')->where('key', 'kaldik_lembaga_nama')->get()->getRowArray() : null;
         if (!$namaMadrasahRow) {
             $namaMadrasahRow = $db->tableExists('settings') ? $db->table('settings')->where('key', 'nama_madrasah')->get()->getRowArray() : null;
@@ -855,7 +729,6 @@ class ModulAjarController extends BaseController
         $guruNpk = '-';
         $namaGuruCetak = '.....................................'; 
 
-        // Langkah 1: Ambil dari tabel teacher_profiles
         if ($db->tableExists('teacher_profiles')) {
             $guruProfile = $db->table('teacher_profiles')->where('user_id', $userId)->get()->getRowArray();
             if ($guruProfile) {
@@ -864,7 +737,6 @@ class ModulAjarController extends BaseController
             }
         }
         
-        // Langkah 2: Jika di profil kosong, ambil dari tabel users
         if ($namaGuruCetak == '.....................................' && $db->tableExists('users')) {
             $userData = $db->table('users')->where('id', $userId)->get()->getRowArray();
             if ($userData) {
@@ -872,7 +744,6 @@ class ModulAjarController extends BaseController
             }
         }
         
-        // Langkah 3: Fallback terakhir ke Session
         if ($namaGuruCetak == '.....................................') {
             $namaGuruCetak = session()->get('nama_guru') ?? session()->get('fullname') ?? session()->get('name') ?? 'Guru Pengampu';
         }
@@ -888,9 +759,7 @@ class ModulAjarController extends BaseController
             $tanggalCetak = date('j') . ' ' . $bulanIndo[(int)date('m')] . ' ' . date('Y');
             $titiMangsa = $titimangsaValue . ', ' . $tanggalCetak;
         }
-        // ==============================================================
 
-        // 8. Susun Variabel untuk View
         $data = [
             'modulId'                => $modulId,
             'modulData'              => $modulData,
@@ -899,10 +768,7 @@ class ModulAjarController extends BaseController
             'namaMapelAktif'         => $namaMapelAktif, 
             'namaRombel'             => $namaRombel,
             'tujuanPembelajaranTeks' => $tujuanPembelajaranTeks,
-            
-            // 🌟 TAMBAHAN: Mengirim data Topik Pembelajaran ke View
             'topikPembelajaranTeks'  => $modulData['topik_pembelajaran'] ?? '-',
-            
             'dplArray'               => $dplArray,                 
             'pancaCintaArray'        => $pancaCintaArray,   
             'kepalaNama'             => $kepalaSekolahRow ? $kepalaSekolahRow['value'] : 'Rully Faizal, S.T.',
@@ -918,177 +784,159 @@ class ModulAjarController extends BaseController
     }
 
     public function copyAllModul()
-{
-    $db = \Config\Database::connect();
-    $request = \Config\Services::request();
+    {
+        $db = \Config\Database::connect();
+        $request = \Config\Services::request();
 
-    $fromRombelId = $request->getPost('from_rombel_id');
-    $toRombelId   = $request->getPost('to_rombel_id');
-    $mapelId      = $request->getPost('mapel_id');
-    
-    $userId = session()->get('user_id') ?? session()->get('id') ?? (function_exists('user_id') ? user_id() : 0);
-
-    // 🌟 AMBIL TAHUN AJARAN AKTIF
-    $tahunAktif = $db->tableExists('academic_years') ? $db->table('academic_years')->where('is_active', 1)->get()->getRowArray() : null;
-    $tahunAktifId = $tahunAktif ? $tahunAktif['id'] : 0;
-
-    if (!$fromRombelId || !$toRombelId || !$mapelId) {
-        return $this->response->setJSON(['status' => 'error', 'message' => 'Parameter pengiriman tidak lengkap.']);
-    }
-
-    // 1. VALIDASI KETAT TINGKAT KELAS
-    $fromRombel = $db->table('class_rombel')->where('id', $fromRombelId)->get()->getRowArray();
-    $toRombel   = $db->table('class_rombel')->where('id', $toRombelId)->get()->getRowArray();
-
-    if (!$fromRombel || !$toRombel) {
-        return $this->response->setJSON(['status' => 'error', 'message' => 'Data Kelas/Rombel tidak ditemukan.']);
-    }
-
-    if ($fromRombel['master_class_id'] != $toRombel['master_class_id']) {
-        return $this->response->setJSON([
-            'status' => 'error', 
-            'message' => 'Gagal! Penyalinan masal hanya diperbolehkan untuk Rombel di tingkat yang sama.'
-        ]);
-    }
-
-    // 2. NORMALISASI FORMAT MAPEL ID (Sapu Bersih Semua Format DB)
-    $cleanMapelId = preg_replace('/[^0-9]/', '', $mapelId);
-    $kemungkinanMapelId = [
-        $mapelId,
-        $cleanMapelId,
-        'S_' . $cleanMapelId,
-        'C_' . $cleanMapelId,
-        'M_' . $cleanMapelId
-    ];
-
-    // Ambil semua modul dari rombel sumber
-    $sourceModuls = $db->table('kurikulum_modul_ajar')
-                       ->where('academic_year_id', $tahunAktifId)
-                       ->where('rombel_id', $fromRombelId)
-                       ->whereIn('mapel_id', $kemungkinanMapelId)
-                       ->get()->getResultArray();
-
-    if (empty($sourceModuls)) {
-        return $this->response->setJSON([
-            'status' => 'error', 
-            'message' => "Rombel sumber belum memiliki data Modul Ajar untuk mapel ini."
-        ]);
-    }
-
-    // ========================================================
-    // 3. JALANKAN TRANSAKSI DATABASE
-    // ========================================================
-    $db->transStart();
-
-    // Hapus data modul lama di rombel tujuan agar tidak ganda
-    $db->table('kurikulum_modul_ajar')
-       ->where('rombel_id', $toRombelId)
-       ->whereIn('mapel_id', $kemungkinanMapelId) // Gunakan whereIn juga untuk menghapus
-       ->delete();
-
-    // Ambil list ATP Rombel Tujuan untuk mereset relasi Modul lama & mencari tanggal
-    $targetAtpList = $db->table('kurikulum_atp')
-                        ->where('rombel_id', $toRombelId)
-                        ->get()->getResultArray();
-                        
-    $targetAtpIds = array_column($targetAtpList, 'id');
-    
-    // Reset/Kosongkan modul_id pada ATP di rombel tujuan agar siap diisi modul baru
-    if (!empty($targetAtpIds)) {
-        $db->table('kurikulum_atp')->whereIn('id', $targetAtpIds)->update(['modul_id' => null]);
-    }
-
-    $insertedCount = 0;
-
-    foreach ($sourceModuls as $modul) {
+        $fromRombelId = $request->getPost('from_rombel_id');
+        $toRombelId   = $request->getPost('to_rombel_id');
+        $mapelId      = $request->getPost('mapel_id');
         
-        // 🌟 A. CARI ATP DI ROMBEL SUMBER YANG MENGGUNAKAN MODUL INI
-        $sourceAtps = $db->table('kurikulum_atp')
-                         ->where('modul_id', $modul['id'])
-                         ->get()->getResultArray();
-                         
-        $resolvedTanggal = null;
-        $matchedTargetAtpIds = []; // Tempat menampung ID ATP Target yang akan dipasang Modul Baru
+        $userId = session()->get('user_id') ?? session()->get('id') ?? (function_exists('user_id') ? user_id() : 0);
+
+        $tahunAktif = $db->tableExists('academic_years') ? $db->table('academic_years')->where('is_active', 1)->get()->getRowArray() : null;
+        $tahunAktifId = $tahunAktif ? $tahunAktif['id'] : 0;
+
+        if (!$fromRombelId || !$toRombelId || !$mapelId) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Parameter pengiriman tidak lengkap.']);
+        }
+
+        $fromRombel = $db->table('class_rombel')->where('id', $fromRombelId)->get()->getRowArray();
+        $toRombel   = $db->table('class_rombel')->where('id', $toRombelId)->get()->getRowArray();
+
+        if (!$fromRombel || !$toRombel) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Data Kelas/Rombel tidak ditemukan.']);
+        }
+
+        if ($fromRombel['master_class_id'] != $toRombel['master_class_id']) {
+            return $this->response->setJSON([
+                'status' => 'error', 
+                'message' => 'Gagal! Penyalinan masal hanya diperbolehkan untuk Rombel di tingkat yang sama.'
+            ]);
+        }
+
+        $cleanMapelId = preg_replace('/[^0-9]/', '', $mapelId);
+        $kemungkinanMapelId = [
+            $mapelId,
+            $cleanMapelId,
+            'S_' . $cleanMapelId,
+            'C_' . $cleanMapelId,
+            'M_' . $cleanMapelId
+        ];
+
+        $sourceModuls = $db->table('kurikulum_modul_ajar')
+                           ->where('academic_year_id', $tahunAktifId)
+                           ->where('rombel_id', $fromRombelId)
+                           ->whereIn('mapel_id', $kemungkinanMapelId)
+                           ->get()->getResultArray();
+
+        if (empty($sourceModuls)) {
+            return $this->response->setJSON([
+                'status' => 'error', 
+                'message' => "Rombel sumber belum memiliki data Modul Ajar untuk mapel ini."
+            ]);
+        }
+
+        $db->transStart();
+
+        $db->table('kurikulum_modul_ajar')
+           ->where('rombel_id', $toRombelId)
+           ->whereIn('mapel_id', $kemungkinanMapelId) 
+           ->delete();
+
+        $targetAtpList = $db->table('kurikulum_atp')
+                            ->where('rombel_id', $toRombelId)
+                            ->get()->getResultArray();
+                            
+        $targetAtpIds = array_column($targetAtpList, 'id');
         
-        foreach ($sourceAtps as $sAtp) {
-            $cpDetailId = $sAtp['cp_detail_id'];
+        if (!empty($targetAtpIds)) {
+            $db->table('kurikulum_atp')->whereIn('id', $targetAtpIds)->update(['modul_id' => null]);
+        }
+
+        $insertedCount = 0;
+
+        foreach ($sourceModuls as $modul) {
             
-            // Cari padanan ATP-nya di Rombel Tujuan (Berdasarkan CP Detail ID)
-            $matchTargetAtp = $db->table('kurikulum_atp')
-                                 ->where('rombel_id', $toRombelId)
-                                 ->where('cp_detail_id', $cpDetailId)
-                                 ->get()->getRowArray();
-                                 
-            if ($matchTargetAtp) {
-                $matchedTargetAtpIds[] = $matchTargetAtp['id'];
+            $sourceAtps = $db->table('kurikulum_atp')
+                             ->where('modul_id', $modul['id'])
+                             ->get()->getResultArray();
+                             
+            $resolvedTanggal = null;
+            $matchedTargetAtpIds = []; 
+            
+            foreach ($sourceAtps as $sAtp) {
+                $cpDetailId = $sAtp['cp_detail_id'];
                 
-                // Ambil tanggal jadwal dari ATP target pertama yang cocok
-                if ($resolvedTanggal === null) {
-                    $resolvedTanggal = $matchTargetAtp['alokasi_tanggal'] ?? $matchTargetAtp['tanggal'] ?? null;
+                $matchTargetAtp = $db->table('kurikulum_atp')
+                                     ->where('rombel_id', $toRombelId)
+                                     ->where('cp_detail_id', $cpDetailId)
+                                     ->get()->getRowArray();
+                                     
+                if ($matchTargetAtp) {
+                    $matchedTargetAtpIds[] = $matchTargetAtp['id'];
+                    
+                    if ($resolvedTanggal === null) {
+                        $resolvedTanggal = $matchTargetAtp['alokasi_tanggal'] ?? $matchTargetAtp['tanggal'] ?? null;
+                    }
                 }
+            }
+
+            if (empty($resolvedTanggal)) {
+                $resolvedTanggal = $modul['tanggal_pelaksanaan'];
+            }
+
+            $newModulData = [
+                'academic_year_id'        => $tahunAktifId,
+                'master_class_id'         => $toRombel['master_class_id'],
+                'mapel_id'                => $modul['mapel_id'], 
+                'rombel_id'               => $toRombelId,
+                'teacher_id'              => $userId,
+                'pertemuan_ke'            => $modul['pertemuan_ke'],
+                'tanggal_pelaksanaan'     => $resolvedTanggal, 
+                'alokasi_jp'              => $modul['alokasi_jp'] ?? 0,
+                'menit_per_jp'            => $modul['menit_per_jp'] ?? 30,
+                'kesiapan_murid'          => $modul['kesiapan_murid'],
+                'lintas_disiplin'         => $modul['lintas_disiplin'],
+                'topik_pembelajaran'      => $modul['topik_pembelajaran'],
+                'praktik_pedagogis'       => $modul['praktik_pedagogis'],
+                'kemitraan_pembelajaran'  => $modul['kemitraan_pembelajaran'],
+                'lingkungan_pembelajaran' => $modul['lingkungan_pembelajaran'],
+                'pemanfaatan_digital'     => $modul['pemanfaatan_digital'],
+                'insersi_kbc'             => $modul['insersi_kbc'],
+                'capaian_pembelajaran'    => $modul['capaian_pembelajaran'],
+                'kegiatan_pembelajaran'   => $modul['kegiatan_pembelajaran'],
+                'sumber_belajar'          => $modul['sumber_belajar'],
+                'contoh_produk'           => $modul['contoh_produk'],
+                'asesmen_awal'            => $modul['asesmen_awal'],
+                'asesmen_proses'          => $modul['asesmen_proses'],
+                'asesmen_akhir'           => $modul['asesmen_akhir'],
+                'lampiran_materi'         => $modul['lampiran_materi'],
+                'lampiran_lkm'            => $modul['lampiran_lkm'],
+                'lampiran_rubrik'         => $modul['lampiran_rubrik'],
+                'created_at'              => date('Y-m-d H:i:s')
+            ];
+
+            $db->table('kurikulum_modul_ajar')->insert($newModulData);
+            $newModulId = $db->insertID(); 
+            $insertedCount++;
+
+            if (!empty($matchedTargetAtpIds)) {
+                $db->table('kurikulum_atp')
+                   ->whereIn('id', $matchedTargetAtpIds)
+                   ->update(['modul_id' => $newModulId]);
             }
         }
 
-        // Jika tidak ketemu jadwal di target, pakai jadwal dari modul asli
-        if (empty($resolvedTanggal)) {
-            $resolvedTanggal = $modul['tanggal_pelaksanaan'];
+        $db->transComplete();
+
+        if ($db->transStatus() === FALSE) {
+            return $this->response->setJSON(['status' => 'error', 'message' => 'Terjadi kegagalan sistem saat menyalin data ke database.']);
         }
 
-        // 🌟 B. SIAPKAN DATA DUPLIKASI MODUL (Memasukkan seluruh kolom dari database)
-        $newModulData = [
-            'academic_year_id'        => $tahunAktifId,
-            'master_class_id'         => $toRombel['master_class_id'],
-            'mapel_id'                => $modul['mapel_id'], // Tetap pakai format asli di modul sumber
-            'rombel_id'               => $toRombelId,
-            'teacher_id'              => $userId,
-            'pertemuan_ke'            => $modul['pertemuan_ke'],
-            'tanggal_pelaksanaan'     => $resolvedTanggal, // 👈 Sudah otomatis ambil dari jadwal rombel tujuan
-            'alokasi_jp'              => $modul['alokasi_jp'] ?? 0,
-            'menit_per_jp'            => $modul['menit_per_jp'] ?? 30,
-            'kesiapan_murid'          => $modul['kesiapan_murid'],
-            'lintas_disiplin'         => $modul['lintas_disiplin'],
-            'topik_pembelajaran'      => $modul['topik_pembelajaran'],
-            'praktik_pedagogis'       => $modul['praktik_pedagogis'],
-            'kemitraan_pembelajaran'  => $modul['kemitraan_pembelajaran'],
-            'lingkungan_pembelajaran' => $modul['lingkungan_pembelajaran'],
-            'pemanfaatan_digital'     => $modul['pemanfaatan_digital'],
-            'insersi_kbc'             => $modul['insersi_kbc'],
-            'capaian_pembelajaran'    => $modul['capaian_pembelajaran'],
-            'kegiatan_pembelajaran'   => $modul['kegiatan_pembelajaran'],
-            'sumber_belajar'          => $modul['sumber_belajar'],
-            'contoh_produk'           => $modul['contoh_produk'],
-            'asesmen_awal'            => $modul['asesmen_awal'],
-            'asesmen_proses'          => $modul['asesmen_proses'],
-            'asesmen_akhir'           => $modul['asesmen_akhir'],
-            'lampiran_materi'         => $modul['lampiran_materi'],
-            'lampiran_lkm'            => $modul['lampiran_lkm'],
-            'lampiran_rubrik'         => $modul['lampiran_rubrik'],
-            'created_at'              => date('Y-m-d H:i:s')
-        ];
-
-        // 🌟 C. INSERT MODUL SATU PER SATU UNTUK MENDAPATKAN ID BARU
-        $db->table('kurikulum_modul_ajar')->insert($newModulData);
-        $newModulId = $db->insertID(); // Tangkap ID Modul yang baru
-        $insertedCount++;
-
-        // 🌟 D. SAMBUNGKAN KEMBALI RELASI ATP DI ROMBEL TUJUAN KE MODUL BARU INI
-        if (!empty($matchedTargetAtpIds)) {
-            $db->table('kurikulum_atp')
-               ->whereIn('id', $matchedTargetAtpIds)
-               ->update(['modul_id' => $newModulId]);
-        }
+        return $this->response->setJSON([
+            'status' => 'success', 
+            'message' => 'Sempurna! Berhasil menyalin ' . $insertedCount . ' Modul Ajar.'
+        ]);
     }
-
-    $db->transComplete();
-
-    if ($db->transStatus() === FALSE) {
-        return $this->response->setJSON(['status' => 'error', 'message' => 'Terjadi kegagalan sistem saat menyalin data ke database.']);
-    }
-
-    return $this->response->setJSON([
-        'status' => 'success', 
-        'message' => 'Sempurna! Berhasil menyalin ' . $insertedCount . ' Modul Ajar.'
-    ]);
-}
-
 }

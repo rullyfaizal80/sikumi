@@ -79,13 +79,13 @@ class AiController extends BaseController
                            . "Anda sangat mahir dan menguasai SEMUA mata pelajaran umum tingkat MTs. Berikan jawaban yang terstruktur, rapi, praktis, dan langsung pada intinya.";
 
         $data = [
-            'model' => 'llama-3.3-70b-versatile', 
+            'model' => 'openai/gpt-oss-120b', // REVISI: Menggunakan groq/compound
             'messages' => [
                 ['role' => 'system', 'content' => $systemInstruction],
                 ['role' => 'user', 'content' => $pesanUser]
             ],
             'temperature' => 0.7,
-            'max_tokens' => 2048
+            'max_tokens' => 3000
         ];
 
         $headers = [
@@ -222,7 +222,7 @@ class AiController extends BaseController
         // ==============================================================================
         $apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
 
-        // SYSTEM PROMPT KHUSUS DARI PAK RULLY
+        // SYSTEM PROMPT KHUSUS
         $systemInstruction = "Anda adalah Kurikulum AI Expert yang ahli dalam pengembangan Kurikulum Merdeka dan pendekatan Understanding by Design (UbD). Tugas Anda adalah membantu guru menganalisis Capaian Pembelajaran (CP) untuk menghasilkan dokumen perencanaan yang siap pakai.\n"
                            . "Instruksi Analisis:\n"
                            . "1. Analisis Komponen: Pecah CP menjadi Kompetensi (KKO) dan Lingkup Materi.\n"
@@ -239,7 +239,7 @@ class AiController extends BaseController
                            . "- Selalu prioritaskan keberhasilan murid di kelas (Student-Centered).";
 
         $data = [
-            'model' => 'llama-3.3-70b-versatile', 
+            'model' => 'openai/gpt-oss-120b', // REVISI: Menggunakan groq/compound
             'messages' => [
                 ['role' => 'system', 'content' => $systemInstruction],
                 ['role' => 'user', 'content' => $pesanUser]
@@ -259,7 +259,7 @@ class AiController extends BaseController
         $ch = curl_init($apiUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers); 
+        curl_setopt($ch, CURLOPT_HTTPHEADER,$headers); 
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         curl_setopt($ch, CURLOPT_HEADER, true); // Aktifkan pembacaan header untuk rate-limit
         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false); 
@@ -280,8 +280,7 @@ class AiController extends BaseController
 
         // Pisahkan Header dan Body
         $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE); 
-        $headerStr = substr($responseRaw, 0, $headerSize); 
-        $body = substr($responseRaw, $headerSize); 
+        $headerStr = substr($responseRaw, 0, $headerSize);$body = substr($responseRaw,$headerSize); 
         curl_close($ch);
 
         // ==============================================================================
@@ -290,7 +289,7 @@ class AiController extends BaseController
         $responseData = json_decode($body, true);
 
         // Jika respons bukan JSON (Server down/Error 500)
-        if (!$responseData && $httpCode >= 400) {
+        if (!$responseData &&$httpCode >= 400) {
              return $this->response->setJSON([
                 'status' => 'error',
                 'message' => "Sistem AI Menolak (Code $httpCode): Respons server gagal dibaca.",
@@ -300,8 +299,8 @@ class AiController extends BaseController
 
         // Jika kena rate limit (HTTP 429 Too Many Requests)
         if ($httpCode == 429) {
-            preg_match('/x-ratelimit-reset-requests:\s*([0-9a-zA-Z]+)/i', $headerStr, $matches);
-            $resetWaktu = $matches[1] ?? 'segera';
+            preg_match('/x-ratelimit-reset-requests:\s*([0-9a-zA-Z]+)/i', $headerStr,$matches);
+            $resetWaktu =$matches[1] ?? 'segera';
             
             return $this->response->setJSON([
                 'status' => 'error',
@@ -311,9 +310,9 @@ class AiController extends BaseController
         }
 
         // Jika BERHASIL (HTTP Status 200 OK)
-        if ($httpCode >= 200 && $httpCode < 300) {
+        if ($httpCode >= 200 &&$httpCode < 300) {
             if (isset($responseData['choices'][0]['message']['content'])) {
-                $balasanSiKuMi = $responseData['choices'][0]['message']['content'];
+                $balasanSiKuMi =$responseData['choices'][0]['message']['content'];
                 
                 // Membersihkan sisa markdown code block jika model AI tidak sengaja menuliskannya
                 $balasanSiKuMi = str_replace(['```html', '```'], '', $balasanSiKuMi);
@@ -327,7 +326,7 @@ class AiController extends BaseController
         }
 
         // Jika Terjadi Kesalahan Lain (Kunci Salah, Model Tidak Ada, dsb)
-        $errorMessage = $responseData['error']['message'] ?? 'Kesalahan identitas atau kredensial API.';
+        $errorMessage =$responseData['error']['message'] ?? 'Kesalahan identitas atau kredensial API.';
         
         return $this->response->setJSON([
             'status' => 'error',
@@ -338,7 +337,7 @@ class AiController extends BaseController
 
     public function generateKktp()
     {
-        $pesanUser = $this->request->getPost('message');
+        $pesanUser =$this->request->getPost('message');
 
         if (empty($pesanUser)) {
             return $this->response->setJSON(['status' => 'error', 'message' => 'Prompt tidak boleh kosong.']);
@@ -348,20 +347,16 @@ class AiController extends BaseController
         // 📥 1. AMBIL KUNCI API (Prioritas: Akun Guru -> Default Server)
         // ==============================================================================
         $db = \Config\Database::connect();
-        $session = session();
-        
-        $userId = $session->get('id') ?? $session->get('user_id') ?? user_id();
+        $session = session();$userId = $session->get('id') ?? $session->get('user_id') ?? user_id();
         $apiKey = '';
 
-        if ($userId) {
-            $userRow = $db->table('users')->select('api_key_ai')->where('id', $userId)->get()->getRowArray();
+        if ($userId) {$userRow = $db->table('users')->select('api_key_ai')->where('id',$userId)->get()->getRowArray();
             if ($userRow && !empty(trim($userRow['api_key_ai']))) {
                 $apiKey = trim($userRow['api_key_ai']);
             }
         }
 
-        if (empty($apiKey)) {
-            $apiKeySetting = $db->tableExists('settings') ? $db->table('settings')->where('key', 'ai_api_key')->get()->getRowArray() : null;
+        if (empty($apiKey)) {$apiKeySetting = $db->tableExists('settings') ?$db->table('settings')->where('key', 'ai_api_key')->get()->getRowArray() : null;
             $apiKey = $apiKeySetting ? trim($apiKeySetting['value']) : '';
         }
 
@@ -372,7 +367,7 @@ class AiController extends BaseController
         // ==============================================================================
         // 🔗 2. TETAPKAN URL & INSTURKSI KHUSUS JSON MODE
         // ==============================================================================
-        $apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
+        $apiUrl = '[https://api.groq.com/openai/v1/chat/completions](https://api.groq.com/openai/v1/chat/completions)';
 
         // System prompt di-setting steril agar AI patuh 100% menghasilkan JSON tanpa basa-basi
         $systemInstruction = "Anda adalah Mesin Generator JSON otomatis khusus Kurikulum Merdeka. "
@@ -381,13 +376,13 @@ class AiController extends BaseController
                            . "Langsung berikan output teks berupa format JSON objek murni yang valid.";
 
         $data = [
-            'model' => 'llama-3.3-70b-versatile', 
+            'model' => 'openai/gpt-oss-120b', // REVISI: Menggunakan groq/compound
             'messages' => [
                 ['role' => 'system', 'content' => $systemInstruction],
                 ['role' => 'user', 'content' => $pesanUser]
             ],
             'temperature' => 0.2, // Di-set rendah agar AI sangat patuh pada format struktur JSON
-            'max_tokens' => 1000
+            'max_tokens' => 3000
         ];
 
         $headers = [ 'Authorization: Bearer ' . $apiKey, 'Content-Type: application/json' ];
@@ -411,6 +406,7 @@ class AiController extends BaseController
         if ($httpCode >= 200 && $httpCode < 300) {
             if (isset($responseData['choices'][0]['message']['content'])) {
                 $balasanSiKuMi = $responseData['choices'][0]['message']['content'];
+
                 return $this->response->setJSON(['status' => 'success', 'reply' => trim($balasanSiKuMi)]);
             }
         }
@@ -442,7 +438,7 @@ class AiController extends BaseController
         $db = \Config\Database::connect();
         $session = session();
         
-        $userId = $session->get('id') ?? $session->get('user_id') ?? user_id(); // <-- FIX PERBAIKAN DI SINI
+        $userId = $session->get('id') ?? $session->get('user_id') ?? user_id(); 
         $apiKey = '';
 
         // Coba ambil API Key mandiri milik guru dari tabel 'users'
@@ -509,13 +505,13 @@ class AiController extends BaseController
 
         // 6. Pack Data Kiriman ke Groq
         $payloadGroq = [
-            'model' => 'llama-3.3-70b-versatile', 
+            'model' => 'openai/gpt-oss-120b', // REVISI: Menggunakan groq/compound
             'messages' => [
                 ['role' => 'system', 'content' => $systemInstruction],
                 ['role' => 'user', 'content' => $pesanUser]
             ],
             'temperature' => 0.3, 
-            'max_tokens' => 4000
+            'max_tokens' => 3000
         ];
 
         // 7. Eksekusi cURL Tunggal ke Server Groq
@@ -546,9 +542,10 @@ class AiController extends BaseController
         if ($httpCode >= 200 && $httpCode < 300) {
             if (isset($responseData['choices'][0]['message']['content'])) {
                 $balasanAi = $responseData['choices'][0]['message']['content'];
+
                 return $this->response->setJSON([
                     'status' => 'success', 
-                    'reply' => $balasanAi
+                    'reply' => trim($balasanAi)
                 ]);
             }
         }
