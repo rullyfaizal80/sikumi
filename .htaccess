@@ -8,10 +8,13 @@ ErrorDocument 403 /sikumi/public/index.php/blocked
 # 1. Matikan fitur Directory Browsing di seluruh level folder
 Options -Indexes
 
-# 2. Blokir akses langsung via URL ke folder sensitif selain 'public'
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
-    # Jika user mengetik manual folder app, system, writable, atau file rahasia .env
+    # 2. Blokir akses langsung via URL ke folder sensitif selain 'public'
     RewriteRule ^(app|system|writable|\.env) - [F,L]
+
+    # 3. ARAHKAN SEMUA TRAFIK KE FOLDER PUBLIC (Tambahan baru agar tidak 403)
+    RewriteCond %{REQUEST_URI} !(/|^)public/
+    RewriteRule ^(.*)$ public/$1 [L,QSA]
 </IfModule>
