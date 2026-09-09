@@ -34,13 +34,14 @@ class Filters extends BaseFilters
         'forcehttps'    => ForceHTTPS::class,
         'pagecache'     => PageCache::class,
         'performance'   => PerformanceMetrics::class,
-        'session'       => \CodeIgniter\Shield\Filters\SessionAuth::class, // <-- TAMBAHKAN BARIS INI
-        'tokens'        => \CodeIgniter\Shield\Filters\TokenAuth::class,   // <-- TAMBAHKAN BARIS INI
-        'chain'         => \CodeIgniter\Shield\Filters\AuthenticationChainFilter::class, // <-- TAMBAHKAN BARIS INI
+        'session'       => \CodeIgniter\Shield\Filters\SessionAuth::class,
+        'tokens'        => \CodeIgniter\Shield\Filters\TokenAuth::class,
+        'chain'         => \CodeIgniter\Shield\Filters\AuthenticationChainFilter::class,
         'antibot'       => \App\Filters\AntiBotFilter::class,
         'group'         => \CodeIgniter\Shield\Filters\GroupFilter::class,
         'permission'    => \CodeIgniter\Shield\Filters\PermissionFilter::class,
         'dynamic_acl'   => \App\Filters\DynamicPermissionFilter::class,
+        'maintenance'   => \App\Filters\MaintenanceFilter::class, // <-- ALIAS MAINTENANCE DITAMBAHKAN
     ];
 
     /**
@@ -79,6 +80,7 @@ class Filters extends BaseFilters
      */
     public array $globals = [
         'before' => [
+            'maintenance', // <-- MODE MAINTENANCE DIAKTIFKAN GLOBAL
             // 'honeypot',
             // 'csrf',
             // 'invalidchars',
@@ -115,7 +117,7 @@ class Filters extends BaseFilters
      */
     public array $filters = [
         'antibot' => [
-            'before' => ['login'] // <-- TAMBAHKAN BARIS INI
+            'before' => ['login']
         ],
 
         'dynamic_acl' => [
