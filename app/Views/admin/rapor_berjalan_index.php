@@ -84,32 +84,31 @@
             <?php endif; ?>
 
             <div class="card card-custom">
+                <!-- HEADER (Atas): Hanya Export Excel & Dashboard -->
                 <div class="card-header card-header-custom d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center">
                         <i class="fas fa-book-open fs-6 me-2"></i>
                         <h6 class="mb-0 fw-bold" style="font-size: 14px;">Pencarian Laporan Perkembangan Murid</h6>
                     </div>
                     <div class="d-flex gap-2">
-        <!-- TOMBOL EXPORT LINK ORTU KE EXCEL -->
-        <a href="<?= base_url('admin/rapor-berjalan/export-links?semester=' . esc($semester ?? 'ganjil') . '&tahun=' . esc($tahun ?? date('Y'))) ?>" 
-           class="btn btn-warning btn-sm fw-bold px-2 py-0 d-flex align-items-center" style="font-size: 12px; color: #212529;" target="_blank">
-            <i class="fas fa-file-excel me-1"></i> Export Link Ortu
-        </a>
-        
-        <!-- Tombol Kembali Dashboard -->
-        <a href="<?= base_url('/') ?>" class="btn btn-light btn-sm text-secondary fw-semibold px-2 py-0 d-flex align-items-center" style="font-size: 12px;">
-            <i class="fas fa-arrow-left me-1"></i> Dashboard
-        </a>
-    </div>
+                        <a href="<?= base_url('admin/rapor-berjalan/export-links?semester=' . esc($semester ?? 'ganjil') . '&tahun=' . esc($tahun ?? date('Y'))) ?>" 
+                           class="btn btn-warning btn-sm fw-bold px-2 py-0 d-flex align-items-center" style="font-size: 12px; color: #212529;" target="_blank">
+                            <i class="fas fa-file-excel me-1"></i> Export Link Ortu
+                        </a>
+                        <a href="<?= base_url('/') ?>" class="btn btn-light btn-sm text-secondary fw-semibold px-2 py-0 d-flex align-items-center" style="font-size: 12px;">
+                            <i class="fas fa-arrow-left me-1"></i> Dashboard
+                        </a>
+                    </div>
                 </div>
+                
                 <div class="card-body p-2 px-3">
-                    
+                    <!-- FORM FILTER -->
                     <form action="" method="GET" id="filterForm">
                         <input type="hidden" name="tahun" value="<?= esc($tahun ?? date('Y')) ?>">
                         <input type="hidden" name="semester" value="<?= esc($semester ?? 'ganjil') ?>">
+                        <input type="hidden" name="titi_mangsa" id="hidden_titi_mangsa" value="<?= esc($selected_titi_mangsa ?? date('Y-m-d')) ?>">
 
                         <div class="row align-items-center g-2">
-                            <!-- Pilihan Kelas -->
                             <div class="col-md-6">
                                 <div class="row align-items-center g-1">
                                     <div class="col-auto">
@@ -129,8 +128,6 @@
                                     </div>
                                 </div>
                             </div>
-
-                            <!-- Pilihan Siswa -->
                             <div class="col-md-6">
                                 <div class="row align-items-center g-1">
                                     <div class="col-auto">
@@ -145,6 +142,23 @@
                             </div>
                         </div>
                     </form>
+
+                    <!-- DIV BARU (Bawah): KHUSUS TITI MANGSA & CETAK -->
+                    <?php if (!empty($selected_student)): ?>
+                    <hr class="mt-3 mb-2" style="border-color: #ddd;">
+                    <div class="d-flex justify-content-end align-items-center gap-2">
+                        <label for="titi_mangsa" class="form-label text-nowrap mb-0" style="font-size: 13px;">Titi Mangsa :</label>
+                       <div class="input-group input-group-sm" style="width: 150px;">
+    <span class="input-group-text bg-light border-end-0 text-secondary"><i class="fas fa-calendar-alt"></i></span>
+    <input type="date" id="titi_mangsa" class="form-control border-start-0" value="<?= esc($selected_titi_mangsa ?? date('Y-m-d')) ?>" title="Tanggal Titi Mangsa">
+</div>
+                        <a href="#" id="btnCetakRapor" data-baselink="<?= base_url('admin/rapor-berjalan?rombel_id=' . esc($selected_rombel ?? '') . '&student_id=' . esc($selected_student ?? '') . '&semester=' . esc($semester ?? '') . '&tahun=' . esc($tahun ?? '') . '&cetak=1') ?>" 
+                           class="btn btn-primary btn-sm fw-bold px-3 py-1 d-flex align-items-center">
+                            <i class="fas fa-print me-1"></i> Cetak Rapor
+                        </a>
+                    </div>
+                    <?php endif; ?>
+
                 </div>
             </div>
         </div>
@@ -589,6 +603,7 @@ $(document).ready(function() {
         $('#student_id').html('<option value="">-- Pilih Siswa --</option>');
     });
 
+    // Saat siswa diganti, form disubmit dan tanggal titi mangsa tetap ikut terkirim
     $('#student_id').change(function() {
         if ($(this).val() !== '') {
             $('#filterForm').submit();
@@ -598,6 +613,19 @@ $(document).ready(function() {
     if (selectedRombel !== '') {
         loadSiswa(selectedRombel, selectedStudent);
     }
+
+    // Sinkronisasi perubahan tanggal ke hidden input secara real-time
+    $(document).on('change', '#titi_mangsa', function() {
+        $('#hidden_titi_mangsa').val($(this).val());
+    });
+
+    // SCRIPT CETAK RAPOR
+    $(document).on('click', '#btnCetakRapor', function(e) {
+        e.preventDefault();
+        let baseLink = $(this).attr('data-baselink');
+        let tgl = $('#titi_mangsa').val();
+        window.open(baseLink + '&titi_mangsa=' + tgl, '_blank');
+    });
 });
 </script>
 

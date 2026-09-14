@@ -26,6 +26,7 @@ class AdminRaporBerjalanController extends BaseController
         $semester   = $request->getGet('semester') ?? 'ganjil';
         $tahun      = $request->getGet('tahun') ?? date('Y');
         $rombel_id  = $request->getGet('rombel_id') ?? ''; 
+        $titi_mangsa = $request->getGet('titi_mangsa') ?? date('Y-m-d');
 
         // 3. Data awal (jika belum ada pencarian)
         $data = [
@@ -34,6 +35,7 @@ class AdminRaporBerjalanController extends BaseController
             'semester'         => $semester,
             'selected_rombel'  => $rombel_id,
             'selected_student' => $student_id,
+            'selected_titi_mangsa' => $titi_mangsa,
             'dataSiswa'        => null // Default kosong sebelum difilter
         ];
 
@@ -648,6 +650,14 @@ class AdminRaporBerjalanController extends BaseController
             'matrixEskul'           => $matrixEskul,
             'matrixYaumiyah'        => $matrixYaumiyah 
         ]);
+
+        // Tambahkan baris ini sebelum return view
+        $isCetak = $request->getGet('cetak') ?? '0';
+
+        // Arahkan ke view cetak jika tombol cetak ditekan
+        if ($isCetak === '1') {
+    return view('admin/rapor_berjalan_print', $data);
+        }
 
         return view('admin/rapor_berjalan_index', $data);
     }
