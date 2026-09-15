@@ -129,14 +129,35 @@
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
         /* TAMPILAN KONTEN DEFAULT (LAYAR) */
-        .cover-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
-        .cover-title { font-family: 'Merriweather', serif; font-size: 26px; color: #15202b; font-weight: bold; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px; }
-        .cover-logo { margin: 30px 0; }
-        .cover-logo img { width: 150px; height: auto; }
-        .cover-student-box { background-color: #f4f9fd; border-left: 5px solid #0d47a1; border-right: 1px solid #ddd; border-top: 1px solid #ddd; border-bottom: 1px solid #ddd; padding: 18px; width: 85%; margin: 0 auto 30px auto; border-radius: 6px; }
+       /* UPDATE CSS UNTUK COVER */
+        .cover-wrapper { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            /* KUNCI KESEIMBANGAN: Jarak kosong dibagi merata ke tengah */
+            justify-content: space-between; 
+            height: 100%; 
+            text-align: center; 
+            /* Beri bantalan agar konten tidak menempel ke garis tepi kertas */
+            padding: 30px 0 20px 0; 
+        }
+        .cover-title { font-family: 'Merriweather', serif; font-size: 26px; color: #15202b; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-top: 15px; }
+        .cover-logo { margin: 0; }
+        .cover-logo img { width: 130px; height: auto; }
+        .cover-student-box { 
+            background-color: #f4f9fd; 
+            border-left: 5px solid #0d47a1; 
+            border-right: 1px solid #ddd; 
+            border-top: 1px solid #ddd; 
+            border-bottom: 1px solid #ddd; 
+            padding: 18px; 
+            width: 100%; /* Diubah menjadi 100% agar pas dengan lebar cover-bottom */
+            margin: 0 auto 55px auto; /* Angka 55px menentukan jarak/gap ke teks footer di bawahnya */
+            border-radius: 6px; 
+        }
         .cover-student-box h3 { margin: 0 0 8px 0; font-family: 'Merriweather', serif; color: #15202b; font-size: 20px; text-transform: uppercase; }
         .cover-student-box p { margin: 0; font-size: 15px; color: #535c5d; font-weight: 600; }
-        .cover-footer { margin-top: auto; font-size: 15px; font-weight: bold; text-transform: uppercase; color: #15202b; line-height: 1.5; }
+        .cover-footer { font-size: 20px; font-weight: bold; text-transform: uppercase; color: #15202b; line-height: 1.5; }
 
         .header-sekolah { text-align: center; border-bottom: 2px solid #1976d2; padding-bottom: 8px; margin-bottom: 12px; }
         .header-sekolah h2 { font-family: 'Merriweather', serif; color: #15202b; margin: 0 0 4px 0; font-size: 18px; text-transform: uppercase; }
@@ -207,21 +228,40 @@
         <!-- ================= HALAMAN 1 : COVER ================= -->
         <div class="a4-paper">
             <div class="cover-wrapper">
-                <div class="cover-title">
-                    Laporan Perkembangan Murid
+                
+                <!-- KELOMPOK 1: ATAS -->
+                <div class="cover-top" style="width: 100%;">
+                    <div>
+                        <img src="<?= base_url('assets/img/logo_kemenag.png') ?>" alt="Logo Kemenag" style="width: 300px; height: auto;">
+                    </div>
+                    <div class="cover-title" style="margin-top: 50px;">
+                        Laporan Perkembangan Murid
+                    </div>
                 </div>
+
+                <!-- KELOMPOK 2: TENGAH -->
                 <div class="cover-logo">
                     <img src="<?= base_url('assets/img/logo_kaldik2.png') ?>" alt="Logo Sekolah" onerror="this.style.display='none'">
                 </div>
-                <div class="cover-student-box">
-                    <p style="font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Nama Murid</p>
-                    <h3><?= esc($dataSiswa['name']) ?></h3>
-                    <p>NIS/NISN : <?= esc($dataSiswa['nis'] ?: '-') ?> / <?= esc($dataSiswa['nisn'] ?: '-') ?></p>
-                </div>
-                <div class="cover-footer">
-                    Kementerian Agama Republik Indonesia<br>
-                    MTsS Miftahul Huda<br>
-                    Tahun Ajaran <?= esc($tahun) ?>/<?= esc($tahun + 1) ?>
+
+                <!-- KELOMPOK 3: BAWAH (Didorong ke dasar kertas) -->
+                <!-- Gunakan display: flex dan gap untuk jarak pasti yang anti-gagal -->
+                <div class="cover-bottom" style="width: 75%; margin-bottom: 40px; display: flex; flex-direction: column; gap: 70px;">
+                    
+                    <!-- Kotak Identitas Siswa -->
+                    <div class="cover-student-box" style="margin: 0; width: 100%;">
+                        <p style="font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Nama Murid</p>
+                        <h3><?= esc($dataSiswa['name']) ?></h3>
+                        <p>NIS/NISN : <?= esc($dataSiswa['nis'] ?: '-') ?> / <?= esc($dataSiswa['nisn'] ?: '-') ?></p>
+                    </div>
+                    
+                    <!-- Teks Yayasan Bawah -->
+                    <div class="cover-footer" style="margin: 0;">
+                        MTSS MIFTAHUL HUDA<br>
+                        KOTA BANDUNG<br>
+                        PROVINSI JAWA BARAT
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -583,7 +623,7 @@
                     </tr>
                 </table>
 
-                <table class="signature-kamad" style="margin-top: 25px;">
+                <table class="signature-kamad" style="margin-top: 10px;">
                     <tr>
                         <td>Mengetahui,<br>Kepala Madrasah</td>
                     </tr>
