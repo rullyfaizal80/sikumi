@@ -246,7 +246,7 @@
             </div>
 
             <!-- A. PERKEMBANGAN AKADEMIK -->
-            <div class="section-title" style="margin-top: 0;">A. Perkembangan Akademik (Nilai Sumatif)</div>
+            <div class="section-title" style="margin-top: 25px;">A. Perkembangan Akademik (Nilai Sumatif)</div>
             <table class="data-table">
                 <thead>
                     <tr>
@@ -273,7 +273,7 @@
             </table>
 
             <!-- B. PERKEMBANGAN AL-QUR'AN -->
-            <div class="section-title">B. Perkembangan Al-Qur'an</div>
+            <div class="section-title" style="margin-top: 25px;">B. Perkembangan Al-Qur'an</div>
             <table class="data-table">
                 <thead> 
                     <tr> 
@@ -305,7 +305,7 @@
             </table>
 
             <!-- C. KEHADIRAN (ABSENSI) -->
-            <div class="section-title">C. Rekapitulasi Kehadiran</div>
+            <div class="section-title" style="margin-top: 25px;">C. Rekapitulasi Kehadiran</div>
             <table class="data-table">
                 <thead>
                     <tr>
@@ -379,7 +379,7 @@
             </table>
 
             <!-- E. PERKEMBANGAN SIKAP SPIRITUAL -->
-            <div class="section-title">E. Perkembangan Sikap Spiritual</div>
+            <div class="section-title" style="margin-top: 25px;">E. Perkembangan Sikap Spiritual</div>
             <table class="data-table">
                 <thead>
                     <tr>
@@ -411,7 +411,7 @@
             </table>
 
             <!-- F. PERKEMBANGAN SIKAP SOSIAL -->
-            <div class="section-title">F. Perkembangan Sikap Sosial</div>
+            <div class="section-title" style="margin-top: 25px;">F. Perkembangan Sikap Sosial</div>
             <table class="data-table" style="margin-bottom: 5px;">
                 <thead>
                     <tr>
@@ -441,7 +441,7 @@
                     </tr>
                 </tbody>
             </table>
-            <div style="font-size: 10px; color: #444;">
+            <div style="font-size: 10px; color: #444; margin-top: 15px;">
                 <strong>Keterangan Penilaian Karakter:</strong><br>
         A = Tidak pernah melanggar ketentuan<br>
         B = 1 - 2 kali melanggar ketentuan<br>
@@ -478,7 +478,7 @@
                     <?php endif; ?>
                 </tbody>
             </table>
-             <div style="font-size: 10px; color: #444;">
+             <div style="font-size: 10px; color: #444; margin-top: 15px;">
                 <strong>Keterangan Predikat Nilai:</strong><br>
             A = Sangat Baik (90 - 100)<br>
             B = Baik (80 - 89)<br>
@@ -487,7 +487,7 @@
             </div>
         
             <!-- H. ANEKDOT & PRESTASI -->
-            <div class="section-title">H. Catatan Anekdot & Prestasi</div>
+            <div class="section-title" style="margin-top: 25px;">H. Catatan Anekdot & Prestasi</div>
             <div class="catatan-box-container">
                 <div class="catatan-box">
                     <h4>Prestasi / Penghargaan</h4>
@@ -516,7 +516,7 @@
             </div>
 
             <!-- I. REKAPITULASI ASPEK YAUMIYAH -->
-            <div class="section-title">I. Rekapitulasi Aspek Yaumiyah</div>
+            <div class="section-title" style="margin-top: 25px;">I. Rekapitulasi Aspek Yaumiyah</div>
             <table class="data-table">
                 <thead>
                     <tr>
@@ -567,7 +567,7 @@
             </div>
             
             <!-- BLOK TANDA TANGAN (Di Halaman 4) -->
-            <div style="margin-top: 50px;" class="signature-section">
+            <div style="margin-top: 35px;" class="signature-section">
                 <table class="signature-table">
                     <tr>
                         <td>Mengetahui,<br>Orang Tua / Wali Murid</td>
