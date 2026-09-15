@@ -27,7 +27,6 @@
             border-radius: 8px; 
             position: relative;
             overflow: hidden;
-            /* Pastikan library PDF membaca page-break */
             page-break-after: always; 
             break-after: page;
         }
@@ -38,7 +37,7 @@
             break-after: auto !important;
         }
 
-        /* WATERMARK DI SETIAP HALAMAN */
+        /* WATERMARK DI LAYAR */
         .a4-paper::before {
             content: "";
             position: absolute;
@@ -51,7 +50,7 @@
             background-repeat: no-repeat;
             background-position: center;
             background-size: contain;
-            opacity: 0.08; 
+            opacity: 0.1; /* <--- Atur Transparansi di sini (misal 0.05 untuk lebih tipis) */
             z-index: 0;
             pointer-events: none;
         }
@@ -67,28 +66,69 @@
             box-shadow: none !important;
             border-radius: 0 !important;
             border-top: 8px solid #1976d2 !important;
-            /* Kurangi 0.5mm agar pembulatan pixel tidak meluber ke halaman kosong baru */
             height: 296.5mm !important; 
             max-height: 296.5mm !important;
         }
 
-        /* METODE CETAK BAWAAN (PRINT STYLES) */
+        /* ==========================================================
+           METODE CETAK BAWAAN PRINTER (PRINT STYLES) 
+           ========================================================== */
         @page { size: A4 portrait; margin: 0; }
+        
         @media print {
-            html, body { background: #fff !important; padding: 0 !important; margin: 0 !important; width: 210mm; height: 297mm; }
-            .a4-paper { 
-                width: 210mm !important; height: 297mm !important; margin: 0 !important; padding: 12mm 15mm !important; 
-                box-shadow: none !important; border-top: 8px solid #1976d2 !important; border-radius: 0 !important; 
-                page-break-after: always !important; break-after: page !important; page-break-inside: avoid !important; 
-                break-inside: avoid !important; overflow: hidden !important;
+            html, body { 
+                background: #fff !important; 
+                padding: 0 !important; 
+                margin: 0 !important; 
             }
-            .a4-paper:last-child, .a4-paper:last-of-type { page-break-after: avoid !important; break-after: avoid !important; }
+            
+            .a4-paper { 
+                width: 210mm !important; 
+                height: 297mm !important; 
+                max-height: 297mm !important;
+                margin: 0 !important; 
+                padding: 10mm 12mm !important; /* Ruang lebih lega untuk printer */
+                box-shadow: none !important; 
+                border-top: 8px solid #1976d2 !important; 
+                border-radius: 0 !important; 
+                
+                page-break-after: always !important; 
+                break-after: page !important; 
+                page-break-inside: avoid !important; 
+                break-inside: avoid !important; 
+                overflow: hidden !important; 
+            }
+            
+            /* KUNCI WATERMARK KE TITIK TENGAH A4 FISIK */
+            /* Memastikan logo tidak turun meskipun tabel sedikit memaksa melar */
+            .a4-paper::before {
+                top: 148.5mm !important; /* 148.5mm adalah angka mati setengah tinggi A4 */
+                left: 105mm !important;  /* 105mm adalah angka mati setengah lebar A4 */
+                transform: translate(-50%, -50%) !important;
+            }
+
+            /* PADATKAN KONTEN AGAR MUAT 1 HALAMAN TANPA MERUSAK LAYOUT */
+            table.data-table { font-size: 9.5px !important; margin-bottom: 6px !important; }
+            table.data-table th, table.data-table td { padding: 4px 4px !important; }
+            
+            .section-title { font-size: 10.5px !important; margin: 8px 0 4px 0 !important; padding: 4px 6px !important; }
+            .identitas-box { margin-bottom: 8px !important; padding: 8px 10px !important; font-size: 10.5px !important; }
+            .header-sekolah { margin-bottom: 10px !important; padding-bottom: 5px !important; }
+            .header-sekolah h2 { font-size: 16px !important; margin-bottom: 2px !important; }
+            
+            .catatan-box { padding: 6px 8px !important; min-height: 50px !important; }
+            .catatan-box h4 { font-size: 10.5px !important; margin-bottom: 4px !important; padding-bottom: 2px !important; }
+            ul.list-catatan { font-size: 9.5px !important; }
+            .signature-section { margin-top: 10px !important; }
+            
+            #area-pdf .a4-paper:last-child { page-break-after: auto !important; break-after: auto !important; }
             .print-actions-wrapper { display: none !important; }
         }
 
+        /* MEMAKSA BACKGROUND WARNA & WATERMARK TERCETAK */
         * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
-        /* TAMPILAN KONTEN */
+        /* TAMPILAN KONTEN DEFAULT (LAYAR) */
         .cover-wrapper { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; text-align: center; }
         .cover-title { font-family: 'Merriweather', serif; font-size: 26px; color: #15202b; font-weight: bold; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 1px; }
         .cover-logo { margin: 30px 0; }
@@ -174,7 +214,7 @@
                     <img src="<?= base_url('assets/img/logo_kaldik2.png') ?>" alt="Logo Sekolah" onerror="this.style.display='none'">
                 </div>
                 <div class="cover-student-box">
-                    <p style="font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Nama Peserta Didik</p>
+                    <p style="font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">Nama Murid</p>
                     <h3><?= esc($dataSiswa['name']) ?></h3>
                     <p>NIS/NISN : <?= esc($dataSiswa['nis'] ?: '-') ?> / <?= esc($dataSiswa['nisn'] ?: '-') ?></p>
                 </div>
@@ -402,7 +442,11 @@
                 </tbody>
             </table>
             <div style="font-size: 10px; color: #444;">
-                <strong>Keterangan Penilaian Karakter:</strong> A = Tidak pernah melanggar, B = 1-2 kali, C = 3-4 kali, D = > 4 kali
+                <strong>Keterangan Penilaian Karakter:</strong><br>
+        A = Tidak pernah melanggar ketentuan<br>
+        B = 1 - 2 kali melanggar ketentuan<br>
+        C = 3 - 4 kali melanggar ketentuan<br>
+        D = > 4 kali melanggar ketentuan
             </div>
         </div>
 
@@ -434,7 +478,14 @@
                     <?php endif; ?>
                 </tbody>
             </table>
-
+             <div style="font-size: 10px; color: #444;">
+                <strong>Keterangan Predikat Nilai:</strong><br>
+            A = Sangat Baik (90 - 100)<br>
+            B = Baik (80 - 89)<br>
+            C = Cukup (70 - 79)<br>
+            D = Kurang (&lt; 69)
+            </div>
+        
             <!-- H. ANEKDOT & PRESTASI -->
             <div class="section-title">H. Catatan Anekdot & Prestasi</div>
             <div class="catatan-box-container">
@@ -511,32 +562,34 @@
                     <?php endif; ?>
                 </tbody>
             </table>
+        <div style="font-size: 10px; color: #444;">
+                * Nilai yang ditampilkan adalah persentase capaian (%) dari target berdasarkan jumlah hari efektif sekolah per bulan.
+            </div>
             
             <!-- BLOK TANDA TANGAN (Di Halaman 4) -->
-            <div class="signature-section">
+            <div style="margin-top: 50px;" class="signature-section">
                 <table class="signature-table">
                     <tr>
                         <td>Mengetahui,<br>Orang Tua / Wali Murid</td>
                         <td><?= esc($titiMangsaStr) ?><br>Wali Kelas</td>
                     </tr>
                     <tr>
-                        <td style="height: 50px; vertical-align: bottom;">
+                        <td style="height: 70px; vertical-align: bottom;">
                             <b>( ........................................... )</b>
                         </td>
-                        <td style="height: 50px; vertical-align: bottom;">
+                        <td style="height: 70px; vertical-align: bottom;">
                             <b><?= esc($dataSiswa['wali_kelas'] ?? '...........................................') ?></b>
                         </td>
                     </tr>
                 </table>
 
-                <table class="signature-kamad">
+                <table class="signature-kamad" style="margin-top: 25px;">
                     <tr>
-                        <td>Mengetahui,<br>Kepala Sekolah</td>
+                        <td>Mengetahui,<br>Kepala Madrasah</td>
                     </tr>
                     <tr>
-                        <td style="height: 50px; vertical-align: bottom;">
-                            <b><?= esc($kepalaNama ?? '...........................................') ?></b><br>
-                            <span style="font-size: 10.5px;">NIP/NPK. <?= esc($kepalaNpk ?? '................................') ?></span>
+                        <td style="height: 70px; vertical-align: bottom;">
+                            <b>Yana Purnama, S.Pd.</b><br>
                         </td>
                     </tr>
                 </table>
