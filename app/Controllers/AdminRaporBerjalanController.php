@@ -83,13 +83,8 @@ class AdminRaporBerjalanController extends BaseController
         if ($isLaporanLampau) {
             $bulanAktif = $arrayBulanSemester;
         } else {
-            if ($hariSekarang >= 6) {
-                $batasBulan = $bulanSekarang - 1;
-            } else {
-                $batasBulan = $bulanSekarang - 2;
-            }
-            if ($batasBulan == 0) $batasBulan = 12;
-            if ($batasBulan == -1) $batasBulan = 11;
+            // REVISI: Jadikan bulan sekarang sebagai batas agar bulan berjalan ikut tampil
+            $batasBulan = $bulanSekarang;
 
             foreach ($arrayBulanSemester as $b) {
                 $intB = (int)$b;
@@ -221,7 +216,8 @@ class AdminRaporBerjalanController extends BaseController
         foreach ($kepatuhanKolom as $kolom) {
             $kepatuhan['totals'][$kolom] = 0;
             foreach ($bulanAktif as $b) {
-                $isBerjalan = ($tahun < $currentYear) || ($tahun == $currentYear && (int)$b < $currentMonth);
+                // REVISI: Ubah < menjadi <=
+                $isBerjalan = ($tahun < $currentYear) || ($tahun == $currentYear && (int)$b <= $currentMonth);
                 $kepatuhan['matrix'][$kolom][$b] = $isBerjalan ? 0 : '-';
             }
         }
@@ -287,7 +283,8 @@ class AdminRaporBerjalanController extends BaseController
             foreach ($kolomArray as $kolom) {
                 $totals[$kolom] = 0;
                 foreach ($bulanAktif as $b) {
-                    $isSudahLewat = ($tahun < $currentYear) || ($tahun == $currentYear && (int)$b < $currentMonth);
+                    // REVISI: Ubah < menjadi <=
+                    $isSudahLewat = ($tahun < $currentYear) || ($tahun == $currentYear && (int)$b <= $currentMonth);
                     $matrix[$kolom][$b] = $isSudahLewat ? 'A' : '-'; 
                 }
             }
@@ -295,7 +292,8 @@ class AdminRaporBerjalanController extends BaseController
 
             foreach ($dataRaw as $dr) {
                 $b = $dr['bulan'];
-                $isSudahLewat = ($tahun < $currentYear) || ($tahun == $currentYear && (int)$b < $currentMonth);
+                // REVISI: Ubah < menjadi <=
+                $isSudahLewat = ($tahun < $currentYear) || ($tahun == $currentYear && (int)$b <= $currentMonth);
                 if ($isSudahLewat) {
                     foreach ($kolomArray as $kolom) {
                         if (isset($dr[$kolom])) {
