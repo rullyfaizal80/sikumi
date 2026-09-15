@@ -154,7 +154,7 @@
 </div>
                         <a href="#" id="btnCetakRapor" data-baselink="<?= base_url('admin/rapor-berjalan?rombel_id=' . esc($selected_rombel ?? '') . '&student_id=' . esc($selected_student ?? '') . '&semester=' . esc($semester ?? '') . '&tahun=' . esc($tahun ?? '') . '&cetak=1') ?>" 
                            class="btn btn-primary btn-sm fw-bold px-3 py-1 d-flex align-items-center">
-                            <i class="fas fa-print me-1"></i> Cetak Rapor
+                            <i class="fas fa-download me-1"></i></i> Download PDF
                         </a>
                     </div>
                     <?php endif; ?>
