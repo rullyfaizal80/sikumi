@@ -640,23 +640,40 @@
 
     <!-- SCRIPT UNTUK PROSES DIRECT DOWNLOAD PDF -->
     <script>
-        function unduhPDF() {
-            // Ubah tombol jadi status loading
-            const btn = document.getElementById('btnDownloadPdf');
-            const teksAsli = btn.innerHTML;
-            btn.innerHTML = '⏳ Menyimpan PDF...';
-            btn.disabled = true;
+        // CEK APAKAH DIBUKA DARI IFRAME INDEX (MODE OTOMATIS)
+        const urlParams = new URLSearchParams(window.location.search);
+        const isAutoDownload = urlParams.get('auto_download') === '1';
 
-            // Targetkan area pembungkus
-            const elemen = document.getElementById('area-pdf');
+        if (isAutoDownload) {
+            // Sembunyikan panel tombol cetak agar tidak ikut ter-render
+            document.querySelector('.print-actions-wrapper').style.display = 'none';
             
-            // Tambahkan class khusus saat render PDF
+            // Eksekusi otomatis ketika semua elemen (termasuk gambar & watermark) selesai dimuat
+            window.onload = function() {
+                // Beri jeda 800ms memastikan html2canvas siap merender font dan logo
+                setTimeout(() => { 
+                    unduhPDF(true); 
+                }, 800); 
+            };
+        }
+
+        // FUNGSI UTAMA UNDUH PDF
+        function unduhPDF(isAuto = false) {
+            const btn = document.getElementById('btnDownloadPdf');
+            const teksAsli = btn ? btn.innerHTML : '';
+            
+            if (!isAuto && btn) {
+                btn.innerHTML = '⏳ Menyimpan PDF...';
+                btn.disabled = true;
+            }
+
+            const elemen = document.getElementById('area-pdf');
             elemen.classList.add('mode-download');
+            
+            if (!isAuto) {
+                window.scrollTo(0, 0);
+            }
 
-            // Scroll manual ke atas agar tidak ada area terpotong akibat user yang scroll mouse
-            window.scrollTo(0, 0);
-
-            // Konfigurasi PDF
             const namaSiswa = "<?= esc(str_replace(' ', '_', $dataSiswa['name'] ?? 'Siswa')) ?>";
             const opt = {
                 margin:       0, 
@@ -671,12 +688,17 @@
                 pagebreak:    { mode: 'css' }
             };
 
-            // Proses Generate PDF
             html2pdf().set(opt).from(elemen).save().then(function() {
-                // Kembalikan tombol dan layout ke semula
                 elemen.classList.remove('mode-download');
-                btn.innerHTML = teksAsli;
-                btn.disabled = false;
+                
+                if (isAuto) {
+                    // Jika otomatis, beri tahu halaman Index bahwa proses selesai!
+                    window.parent.postMessage('pdf_done', '*');
+                } else if (btn) {
+                    // Jika diklik manual dari halaman print
+                    btn.innerHTML = teksAsli;
+                    btn.disabled = false;
+                }
             });
         }
     </script>

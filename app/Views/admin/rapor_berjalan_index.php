@@ -152,10 +152,10 @@
     <span class="input-group-text bg-light border-end-0 text-secondary"><i class="fas fa-calendar-alt"></i></span>
     <input type="date" id="titi_mangsa" class="form-control border-start-0" value="<?= esc($selected_titi_mangsa ?? date('Y-m-d')) ?>" title="Tanggal Titi Mangsa">
 </div>
-                        <a href="#" id="btnCetakRapor" data-baselink="<?= base_url('admin/rapor-berjalan?rombel_id=' . esc($selected_rombel ?? '') . '&student_id=' . esc($selected_student ?? '') . '&semester=' . esc($semester ?? '') . '&tahun=' . esc($tahun ?? '') . '&cetak=1') ?>" 
-                           class="btn btn-primary btn-sm fw-bold px-3 py-1 d-flex align-items-center">
-                            <i class="fas fa-download me-1"></i></i> Download PDF
-                        </a>
+                       <a href="#" id="btnCetakRapor" data-baselink="<?= base_url('admin/rapor-berjalan?rombel_id=' . esc($selected_rombel ?? '') . '&student_id=' . esc($selected_student ?? '') . '&semester=' . esc($semester ?? '') . '&tahun=' . esc($tahun ?? '') . '&titi_mangsa=' . esc($selected_titi_mangsa ?? '') . '&cetak=1') ?>" 
+   class="btn btn-primary btn-sm fw-bold px-3 py-1 d-flex align-items-center">
+    <i class="fas fa-download me-1"></i> Download PDF
+</a>
                     </div>
                     <?php endif; ?>
 
@@ -626,6 +626,65 @@ $(document).ready(function() {
         let tgl = $('#titi_mangsa').val();
         window.open(baseLink + '&titi_mangsa=' + tgl, '_blank');
     });
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btnCetak = document.getElementById('btnCetakRapor');
+    
+    if (btnCetak) {
+        btnCetak.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            let btn = this;
+            let originalText = btn.innerHTML;
+            
+            // 1. Ubah status tombol menjadi loading
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Memproses PDF...';
+            btn.style.pointerEvents = 'none'; 
+            btn.disabled = true;
+
+            // 2. Ambil baselink dari tombol
+            let link = btn.getAttribute('data-baselink');
+
+            // BARU: Ambil nilai tanggal titi mangsa secara live dari input form (jika ada)
+            // Asumsinya input kalender Anda memiliki atribut name="titi_mangsa"
+            let inputTitiMangsa = document.querySelector('input[name="titi_mangsa"]');
+            if (inputTitiMangsa && inputTitiMangsa.value !== '') {
+                link += '&titi_mangsa=' + inputTitiMangsa.value;
+            }
+
+            // Tambahkan perintah auto download
+            link += '&auto_download=1';
+
+            // 3. Buat Iframe tersembunyi
+            let iframe = document.getElementById('hiddenPdfFrame');
+            if (!iframe) {
+                iframe = document.createElement('iframe');
+                iframe.id = 'hiddenPdfFrame';
+                iframe.style.position = 'fixed';
+                iframe.style.left = '-9999px'; 
+                iframe.style.top = '0';
+                iframe.style.width = '210mm';  
+                iframe.style.height = '100vh';
+                iframe.style.border = 'none';
+                document.body.appendChild(iframe);
+            }
+            
+            // 4. Load halaman print ke dalam iframe
+            iframe.src = link;
+
+            // 5. Dengarkan sinyal pesan dari iframe saat PDF selesai
+            window.addEventListener('message', function pdfListener(event) {
+                if (event.data === 'pdf_done') {
+                    btn.innerHTML = originalText;
+                    btn.style.pointerEvents = 'auto';
+                    btn.disabled = false;
+                    window.removeEventListener('message', pdfListener);
+                }
+            });
+        });
+    }
 });
 </script>
 
