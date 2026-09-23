@@ -675,12 +675,17 @@
             }
 
             const namaSiswa = "<?= esc(str_replace(' ', '_', $dataSiswa['name'] ?? 'Siswa')) ?>";
+            // KODE JALAN TENGAH (TAJAM & UKURAN KECIL)
             const opt = {
                 margin:       0, 
                 filename:     'Rapor_Perkembangan_' + namaSiswa + '.pdf',
-                image:        { type: 'jpeg', quality: 0.98 },
+                
+                // 1. KEMBALI KE JPEG: Agar gambar dikompresi dan ukuran file kembali kecil (kisaran 2-5 MB)
+                image:        { type: 'jpeg', quality: 0.98 }, 
+                
                 html2canvas:  { 
-                    scale: 2, 
+                    // 2. SKALA 3: Lebih tajam dari bawaan (2), tapi file jauh lebih ringan dibanding skala 4
+                    scale: 3, 
                     useCORS: true,
                     scrollY: 0
                 },
