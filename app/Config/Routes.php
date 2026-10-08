@@ -389,3 +389,9 @@ $routes->get('siswa/rapor', 'SiswaRaporController::index');
 // Rute untuk Rapor Orang Tua (Tanpa Login)
 $routes->get('rapor-ortu/view/(:num)/(:segment)/(:num)/(:segment)', 'OrtuRaporController::index/$1/$2/$3/$4');
 $routes->get('admin/rapor-berjalan/export-links', 'AdminRaporBerjalanController::exportLinksExcel');
+
+$routes->get('asesmen/admin', 'Asesmen::admin_index');
+$routes->post('asesmen/admin/simpan-kategori', 'Asesmen::simpan_kategori');
+$routes->get('asesmen/admin/hapus-kategori/(:num)', 'Asesmen::hapus_kategori/$1');
+$routes->get('asesmen/admin/create', 'Asesmen::create_jadwal');
+$routes->post('asesmen/admin/store', 'Asesmen::store_jadwal');
