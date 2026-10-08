@@ -395,3 +395,6 @@ $routes->post('asesmen/admin/simpan-kategori', 'Asesmen::simpan_kategori');
 $routes->get('asesmen/admin/hapus-kategori/(:num)', 'Asesmen::hapus_kategori/$1');
 $routes->get('asesmen/admin/create', 'Asesmen::create_jadwal');
 $routes->post('asesmen/admin/store', 'Asesmen::store_jadwal');
+$routes->get('asesmen/admin/edit/(:num)', 'Asesmen::edit_jadwal/$1');
+$routes->post('asesmen/admin/update/(:num)', 'Asesmen::update_jadwal/$1');
+$routes->get('asesmen/admin/hapus/(:num)', 'Asesmen::hapus_jadwal/$1');

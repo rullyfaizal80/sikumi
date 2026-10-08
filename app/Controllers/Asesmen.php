@@ -68,13 +68,14 @@ class Asesmen extends BaseController
         $data = [
             'title'          => 'Tambah Jadwal Ujian Baru',
             'kategori_ujian' => $this->categoryModel->findAll(),
-            'rombels'        => $rombelModel->findAll(),
-            'subjects'       => $subjectModel->findAll()
+            // FILTER KELAS HANYA UNTUK TAHUN AJARAN AKTIF
+            'rombels'        => $rombelModel->where('academic_year_id', $activeYear['id'])->findAll(),
+            'subjects'       => $subjectModel->findAll() // Catatan: Jika master_subjects bersifat global (berlaku semua tahun), boleh tetap findAll()
         ];
 
         return view('asesmen/create_jadwal', $data);
     }
-
+    
     public function store_jadwal()
     {
         $activeYear = $this->tahunModel->getActiveYear();
@@ -96,6 +97,69 @@ class Asesmen extends BaseController
         ]);
 
         session()->setFlashdata('success', 'Jadwal berhasil dibuat! Token otomatis digenerate: ' . $token);
+        return redirect()->to('/asesmen/admin');
+    }
+
+    // --- FUNGSI EDIT JADWAL ---
+    public function edit_jadwal($id)
+    {
+        $jadwal = $this->examModel->find($id);
+        if (!$jadwal) {
+            return redirect()->to('/asesmen/admin')->with('error', 'Data jadwal tidak ditemukan.');
+        }
+
+        $rombelModel = new \App\Models\RombelModel();
+        $subjectModel = new \App\Models\SubjectModel();
+        $activeYear = $this->tahunModel->getActiveYear();
+
+        $data = [
+            'title'          => 'Edit Jadwal Ujian',
+            'jadwal'         => $jadwal,
+            'kategori_ujian' => $this->categoryModel->findAll(),
+            // FILTER KELAS HANYA UNTUK TAHUN AJARAN AKTIF
+            'rombels'        => $rombelModel->where('academic_year_id', $activeYear['id'])->findAll(),
+            'subjects'       => $subjectModel->findAll()
+        ];
+
+        return view('asesmen/edit_jadwal', $data);
+    }
+
+    // --- FUNGSI UPDATE JADWAL ---
+    public function update_jadwal($id)
+    {
+        // Siapkan data yang akan diupdate
+        $dataUpdate = [
+            'id'               => $id, // ID disertakan agar fungsi save() melakukan UPDATE, bukan INSERT
+            'exam_category_id' => $this->request->getPost('exam_category_id'),
+            'rombel_id'        => $this->request->getPost('rombel_id'),
+            'subject_id'       => $this->request->getPost('subject_id'),
+            'link_gform'       => $this->request->getPost('link_gform'),
+            'waktu_mulai'      => $this->request->getPost('waktu_mulai'),
+            'waktu_selesai'    => $this->request->getPost('waktu_selesai'),
+            'durasi_menit'     => $this->request->getPost('durasi_menit'),
+            'is_active'        => $this->request->getPost('is_active') ? 1 : 0
+        ];
+
+        // Jika Admin mencentang "Reset Token", buatkan token acak baru
+        if ($this->request->getPost('reset_token')) {
+            $newToken = strtoupper(substr(str_shuffle("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"), 0, 6));
+            $dataUpdate['token'] = $newToken;
+            $pesan = 'Jadwal berhasil diperbarui dan Token Baru telah dibuat: ' . $newToken;
+        } else {
+            $pesan = 'Jadwal ujian berhasil diperbarui!';
+        }
+
+        $this->examModel->save($dataUpdate);
+
+        session()->setFlashdata('success', $pesan);
+        return redirect()->to('/asesmen/admin');
+    }
+
+    // --- FUNGSI HAPUS JADWAL ---
+    public function hapus_jadwal($id)
+    {
+        $this->examModel->delete($id);
+        session()->setFlashdata('success', 'Jadwal ujian berhasil dihapus.');
         return redirect()->to('/asesmen/admin');
     }
 }

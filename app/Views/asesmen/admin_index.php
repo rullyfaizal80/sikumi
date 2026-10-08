@@ -109,8 +109,12 @@
     </td>
     
     <td class="text-center">
-        <a href="#" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i></a>
-        <a href="#" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i></a>
+        <a href="<?= base_url('asesmen/admin/edit/' . $jadwal['id']) ?>" class="btn btn-sm btn-primary" title="Edit Jadwal">
+    <i class="fas fa-edit"></i>
+</a>
+<a href="<?= base_url('asesmen/admin/hapus/' . $jadwal['id']) ?>" class="btn btn-sm btn-danger" title="Hapus Jadwal" onclick="return confirm('Apakah Anda yakin ingin menghapus jadwal ujian ini secara permanen? Semua riwayat ujian siswa pada jadwal ini akan ikut terhapus!');">
+    <i class="fas fa-trash"></i>
+</a>
     </td>
 </tr>
 <?php endforeach; ?>
