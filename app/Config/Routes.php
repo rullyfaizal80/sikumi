@@ -406,3 +406,4 @@ $routes->get('siswa/asesmen/selesai-ujian/(:num)', 'SiswaAsesmen::selesai_ujian/
 $routes->get('asesmen/admin/monitor', 'Asesmen::monitor_ujian');
 $routes->get('asesmen/admin/api-monitor', 'Asesmen::get_monitor_data');
 $routes->get('asesmen/admin/duplikat/(:num)', 'Asesmen::duplikat_jadwal/$1');
+$routes->post('asesmen/admin/toggle-status/(:num)', 'Asesmen::toggle_status/$1');

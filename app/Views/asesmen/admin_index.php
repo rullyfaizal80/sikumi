@@ -60,6 +60,7 @@
                                 <th>Mata Pelajaran</th>
                                 <th>Waktu Pelaksanaan</th>
                                 <th class="text-center">Status</th>
+                                <th>Link GForm</th> <!-- Kolom Baru -->
                                 <th class="text-center">Aksi</th>
                             </tr>
                         </thead>
@@ -83,40 +84,42 @@
     
     <td><?= esc($jadwal['rombel_name'] ?? 'N/A') ?></td>
     <td><?= esc($jadwal['subject_name'] ?? 'N/A') ?></td>
+   <!-- 5. Tampilan Waktu Pelaksanaan (Hanya Start: dd-mm-yyyy hh:mm) -->
     <td>
-        <small>
-            <i class="fas fa-play text-success mr-1"></i> <?= esc($jadwal['waktu_mulai']) ?><br>
-            <i class="fas fa-stop text-danger mr-1"></i> <?= esc($jadwal['waktu_selesai']) ?>
-        </small>
+        <span class="font-weight-bold text-secondary">
+            <i class="far fa-calendar-alt mr-1"></i> 
+            <?= date('d-m-Y H:i', strtotime($jadwal['waktu_mulai'])) ?>
+        </span>
     </td>
     
-    <!-- 3. Perbaikan Status: Menggunakan teks hijau/abu-abu dengan Icon -->
+   <!-- 3. Perbaikan Status menggunakan Toggle Switch -->
     <td class="text-center">
-        <?php if($jadwal['is_active']): ?>
-            <strong class="text-success"><i class="fas fa-check-circle mr-1"></i>Aktif</strong>
-        <?php else: ?>
-            <strong class="text-secondary"><i class="fas fa-ban mr-1"></i>Nonaktif</strong>
-        <?php endif; ?>
+        <div class="custom-control custom-switch">
+            <input type="checkbox" class="custom-control-input toggle-status" id="statusSwitch<?= $jadwal['id'] ?>" data-id="<?= $jadwal['id'] ?>" <?= $jadwal['is_active'] ? 'checked' : '' ?>>
+            <label class="custom-control-label" for="statusSwitch<?= $jadwal['id'] ?>" style="cursor: pointer;"></label>
+        </div>
+    </td>
+
+    <!-- 4. Kolom Baru: Link Google Form (Ditampilkan semua dengan word-wrap dan huruf diperkecil) -->
+    <td style="max-width: 250px;">
+        <a href="<?= esc($jadwal['link_gform']) ?>" target="_blank" class="text-info text-break" style="font-size: 12px;">
+            <i class="fas fa-link mr-1"></i><?= esc($jadwal['link_gform']) ?>
+        </a>
     </td>
     
-   <td class="text-center">
-        <!-- 1. Tombol Cek GForm (Buka Tab Baru) -->
-        <a href="<?= esc($jadwal['link_gform']) ?>" target="_blank" class="btn btn-sm btn-info mb-1" title="Cek Link Google Form">
-            <i class="fas fa-external-link-alt"></i>
-        </a>
-        
-        <!-- 2. Tombol Duplikat Jadwal -->
+    <td class="text-center">
+        <!-- Tombol Duplikat Jadwal -->
         <a href="<?= base_url('asesmen/admin/duplikat/' . $jadwal['id']) ?>" class="btn btn-sm btn-warning mb-1" title="Duplikat Jadwal" onclick="return confirm('Apakah Anda yakin ingin menduplikat jadwal ini? Jadwal baru akan otomatis berstatus Nonaktif agar aman diedit.');">
             <i class="fas fa-copy"></i>
         </a>
 
-        <!-- 3. Tombol Edit -->
+        <!-- Tombol Edit -->
         <a href="<?= base_url('asesmen/admin/edit/' . $jadwal['id']) ?>" class="btn btn-sm btn-primary mb-1" title="Edit Jadwal">
             <i class="fas fa-edit"></i>
         </a>
         
-        <!-- 4. Tombol Hapus -->
-        <a href="<?= base_url('asesmen/admin/hapus/' . $jadwal['id']) ?>" class="btn btn-sm btn-danger mb-1" title="Hapus Jadwal" onclick="return confirm('Apakah Anda yakin ingin menghapus jadwal ujian ini secara permanen? Semua riwayat ujian siswa pada jadwal ini akan ikut terhapus!');">
+        <!-- Tombol Hapus -->
+        <a href="<?= base_url('asesmen/admin/hapus/' . $jadwal['id']) ?>" class="btn btn-sm btn-danger mb-1" title="Hapus Jadwal" onclick="return confirm('Apakah Anda yakin ingin menghapus jadwal ujian ini secara permanen?');">
             <i class="fas fa-trash"></i>
         </a>
     </td>
@@ -189,5 +192,34 @@
     <!-- Script jQuery & Bootstrap JS (Dibutuhkan untuk Modal & Alert) -->
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Ketika tombol switch status diklik
+            $('.toggle-status').on('change', function() {
+                var scheduleId = $(this).data('id');
+                var isActive = $(this).is(':checked') ? 1 : 0;
+                var toggleElement = $(this);
+                
+                $.ajax({
+                    url: '<?= base_url("asesmen/admin/toggle-status") ?>/' + scheduleId,
+                    type: 'POST',
+                    data: {
+                        is_active: isActive
+                    },
+                    success: function(response) {
+                        if(response.success) {
+                            // (Opsional) Jika Anda ingin memunculkan notifikasi kecil saat sukses:
+                            // alert(response.message);
+                        }
+                    },
+                    error: function() {
+                        alert('Gagal mengubah status ujian. Silakan periksa koneksi Anda.');
+                        // Kembalikan posisi sakelar ke posisi semula jika error
+                        toggleElement.prop('checked', !isActive);
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html>

@@ -233,4 +233,24 @@ class Asesmen extends BaseController
 
         return redirect()->to('/asesmen/admin');
     }
+
+    // --- FUNGSI TOGGLE STATUS AJAX (TANPA REFRESH) ---
+    public function toggle_status($id)
+    {
+        if ($this->request->isAJAX()) {
+            $status = $this->request->getPost('is_active');
+            
+            $this->examModel->save([
+                'id'        => $id,
+                'is_active' => $status
+            ]);
+
+            return $this->response->setJSON([
+                'success' => true, 
+                'message' => 'Status ujian berhasil diubah.'
+            ]);
+        }
+        
+        return $this->response->setStatusCode(403)->setBody('Akses ditolak.');
+    }
 }
