@@ -209,4 +209,28 @@ class Asesmen extends BaseController
             'students' => $activeStudents
         ]);
     }
+
+    // --- FUNGSI DUPLIKAT JADWAL ---
+    public function duplikat_jadwal($id)
+    {
+        // Cari data jadwal berdasarkan ID
+        $jadwalLama = $this->examModel->find($id);
+        
+        if ($jadwalLama) {
+            // Hapus ID lama agar Query Builder menyimpannya sebagai baris data baru (Insert)
+            unset($jadwalLama['id']);
+            
+            // Set status menjadi NONAKTIF secara default untuk keamanan
+            $jadwalLama['is_active'] = 0;
+            
+            // Simpan sebagai jadwal baru
+            $this->examModel->save($jadwalLama);
+            
+            session()->setFlashdata('success', 'Jadwal berhasil diduplikat! Jadwal baru berstatus Nonaktif, silakan Edit untuk menyesuaikan Kelas atau Waktu sebelum diaktifkan.');
+        } else {
+            session()->setFlashdata('error', 'Gagal menduplikat jadwal. Data tidak ditemukan.');
+        }
+
+        return redirect()->to('/asesmen/admin');
+    }
 }

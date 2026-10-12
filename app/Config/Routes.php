@@ -405,3 +405,4 @@ $routes->get('siswa/asesmen/eksekusi-blokir/(:num)', 'SiswaAsesmen::eksekusi_blo
 $routes->get('siswa/asesmen/selesai-ujian/(:num)', 'SiswaAsesmen::selesai_ujian/$1');
 $routes->get('asesmen/admin/monitor', 'Asesmen::monitor_ujian');
 $routes->get('asesmen/admin/api-monitor', 'Asesmen::get_monitor_data');
+$routes->get('asesmen/admin/duplikat/(:num)', 'Asesmen::duplikat_jadwal/$1');

@@ -99,13 +99,26 @@
         <?php endif; ?>
     </td>
     
-    <td class="text-center">
-        <a href="<?= base_url('asesmen/admin/edit/' . $jadwal['id']) ?>" class="btn btn-sm btn-primary" title="Edit Jadwal">
-    <i class="fas fa-edit"></i>
-</a>
-<a href="<?= base_url('asesmen/admin/hapus/' . $jadwal['id']) ?>" class="btn btn-sm btn-danger" title="Hapus Jadwal" onclick="return confirm('Apakah Anda yakin ingin menghapus jadwal ujian ini secara permanen? Semua riwayat ujian siswa pada jadwal ini akan ikut terhapus!');">
-    <i class="fas fa-trash"></i>
-</a>
+   <td class="text-center">
+        <!-- 1. Tombol Cek GForm (Buka Tab Baru) -->
+        <a href="<?= esc($jadwal['link_gform']) ?>" target="_blank" class="btn btn-sm btn-info mb-1" title="Cek Link Google Form">
+            <i class="fas fa-external-link-alt"></i>
+        </a>
+        
+        <!-- 2. Tombol Duplikat Jadwal -->
+        <a href="<?= base_url('asesmen/admin/duplikat/' . $jadwal['id']) ?>" class="btn btn-sm btn-warning mb-1" title="Duplikat Jadwal" onclick="return confirm('Apakah Anda yakin ingin menduplikat jadwal ini? Jadwal baru akan otomatis berstatus Nonaktif agar aman diedit.');">
+            <i class="fas fa-copy"></i>
+        </a>
+
+        <!-- 3. Tombol Edit -->
+        <a href="<?= base_url('asesmen/admin/edit/' . $jadwal['id']) ?>" class="btn btn-sm btn-primary mb-1" title="Edit Jadwal">
+            <i class="fas fa-edit"></i>
+        </a>
+        
+        <!-- 4. Tombol Hapus -->
+        <a href="<?= base_url('asesmen/admin/hapus/' . $jadwal['id']) ?>" class="btn btn-sm btn-danger mb-1" title="Hapus Jadwal" onclick="return confirm('Apakah Anda yakin ingin menghapus jadwal ujian ini secara permanen? Semua riwayat ujian siswa pada jadwal ini akan ikut terhapus!');">
+            <i class="fas fa-trash"></i>
+        </a>
     </td>
 </tr>
 <?php endforeach; ?>
