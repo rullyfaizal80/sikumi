@@ -9,10 +9,12 @@ class ExamScheduleModel extends Model
     protected $primaryKey       = 'id';
     protected $returnType       = 'array';
     
+    // PERBAIKAN: 'token' sudah dihapus dari array di bawah ini
     protected $allowedFields = [
         'academic_year_id', 'exam_category_id', 'rombel_id', 'subject_id', 
-        'link_gform', 'waktu_mulai', 'waktu_selesai', 'durasi_menit', 'token', 'is_active'
+        'link_gform', 'waktu_mulai', 'waktu_selesai', 'durasi_menit', 'is_active'
     ];
+    
     protected $useTimestamps    = true; 
 
     // Update query Join

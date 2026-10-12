@@ -155,7 +155,6 @@
             
             var modal = $(this);
             modal.find('#modalExamId').val(examId);
-            modal.find('#modalMapeltext').text(mapel);
             modal.find('#modalMapel').text(mapel);
         });
     </script>

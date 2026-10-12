@@ -84,9 +84,6 @@ class Asesmen extends BaseController
     {
         $activeYear = $this->tahunModel->getActiveYear();
         
-        // Generate Token Acak 6 Karakter (Huruf Kapital dan Angka)
-        $token = strtoupper(substr(str_shuffle("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"), 0, 6));
-
         $this->examModel->save([
             'academic_year_id' => $activeYear['id'],
             'exam_category_id' => $this->request->getPost('exam_category_id'),
@@ -96,11 +93,11 @@ class Asesmen extends BaseController
             'waktu_mulai'      => $this->request->getPost('waktu_mulai'),
             'waktu_selesai'    => $this->request->getPost('waktu_selesai'),
             'durasi_menit'     => $this->request->getPost('durasi_menit'),
-            'token'            => $token,
+            // 'token' => $token,  <-- BARIS INI DIHAPUS
             'is_active'        => $this->request->getPost('is_active') ? 1 : 0
         ]);
 
-        session()->setFlashdata('success', 'Jadwal berhasil dibuat! Token otomatis digenerate: ' . $token);
+        session()->setFlashdata('success', 'Jadwal ujian berhasil dibuat!');
         return redirect()->to('/asesmen/admin');
     }
 
@@ -128,12 +125,10 @@ class Asesmen extends BaseController
         return view('asesmen/edit_jadwal', $data);
     }
 
-    // --- FUNGSI UPDATE JADWAL ---
-    public function update_jadwal($id)
+   public function update_jadwal($id)
     {
-        // Siapkan data yang akan diupdate
         $dataUpdate = [
-            'id'               => $id, // ID disertakan agar fungsi save() melakukan UPDATE, bukan INSERT
+            'id'               => $id,
             'exam_category_id' => $this->request->getPost('exam_category_id'),
             'rombel_id'        => $this->request->getPost('rombel_id'),
             'subject_id'       => $this->request->getPost('subject_id'),
@@ -144,18 +139,11 @@ class Asesmen extends BaseController
             'is_active'        => $this->request->getPost('is_active') ? 1 : 0
         ];
 
-        // Jika Admin mencentang "Reset Token", buatkan token acak baru
-        if ($this->request->getPost('reset_token')) {
-            $newToken = strtoupper(substr(str_shuffle("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"), 0, 6));
-            $dataUpdate['token'] = $newToken;
-            $pesan = 'Jadwal berhasil diperbarui dan Token Baru telah dibuat: ' . $newToken;
-        } else {
-            $pesan = 'Jadwal ujian berhasil diperbarui!';
-        }
+        // LOGIKA RESET TOKEN DIHAPUS TOTAL KARENA SUDAH GLOBAL
 
         $this->examModel->save($dataUpdate);
 
-        session()->setFlashdata('success', $pesan);
+        session()->setFlashdata('success', 'Jadwal ujian berhasil diperbarui!');
         return redirect()->to('/asesmen/admin');
     }
 

@@ -52,13 +52,14 @@
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-6 form-group">
+                       <div class="col-md-6 form-group">
                             <label class="font-weight-bold">Mata Pelajaran</label>
                             <select name="subject_id" class="form-control" required>
                                 <option value="">-- Pilih Mata Pelajaran --</option>
                                 <?php foreach($subjects as $subject): ?>
+                                    <!-- HANYA MENAMPILKAN SUBJECT_NAME -->
                                     <option value="<?= $subject['id'] ?>" <?= ($jadwal['subject_id'] == $subject['id']) ? 'selected' : '' ?>>
-                                        <?= esc($subject['subject_name']) ?> (<?= esc($subject['subject_code']) ?>)
+                                        <?= esc($subject['subject_name']) ?>
                                     </option>
                                 <?php endforeach; ?>
                             </select>
@@ -86,26 +87,10 @@
                         </div>
                     </div>
 
-                    <hr>
-
-                    <!-- Alert Info Token Saat Ini -->
-                    <div class="alert alert-warning mb-3">
-                        <i class="fas fa-key mr-2"></i> Token Ujian saat ini: <strong><?= esc($jadwal['token']) ?></strong>
-                    </div>
-
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="custom-control custom-switch mt-2">
-                                <input type="checkbox" class="custom-control-input" id="isActiveSwitch" name="is_active" value="1" <?= $jadwal['is_active'] ? 'checked' : '' ?>>
-                                <label class="custom-control-label font-weight-bold text-success" for="isActiveSwitch">Aktifkan Ujian?</label>
-                            </div>
-                        </div>
-                        <div class="col-md-6 border-left">
-                            <div class="custom-control custom-checkbox mt-2">
-                                <input type="checkbox" class="custom-control-input" id="resetTokenSwitch" name="reset_token" value="1">
-                                <label class="custom-control-label font-weight-bold text-danger" for="resetTokenSwitch">Generate Ulang Token Baru?</label>
-                                <small class="d-block text-muted">Centang jika token lama bocor ke siswa yang belum waktunya ujian.</small>
-                            </div>
+                    <div class="form-group mb-4 mt-3">
+                        <div class="custom-control custom-switch">
+                            <input type="checkbox" class="custom-control-input" id="isActiveSwitch" name="is_active" value="1" <?= $jadwal['is_active'] ? 'checked' : '' ?>>
+                            <label class="custom-control-label font-weight-bold text-success" for="isActiveSwitch">Aktifkan Ujian?</label>
                         </div>
                     </div>
 

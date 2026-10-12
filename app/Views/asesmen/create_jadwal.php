@@ -50,12 +50,13 @@
                                 <?php endforeach; ?>
                             </select>
                         </div>
-                        <div class="col-md-6 form-group">
+                       <div class="col-md-6 form-group">
                             <label class="font-weight-bold">Mata Pelajaran</label>
                             <select name="subject_id" class="form-control" required>
                                 <option value="">-- Pilih Mata Pelajaran --</option>
                                 <?php foreach($subjects as $subject): ?>
-                                    <option value="<?= $subject['id'] ?>"><?= esc($subject['subject_name']) ?> (<?= esc($subject['subject_code']) ?>)</option>
+                                    <!-- HANYA MENAMPILKAN SUBJECT_NAME -->
+                                    <option value="<?= $subject['id'] ?>"><?= esc($subject['subject_name']) ?></option>
                                 <?php endforeach; ?>
                             </select>
                         </div>

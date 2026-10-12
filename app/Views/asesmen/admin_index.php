@@ -70,7 +70,6 @@
                                 <th>Kelas</th>
                                 <th>Mata Pelajaran</th>
                                 <th>Waktu Pelaksanaan</th>
-                                <th class="text-center">Token</th>
                                 <th class="text-center">Status</th>
                                 <th class="text-center">Aksi</th>
                             </tr>
@@ -100,13 +99,6 @@
             <i class="fas fa-play text-success mr-1"></i> <?= esc($jadwal['waktu_mulai']) ?><br>
             <i class="fas fa-stop text-danger mr-1"></i> <?= esc($jadwal['waktu_selesai']) ?>
         </small>
-    </td>
-    
-    <!-- 2. Perbaikan Token: Menggunakan warna merah terang agar mencolok -->
-    <td class="text-center">
-        <span class="font-weight-bold" style="color: #d81b60; font-size: 15px; letter-spacing: 2px;">
-            <?= esc($jadwal['token']) ?>
-        </span>
     </td>
     
     <!-- 3. Perbaikan Status: Menggunakan teks hijau/abu-abu dengan Icon -->
