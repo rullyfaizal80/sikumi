@@ -154,4 +154,55 @@ class Asesmen extends BaseController
         session()->setFlashdata('success', 'Jadwal ujian berhasil dihapus.');
         return redirect()->to('/asesmen/admin');
     }
+
+    // =========================================================================
+    // FITUR MONITORING PENGAWAS (REAL-TIME)
+    // =========================================================================
+
+    // 1. Menampilkan Halaman View Monitor
+    public function monitor_ujian()
+    {
+        $data = ['title' => 'Layar Monitor Pengawas'];
+        return view('asesmen/monitor_ujian', $data);
+    }
+
+    // 2. API Endpoint untuk menyuplai data ke Frontend setiap 10 detik
+    public function get_monitor_data()
+    {
+        // A. Generate Token saat ini
+        $secretKey = "SIKUMI_EXAM";
+        $timeBlock = floor(time() / 300); 
+        $globalToken = strtoupper(substr(md5($secretKey . $timeBlock), 0, 6));
+
+        // B. Ambil data siswa yang sedang ujian
+        $db = \Config\Database::connect();
+        
+        /* 
+         * Catatan: Sesuaikan 'users.username' atau 'users.fullname' dengan 
+         * nama kolom di tabel users database Anda.
+         */
+        $activeStudents = $db->table('exam_logs')
+            ->select('
+                exam_logs.id, exam_logs.status, exam_logs.blokir_count, exam_logs.waktu_masuk, 
+                users.username, 
+                class_rombel.rombel_name, 
+                master_subjects.subject_name
+            ')
+            ->join('users', 'users.id = exam_logs.student_id', 'left')
+            ->join('exam_schedules', 'exam_schedules.id = exam_logs.exam_schedule_id', 'left')
+            ->join('class_rombel', 'class_rombel.id = exam_schedules.rombel_id', 'left')
+            ->join('master_subjects', 'master_subjects.id = exam_schedules.subject_id', 'left')
+            // Hanya tampilkan yang sedang ujian atau terkunci
+            ->whereIn('exam_logs.status', ['berlangsung', 'terkunci']) 
+            ->orderBy('exam_logs.status', 'ASC') // Terkunci akan naik ke atas jika diurutkan (b -> t)
+            ->orderBy('exam_logs.waktu_masuk', 'DESC')
+            ->get()
+            ->getResultArray();
+
+        // C. Kembalikan dalam format JSON
+        return $this->response->setJSON([
+            'token'    => $globalToken,
+            'students' => $activeStudents
+        ]);
+    }
 }

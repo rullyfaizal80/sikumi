@@ -398,11 +398,10 @@ $routes->post('asesmen/admin/store', 'Asesmen::store_jadwal');
 $routes->get('asesmen/admin/edit/(:num)', 'Asesmen::edit_jadwal/$1');
 $routes->post('asesmen/admin/update/(:num)', 'Asesmen::update_jadwal/$1');
 $routes->get('asesmen/admin/hapus/(:num)', 'Asesmen::hapus_jadwal/$1');
-
 $routes->get('siswa/asesmen', 'SiswaAsesmen::index');
 $routes->post('siswa/asesmen/validate-token', 'SiswaAsesmen::validate_token');
 $routes->get('siswa/asesmen/ruang-ujian/(:num)', 'SiswaAsesmen::ruang_ujian/$1');
-
 $routes->get('siswa/asesmen/eksekusi-blokir/(:num)', 'SiswaAsesmen::eksekusi_blokir/$1');
-
 $routes->get('siswa/asesmen/selesai-ujian/(:num)', 'SiswaAsesmen::selesai_ujian/$1');
+$routes->get('asesmen/admin/monitor', 'Asesmen::monitor_ujian');
+$routes->get('asesmen/admin/api-monitor', 'Asesmen::get_monitor_data');
