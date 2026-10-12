@@ -21,15 +21,19 @@ class Asesmen extends BaseController
     public function admin_index()
     {
         $activeYear = $this->tahunModel->getActiveYear();
-        if (!$activeYear) {
-            die("Error: Tidak ada Tahun Ajaran yang aktif di database.");
-        }
+        if (!$activeYear) die("Error: Tidak ada Tahun Ajaran aktif.");
+
+        // RUMUS TOKEN GLOBAL (Berubah otomatis setiap 5 menit / 300 detik)
+        $secretKey = "SIKUMI_EXAM"; // Jangan diubah agar token valid
+        $timeBlock = floor(time() / 300); 
+        $globalToken = strtoupper(substr(md5($secretKey . $timeBlock), 0, 6));
 
         $data = [
             'title'          => 'Manajemen Jadwal Ujian',
             'tahun_aktif'    => $activeYear,
             'jadwal_ujian'   => $this->examModel->getJadwalAdminByTahun($activeYear['id']),
-            'kategori_ujian' => $this->categoryModel->findAll() // Mengambil data kategori
+            'kategori_ujian' => $this->categoryModel->findAll(),
+            'global_token'   => $globalToken // Kirim ke View
         ];
 
         return view('asesmen/admin_index', $data);

@@ -402,3 +402,7 @@ $routes->get('asesmen/admin/hapus/(:num)', 'Asesmen::hapus_jadwal/$1');
 $routes->get('siswa/asesmen', 'SiswaAsesmen::index');
 $routes->post('siswa/asesmen/validate-token', 'SiswaAsesmen::validate_token');
 $routes->get('siswa/asesmen/ruang-ujian/(:num)', 'SiswaAsesmen::ruang_ujian/$1');
+
+$routes->get('siswa/asesmen/eksekusi-blokir/(:num)', 'SiswaAsesmen::eksekusi_blokir/$1');
+
+$routes->get('siswa/asesmen/selesai-ujian/(:num)', 'SiswaAsesmen::selesai_ujian/$1');
