@@ -166,21 +166,25 @@ class Asesmen extends BaseController
         return view('asesmen/monitor_ujian', $data);
     }
 
-    // 2. API Endpoint untuk menyuplai data ke Frontend setiap 10 detik
+    // 2. API Endpoint untuk menyuplai data ke Frontend
     public function get_monitor_data()
     {
-        // A. Generate Token saat ini
+        // Pastikan zona waktu akurat
+        date_default_timezone_set('Asia/Jakarta');
+
         $secretKey = "SIKUMI_EXAM";
         $timeBlock = floor(time() / 300); 
         $globalToken = strtoupper(substr(md5($secretKey . $timeBlock), 0, 6));
 
-        // B. Ambil data siswa yang sedang ujian
+        // Tangkap parameter tanggal dari view, jika kosong gunakan HARI INI
+        $filter_date = $this->request->getVar('date') ?: date('Y-m-d');
+        
+        // Buat batas awal dan akhir untuk pencarian di tanggal tersebut
+        $start_date = $filter_date . ' 00:00:00';
+        $end_date   = $filter_date . ' 23:59:59';
+
         $db = \Config\Database::connect();
         
-        /* 
-         * Catatan: Sesuaikan 'users.username' atau 'users.fullname' dengan 
-         * nama kolom di tabel users database Anda.
-         */
         $activeStudents = $db->table('exam_logs')
             ->select('
                 exam_logs.id, exam_logs.status, exam_logs.blokir_count, exam_logs.waktu_masuk, 
@@ -192,14 +196,14 @@ class Asesmen extends BaseController
             ->join('exam_schedules', 'exam_schedules.id = exam_logs.exam_schedule_id', 'left')
             ->join('class_rombel', 'class_rombel.id = exam_schedules.rombel_id', 'left')
             ->join('master_subjects', 'master_subjects.id = exam_schedules.subject_id', 'left')
-            // Hanya tampilkan yang sedang ujian atau terkunci
-            ->whereIn('exam_logs.status', ['berlangsung', 'terkunci']) 
-            ->orderBy('exam_logs.status', 'ASC') // Terkunci akan naik ke atas jika diurutkan (b -> t)
+            // Ambil SEMUA STATUS (termasuk selesai), tapi difilter berdasarkan tanggal pilihan
+            ->where('exam_logs.waktu_masuk >=', $start_date)
+            ->where('exam_logs.waktu_masuk <=', $end_date)
+            // Urutkan berdasarkan waktu masuk ujian TERBARU (Paling atas)
             ->orderBy('exam_logs.waktu_masuk', 'DESC')
             ->get()
             ->getResultArray();
 
-        // C. Kembalikan dalam format JSON
         return $this->response->setJSON([
             'token'    => $globalToken,
             'students' => $activeStudents

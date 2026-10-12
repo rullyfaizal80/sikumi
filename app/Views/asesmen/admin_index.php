@@ -33,17 +33,6 @@
                 </a>
             </div>
         </div>
-        <!-- PANEL TOKEN GLOBAL -->
-        <div class="card shadow-sm border-0 mb-4 bg-dark text-white">
-            <div class="card-body text-center py-4">
-                <h5 class="mb-2 text-warning"><i class="fas fa-key mr-2"></i> TOKEN UJIAN SESI INI</h5>
-                <h1 class="display-4 font-weight-bold" style="letter-spacing: 8px; color: #00ffcc;">
-                    <?= $global_token ?>
-                </h1>
-                <p class="mb-0 text-light mt-2">Token berlaku universal untuk semua ujian. Berubah otomatis setiap 5 menit.</p>
-                <small class="text-muted">Jika ada siswa yang terblokir (keluar aplikasi), berikan token ini agar mereka bisa masuk kembali.</small>
-            </div>
-        </div>
         <!-- Tombol Aksi -->
         <div class="mb-3">
            <a href="<?= base_url('asesmen/admin/create') ?>" class="btn btn-primary font-weight-bold shadow-sm">
