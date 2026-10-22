@@ -23,16 +23,12 @@ class SiswaAsesmen extends BaseController
         else { return session()->get('id') ?? session()->get('user_id'); }
     }
 
+    // --- 1. HALAMAN PORTAL UJIAN (INDEX) ---
     public function index()
     {
-        // Ambil ID User Siswa
         $student_id = $this->get_student_id();
+        if (!$student_id) return redirect()->to('/')->with('error', 'Sesi login tidak valid.');
 
-        if (!$student_id) {
-            return redirect()->to('/')->with('error', 'Sesi login tidak valid.');
-        }
-
-        // Ambil Tahun Ajaran yang Aktif
         $activeYear = $this->tahunModel->getActiveYear();
         if (!$activeYear) {
             return view('siswa/asesmen/index', [
@@ -42,23 +38,19 @@ class SiswaAsesmen extends BaseController
             ]);
         }
 
-        // Cari rombel_id siswa berdasarkan kelas aktif di tahun ajaran aktif
         $db = \Config\Database::connect();
         $studentRombel = $db->table('class_rombel_students')
                             ->select('class_rombel_students.rombel_id, class_rombel.rombel_name')
                             ->join('class_rombel', 'class_rombel.id = class_rombel_students.rombel_id')
                             ->where('class_rombel_students.student_id', $student_id)
                             ->where('class_rombel.academic_year_id', $activeYear['id'])
-                            ->get()
-                            ->getRowArray();
+                            ->get()->getRowArray();
 
         $jadwalUjian = [];
         $namaKelas = 'Belum Masuk Kelas';
 
         if ($studentRombel) {
             $namaKelas = $studentRombel['rombel_name'];
-            
-            // HANYA AMBIL JADWAL YANG IS_ACTIVE = 1
             $jadwalUjian = $this->examModel->select('exam_schedules.*, master_subjects.subject_name, exam_categories.nama_kategori')
                         ->join('master_subjects', 'master_subjects.id = exam_schedules.subject_id', 'left')
                         ->join('exam_categories', 'exam_categories.id = exam_schedules.exam_category_id', 'left')
@@ -69,7 +61,6 @@ class SiswaAsesmen extends BaseController
                         ->findAll();
         }
 
-        // PASTIKAN ZONA WAKTU BENAR (WIB)
         date_default_timezone_set('Asia/Jakarta');
 
         $data = [
@@ -81,6 +72,22 @@ class SiswaAsesmen extends BaseController
         ];
 
         return view('siswa/asesmen/index', $data);
+    }
+
+    // --- 2. HALAMAN BARU: INFO & KISI-KISI ---
+    public function info()
+    {
+        $student_id = $this->get_student_id();
+        if (!$student_id) return redirect()->to('/')->with('error', 'Sesi login tidak valid.');
+
+        $infoModel = new \App\Models\AsesmenInfoModel();
+        
+        $data = [
+            'title'        => 'Informasi & Kisi-kisi Asesmen',
+            'info_asesmen' => $infoModel->find(1)
+        ];
+
+        return view('siswa/asesmen/info', $data);
     }
 
     // --- 2. UPDATE FUNGSI VALIDASI TOKEN ---

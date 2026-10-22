@@ -407,3 +407,7 @@ $routes->get('asesmen/admin/monitor', 'Asesmen::monitor_ujian');
 $routes->get('asesmen/admin/api-monitor', 'Asesmen::get_monitor_data');
 $routes->get('asesmen/admin/duplikat/(:num)', 'Asesmen::duplikat_jadwal/$1');
 $routes->post('asesmen/admin/toggle-status/(:num)', 'Asesmen::toggle_status/$1');
+
+$routes->get('asesmen/admin/info', 'Asesmen::info_asesmen');
+$routes->post('asesmen/admin/update-info', 'Asesmen::update_info_asesmen');
+$routes->get('siswa/asesmen/info', 'SiswaAsesmen::info');

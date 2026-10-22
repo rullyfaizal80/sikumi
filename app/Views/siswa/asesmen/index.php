@@ -26,6 +26,8 @@
                 <h3 class="mb-0" style="color: #17a2b8; font-weight: 700;"><i class="fas fa-graduation-cap mr-2"></i> Portal Asesmen Siswa</h3>
                 <p class="text-muted small mb-0">Kelas: <strong><?= esc($nama_kelas) ?></strong> | Tahun Ajaran: <strong><?= esc($tahun_aktif['academic_year'] ?? '-') ?> (<?= esc($tahun_aktif['semester'] ?? '-') ?>)</strong></p>
             </div>
+            
+            <!-- Tombol Aksi Kanan -->
             <div>
                 <a href="<?= base_url('/') ?>" class="btn btn-secondary btn-sm font-weight-bold">
                     <i class="fas fa-arrow-left mr-1"></i> Dashboard

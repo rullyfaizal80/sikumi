@@ -253,4 +253,60 @@ class Asesmen extends BaseController
         
         return $this->response->setStatusCode(403)->setBody('Akses ditolak.');
     }
+
+    // --- FITUR INFORMASI & KISI-KISI ---
+    public function info_asesmen()
+    {
+        $infoModel = new \App\Models\AsesmenInfoModel();
+        $data = [
+            'title' => 'Kelola Informasi & Kisi-kisi',
+            'info'  => $infoModel->find(1)
+        ];
+        return view('asesmen/info_asesmen', $data);
+    }
+
+    public function update_info_asesmen()
+    {
+        $infoModel = new \App\Models\AsesmenInfoModel();
+        $info = $infoModel->find(1);
+        
+        $dataUpdate = [
+            'link_kisi_tulis_7'   => $this->request->getPost('link_kisi_tulis_7'),
+            'link_kisi_praktik_7' => $this->request->getPost('link_kisi_praktik_7'),
+            'link_kisi_tulis_8'   => $this->request->getPost('link_kisi_tulis_8'),
+            'link_kisi_praktik_8' => $this->request->getPost('link_kisi_praktik_8'),
+            'link_kisi_tulis_9'   => $this->request->getPost('link_kisi_tulis_9'),
+            'link_kisi_praktik_9' => $this->request->getPost('link_kisi_praktik_9'),
+        ];
+
+        // MENGGUNAKAN FCPATH PERSIS SEPERTI FITUR TTD ANDA
+        $targetFolder = FCPATH . 'uploads/asesmen';
+
+        $handleUpload = function($fieldName, $dbField) use ($info, &$dataUpdate, $targetFolder) {
+            $file = $this->request->getFile($fieldName);
+            
+            if ($file && $file->isValid() && !$file->hasMoved()) {
+                
+                $newName = $file->getRandomName();
+                
+                // Eksekusi Pindah File
+                $file->move($targetFolder, $newName);
+                
+                // Hapus gambar lama agar tidak menumpuk di server
+                if (!empty($info[$dbField]) && file_exists($targetFolder . '/' . $info[$dbField])) {
+                    unlink($targetFolder . '/' . $info[$dbField]);
+                }
+                
+                $dataUpdate[$dbField] = $newName;
+            }
+        };
+
+        // Jalankan fungsi helper
+        $handleUpload('gambar_jadwal_tulis', 'gambar_jadwal_tulis');
+        $handleUpload('gambar_jadwal_praktik', 'gambar_jadwal_praktik');
+
+        $infoModel->update(1, $dataUpdate);
+        session()->setFlashdata('success', 'Informasi Asesmen berhasil diperbarui!');
+        return redirect()->to('/asesmen/admin/info');
+    }
 }
